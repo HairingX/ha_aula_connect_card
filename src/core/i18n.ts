@@ -109,29 +109,6 @@ const en = {
     "The card knows the common abbreviations (DAN, MAT, IDR …); correct or add names here.",
   editorSubjectAula: "Name in Aula",
   editorSubjectName: "Show as",
-  // 0.0.2's week card, until it is replaced
-  timetable: "Timetable",
-  tasks: "Homework and notes",
-  events: "Events",
-  birthdays: "Birthdays",
-  nothingPlanned: "Nothing planned",
-  noData: "Nothing from Aula this week.",
-  lessons: "{n} lessons",
-  break: "Break",
-  sectionHomework: "Homework",
-  sectionPlan: "Plan for the day",
-  sectionOther: "Other",
-  editorWeeksHelper: "Default: this and next week.",
-  editorWeeksThis: "This week",
-  editorWeeksBoth: "This and next week",
-  editorSections: "Sections for homework and notes",
-  editorSectionsHelper:
-    "A note goes in the first section whose rules all match; one with no section goes in Other.",
-  editorSectionTitle: "Title",
-  editorSectionIcon: "Icon",
-  editorSectionType: "Type is (task, comment, …)",
-  editorSectionSubject: "Subject is",
-  editorSectionText: "Title contains",
 } satisfies Record<string, Text>;
 
 /** The keys of the cards' texts. */
@@ -231,28 +208,6 @@ const da: Record<TextKey, Text> = {
     "Kortet kender de almindelige forkortelser (DAN, MAT, IDR …); ret eller tilføj navne her.",
   editorSubjectAula: "Navn i Aula",
   editorSubjectName: "Vis som",
-  timetable: "Skema",
-  tasks: "Lektier og noter",
-  events: "Begivenheder",
-  birthdays: "Fødselsdage",
-  nothingPlanned: "Intet planlagt",
-  noData: "Intet fra Aula i denne uge.",
-  lessons: "{n} lektioner",
-  break: "Frikvarter",
-  sectionHomework: "Lektier",
-  sectionPlan: "Dagens plan",
-  sectionOther: "Andet",
-  editorWeeksHelper: "Standard: denne og næste uge.",
-  editorWeeksThis: "Denne uge",
-  editorWeeksBoth: "Denne og næste uge",
-  editorSections: "Afsnit for lektier og noter",
-  editorSectionsHelper:
-    "En note kommer i det første afsnit, hvis regler alle passer; en uden afsnit kommer i Andet.",
-  editorSectionTitle: "Titel",
-  editorSectionIcon: "Ikon",
-  editorSectionType: "Typen er (task, comment, …)",
-  editorSectionSubject: "Faget er",
-  editorSectionText: "Titlen indeholder",
 };
 
 /** A function giving a text in one language, with `{name}` placeholders filled in. */

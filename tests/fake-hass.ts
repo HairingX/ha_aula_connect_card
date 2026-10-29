@@ -28,6 +28,8 @@ export class FakeConnection {
   readonly listeners = new Map<ConnectionEvent, Set<() => void>>();
   /** The error the next subscriptions are refused with, if any. */
   refuse: Error | undefined = undefined;
+  /** Answers each subscription, after a microtask, with what this gives for its message. */
+  respond: ((message: Record<string, unknown>) => unknown) | undefined = undefined;
 
   /** Records a subscription, or refuses it with `refuse`. */
   subscribeMessage(
@@ -38,6 +40,12 @@ export class FakeConnection {
     if (this.refuse !== undefined) return Promise.reject(this.refuse);
     const unsubscribe = vi.fn<Unsubscribe>(() => Promise.resolve());
     this.subscriptions.push({ message, options, callback, unsubscribe });
+    const respond = this.respond;
+    if (respond) {
+      queueMicrotask(() => {
+        callback(respond(message));
+      });
+    }
     return Promise.resolve(unsubscribe);
   }
 

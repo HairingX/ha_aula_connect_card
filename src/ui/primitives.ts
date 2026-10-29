@@ -174,26 +174,27 @@ export function heading(
   ctx: ViewContext,
   titleClass = "title",
 ): TemplateResult {
-  const parts = dateLine(day, ctx);
   const next = reason === "tomorrow" || reason === "next_school_day";
+  const parts: unknown[] = [
+    ...dateLine(day, ctx),
+    ...(next
+      ? [
+          html`<span class="next"
+            >${icon("mdi:calendar-arrow-right")}${ctx.t("nextSchoolDay")}</span
+          >`,
+        ]
+      : []),
+  ];
   return html`<span class="heading">
     <span class=${titleClass}>${dayTitle(day, ctx)}<span class="sr">,</span></span>
     <span class="date-line"
-      >${parts.map(
-        (part, index) =>
-          html`${index > 0 ? html`<span aria-hidden="true">·</span>` : nothing}
-            <span>${part}</span>`,
-      )}${
-        next
-          ? html`<span aria-hidden="true">·</span
-              ><span class="next"
-                >${icon("mdi:calendar-arrow-right")}${ctx.t("nextSchoolDay")}</span
-              >`
-          : nothing
-      }</span
+      >${parts.map((part, index) => html`${index > 0 ? separator : nothing}<span>${part}</span>`)}</span
     >
   </span>`;
 }
+
+// Seen as a dot, heard as a pause.
+const separator = html`<span class="sr">, </span><span aria-hidden="true">·</span>`;
 
 /** Shows a day's school hours with a clock. */
 export function hours(span: { start: string; end: string }, ctx: ViewContext): TemplateResult {
