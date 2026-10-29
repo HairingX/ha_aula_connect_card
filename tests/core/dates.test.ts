@@ -13,9 +13,9 @@ import {
   useAmPm,
   weekday,
   weekNumber,
-} from "../src/dates";
-import type { HassLocale } from "../src/types";
-import { fakeHass } from "./fake-hass";
+} from "../../src/core/dates.ts";
+import type { HassLocale } from "../../src/core/types.ts";
+import { fakeHass } from "../fake-hass.ts";
 
 function locale(fields: Partial<HassLocale>): HassLocale {
   return {

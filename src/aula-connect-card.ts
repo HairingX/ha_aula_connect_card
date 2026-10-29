@@ -8,7 +8,7 @@
 
 import { html, LitElement, nothing, type TemplateResult } from "lit";
 
-import { errorText, fetchChildren, subscribeWeek } from "./api";
+import { errorText, fetchChildren, subscribeWeek } from "./core/api.ts";
 import {
   defaultSections,
   resolveConfig,
@@ -16,12 +16,18 @@ import {
   type CardConfig,
   type ResolvedConfig,
 } from "./config";
-import { addDays, dayOf, startOfWeek, timeZone, useAmPm } from "./dates";
+import { addDays, dayOf, startOfWeek, timeZone, useAmPm } from "./core/dates.ts";
 import { configForm, rememberChildren, rememberLanguage, type ConfigForm } from "./editor";
-import { translator } from "./i18n";
+import { translator } from "./core/i18n.ts";
 import { alert, child, loading, type ChildState, type RenderContext } from "./render";
 import { styles } from "./styles";
-import type { Child, HassConnection, HassLocale, HomeAssistant, Unsubscribe } from "./types";
+import type {
+  Child,
+  HassConnection,
+  HassLocale,
+  HomeAssistant,
+  Unsubscribe,
+} from "./core/types.ts";
 
 /** The card's version, set when it is built. */
 export const CARD_VERSION = __CARD_VERSION__;
@@ -65,7 +71,7 @@ export class AulaConnectCard extends LitElement {
     if (hass) {
       rememberLanguage(hass.language);
       try {
-        rememberChildren(await fetchChildren(hass));
+        rememberChildren(await fetchChildren((message) => hass.callWS(message)));
       } catch {
         // The editor then takes child ids typed in.
       }
@@ -151,7 +157,7 @@ export class AulaConnectCard extends LitElement {
   }
 
   private _loadChildren(hass: HomeAssistant, connection: HassConnection): void {
-    fetchChildren(hass).then(
+    fetchChildren((message) => hass.callWS(message)).then(
       (children) => {
         if (connection !== this._connection) return;
         this._children = children;
@@ -236,8 +242,7 @@ export class AulaConnectCard extends LitElement {
         subscribeWeek(
           connection,
           item,
-          start,
-          end,
+          { start, end },
           (data) => {
             if (generation !== this._generation) return;
             this._states.set(item.child_id, { range, data });

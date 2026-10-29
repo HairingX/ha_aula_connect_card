@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { SectionConfig } from "../src/config";
 import { groupTasks, matchesSection } from "../src/sections";
-import type { Task } from "../src/types";
+import type { Task } from "../src/core/types.ts";
 
 function task(fields: Partial<Task>): Task {
   return {

@@ -15,6 +15,24 @@ export default tseslint.config(
     },
   },
   {
+    // Every decision is made in the pure layers, so that it is tested without rendering.
+    files: ["src/core/**/*.ts", "src/model/**/*.ts", "src/config/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            { group: ["lit", "lit/*"], message: "Only src/ui and src/cards render." },
+            {
+              group: ["**/ui/**", "**/cards/**"],
+              message: "The pure layers do not import the UI.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["**/*.js", "**/*.mjs"],
     ...tseslint.configs.disableTypeChecked,
   },

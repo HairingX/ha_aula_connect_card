@@ -5,7 +5,7 @@
  * @packageDocumentation
  */
 
-import type { Child, Lesson, Task, WeekData } from "../../src/types.ts";
+import type { Child, Lesson, Task, WeekData } from "../../src/core/types.ts";
 
 /** Two made-up children at made-up schools. */
 export const CHILDREN: Child[] = [

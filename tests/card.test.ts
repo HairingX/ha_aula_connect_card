@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AulaConnectCard, CARD_VERSION, RELOAD_DELAY_MS, TICK_MS } from "../src/aula-connect-card";
 import type { CardConfig } from "../src/config";
 import { configForm, rememberChildren } from "../src/editor";
-import type { CalendarEvent, Lesson, Task, WeekData } from "../src/types";
+import type { CalendarEvent, Lesson, Task, WeekData } from "../src/core/types.ts";
 import {
   FakeConnection,
   fakeHass,
@@ -415,7 +415,7 @@ describe("the week", () => {
 
   it("says there is no homework on a school day without notes", async () => {
     const { card } = await full();
-    expect(text(dayAt(card, 0), ".day-body .quiet")).toBe("Ingen lektier");
+    expect(text(dayAt(card, 0), ".day-body .quiet")).toBe("Ingen lektier i ugeplanen.");
   });
 
   it("hides a Saturday or Sunday with nothing on it, and shows one with something", async () => {
@@ -565,7 +565,7 @@ describe("the week", () => {
     const data = weekData("2026-10-26");
     await send(hass, { ...data, week_plan: false });
     expect(root(card).querySelector(".task, .block-title")).toBeNull();
-    expect(texts(card, ".quiet")).not.toContain("Ingen lektier");
+    expect(texts(card, ".quiet")).not.toContain("Ingen lektier i ugeplanen.");
     expect(texts(dayAt(card, 4), ".day-summary .count")).toEqual([
       "08.00–13.40",
       "Begivenheder: 1",
@@ -576,7 +576,7 @@ describe("the week", () => {
   it("says there is no homework where the school has a week plan without notes", async () => {
     const { card, hass } = await mount();
     await send(hass, { ...weekData("2026-10-26"), tasks: [], birthdays: [] });
-    expect(text(dayAt(card, 3), ".day-body > .quiet")).toBe("Ingen lektier");
+    expect(text(dayAt(card, 3), ".day-body > .quiet")).toBe("Ingen lektier i ugeplanen.");
   });
 
   it("leaves out the parts of a note it does not have", async () => {

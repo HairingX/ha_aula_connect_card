@@ -5,8 +5,16 @@
  */
 
 import type { ShowKey } from "./config";
-import { addDays, dayOf, daysBetween, isDay, isWeekend, weekday, weekNumber } from "./dates";
-import type { Birthday, CalendarEvent, Lesson, Task, WeekData } from "./types";
+import {
+  addDays,
+  dayOf,
+  daysBetween,
+  isDay,
+  isWeekend,
+  weekday,
+  weekNumber,
+} from "./core/dates.ts";
+import type { Birthday, CalendarEvent, Lesson, Task, WeekData } from "./core/types.ts";
 
 /** The most time between two lessons that are shown as one, as between a double lesson's halves. */
 export const MERGE_GAP_MS = 10 * 60_000;

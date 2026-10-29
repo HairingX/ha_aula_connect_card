@@ -7,10 +7,10 @@
 import { html, nothing, type TemplateResult } from "lit";
 import { repeat } from "lit/directives/repeat.js";
 
-import { errorText } from "./api";
+import { errorText } from "./core/api.ts";
 import type { SectionConfig, ShowKey } from "./config";
-import { addDays, dayOf, formatDay, formatTimeParts } from "./dates";
-import type { Translate } from "./i18n";
+import { addDays, dayOf, formatDay, formatTimeParts } from "./core/dates.ts";
+import type { Translate } from "./core/i18n.ts";
 import {
   buildWeeks,
   focusDay,
@@ -21,8 +21,8 @@ import {
   type LessonBlock,
 } from "./model";
 import { groupTasks } from "./sections";
-import { htmlToText, initials } from "./text";
-import type { CalendarEvent, Child, Task, WeekData } from "./types";
+import { htmlToText, initials } from "./core/text.ts";
+import type { CalendarEvent, Child, Task, WeekData } from "./core/types.ts";
 
 /** What the templates need to know besides the data. */
 export interface RenderContext {

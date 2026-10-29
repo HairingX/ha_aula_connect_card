@@ -11,7 +11,7 @@ import {
   timeline,
   type DayView,
 } from "../src/model";
-import type { CalendarEvent, Lesson, WeekData } from "../src/types";
+import type { CalendarEvent, Lesson, WeekData } from "../src/core/types.ts";
 import { weekData } from "./fixtures/week";
 
 const ZONE = "Europe/Copenhagen";

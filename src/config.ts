@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import { translator } from "./i18n";
+import { translator } from "./core/i18n.ts";
 
 /** The parts of the card that can be switched off. */
 export const SHOW_KEYS = ["timetable", "tasks", "events", "birthdays"] as const;

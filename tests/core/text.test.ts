@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { htmlToText, initials } from "../src/text";
+import { htmlToText, initials } from "../../src/core/text.ts";
 
 describe("htmlToText", () => {
   it("keeps plain text as it is, trimmed", () => {

@@ -7,8 +7,8 @@
  */
 
 import { resolveConfig, SHOW_KEYS } from "./config";
-import { translator, type TextKey } from "./i18n";
-import type { Child } from "./types";
+import { translator, type TextKey } from "./core/i18n.ts";
+import type { Child } from "./core/types.ts";
 
 const seen: { children: Child[]; language: string | undefined } = {
   children: [],

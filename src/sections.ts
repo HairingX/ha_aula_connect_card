@@ -5,7 +5,7 @@
  */
 
 import type { SectionConfig } from "./config";
-import type { Task } from "./types";
+import type { Task } from "./core/types.ts";
 
 /** A section and the notes in it, in the order they came. */
 export interface TaskGroup {

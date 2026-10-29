@@ -1,9 +1,28 @@
 /**
- * The parts of Home Assistant's frontend objects and of the Aula Connect websocket API the card
- * reads. Home Assistant passes much more; only what is used is typed.
+ * The parts of Home Assistant's frontend objects and of the Aula Connect websocket API the cards
+ * read. Home Assistant passes much more; only what is used is typed.
  *
  * @packageDocumentation
  */
+
+/** A calendar day, `YYYY-MM-DD`. */
+export type Day = string;
+
+/** The days from `start` up to, not including, `end`. */
+export interface DayRange {
+  /** The first day. */
+  readonly start: Day;
+  /** The day after the last. */
+  readonly end: Day;
+}
+
+/** A child's key across the entries of Aula Connect: its entry's id and its own. */
+export type ChildKey = `${string}/${string}`;
+
+/** Returns a child's key. */
+export function childKey(child: Pick<Child, "entry_id" | "child_id">): ChildKey {
+  return `${child.entry_id}/${String(child.child_id)}`;
+}
 
 /** A function that ends a websocket subscription. */
 export type Unsubscribe = () => Promise<void>;
@@ -34,6 +53,9 @@ export interface HassLocale {
   /** "local" for the browser's time zone, "server" for Home Assistant's. */
   time_zone: string;
 }
+
+/** Sends a command over the websocket and resolves with its result. */
+export type CallWS = (message: Record<string, unknown>) => Promise<unknown>;
 
 /** The `hass` object Home Assistant gives every card. */
 export interface HomeAssistant {

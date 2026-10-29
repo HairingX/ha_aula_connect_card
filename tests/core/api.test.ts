@@ -1,25 +1,35 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { errorText, fetchChildren, subscribeWeek } from "../src/api";
-import { translator } from "../src/i18n";
-import { CHILDREN } from "./fixtures/week";
-import { fakeHass, FakeConnection, present } from "./fake-hass";
+import { errorText, fetchChildren, subscribeWeek } from "../../src/core/api.ts";
+import { translator } from "../../src/core/i18n.ts";
+import { CHILDREN } from "../fixtures/week.ts";
+import { fakeHass, FakeConnection, present } from "../fake-hass.ts";
 
 const t = translator("en");
 const IDA = present(CHILDREN[0]);
+const RANGE = { start: "2026-10-26", end: "2026-11-09" };
 
 describe("fetchChildren", () => {
   it("lists the children with aula_connect/children", async () => {
     const hass = fakeHass({ children: CHILDREN });
-    await expect(fetchChildren(hass)).resolves.toEqual(CHILDREN);
+    await expect(fetchChildren(hass.callWS)).resolves.toEqual(CHILDREN);
     expect(hass.callWS).toHaveBeenCalledWith({ type: "aula_connect/children" });
+  });
+
+  it("leaves out what is not a child, and takes a reply without children as none", async () => {
+    const odd = [{ ...CHILDREN[0], child_id: "1001" }, null, "Ida", CHILDREN[1]];
+    await expect(fetchChildren(() => Promise.resolve({ children: odd }))).resolves.toEqual([
+      CHILDREN[1],
+    ]);
+    await expect(fetchChildren(() => Promise.resolve(null))).resolves.toEqual([]);
+    await expect(fetchChildren(() => Promise.resolve({ children: {} }))).resolves.toEqual([]);
   });
 });
 
 describe("subscribeWeek", () => {
   it("subscribes to the child's range, not renewed on reconnect", async () => {
     const connection = new FakeConnection();
-    await subscribeWeek(connection, IDA, "2026-10-26", "2026-11-09", vi.fn(), vi.fn());
+    await subscribeWeek(connection, IDA, RANGE, vi.fn(), vi.fn());
     expect(connection.subscriptions[0]?.message).toEqual({
       type: "aula_connect/week/subscribe",
       entry_id: "entry-a",
@@ -33,7 +43,7 @@ describe("subscribeWeek", () => {
   it("gives every event as a whole range, filling in what is missing", async () => {
     const connection = new FakeConnection();
     const callback = vi.fn();
-    await subscribeWeek(connection, IDA, "2026-10-26", "2026-11-09", callback, vi.fn());
+    await subscribeWeek(connection, IDA, RANGE, callback, vi.fn());
     const send = (message: unknown): void => connection.subscriptions[0]?.callback(message);
     send({
       week_plan: false,
@@ -75,7 +85,7 @@ describe("subscribeWeek", () => {
     const connection = new FakeConnection();
     const callback = vi.fn();
     const ended = vi.fn();
-    await subscribeWeek(connection, IDA, "2026-10-26", "2026-11-09", callback, ended);
+    await subscribeWeek(connection, IDA, RANGE, callback, ended);
     connection.subscriptions[0]?.callback({ ended: true });
     expect(ended).toHaveBeenCalledOnce();
     expect(callback).not.toHaveBeenCalled();

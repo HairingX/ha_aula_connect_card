@@ -6,7 +6,7 @@
 
 import { vi } from "vitest";
 
-import type { Child, ConnectionEvent, HomeAssistant, Unsubscribe } from "../src/types";
+import type { Child, ConnectionEvent, HomeAssistant, Unsubscribe } from "../src/core/types.ts";
 
 /** A subscription the card made. */
 export interface FakeSubscription {
