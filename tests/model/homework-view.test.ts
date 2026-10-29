@@ -74,10 +74,11 @@ describe("the homework card", () => {
     expect(loading.size).toBe(6);
   });
 
-  it("has no focus day before a holiday, and folds the week's homework", () => {
+  it("has no focus day before a holiday, folds the week's homework, and awaits no plan for it", () => {
     const [ida] = view("before-holiday").children;
     expect(ida?.focus).toMatchObject({ reason: "none", horizon: "2026-10-18" });
     expect(ida?.groups).toEqual([]);
-    expect(ida?.earlier.length).toBeGreaterThan(0);
+    expect(ida?.earlierCount).toBe(5);
+    expect(ida?.notYet).toEqual([]);
   });
 });

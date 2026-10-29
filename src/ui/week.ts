@@ -10,6 +10,7 @@ import { html, nothing, type TemplateResult } from "lit";
 import type { ViewContext } from "../core/context.ts";
 import { addDays, formatDayNumber, formatDayRange, formatWeekdayShort } from "../core/dates.ts";
 import { childKey, type Child } from "../core/types.ts";
+import type { BlockId } from "../model/blocks.ts";
 import type {
   DayRowView,
   WeekCardView,
@@ -73,25 +74,29 @@ function summaryLines(
   extra: unknown[],
 ): TemplateResult {
   const { content } = row;
-  // Today's row says only when school ends: the rest of today is what it is there for.
+  // A closed row sums up only the blocks shown; today's row says only when school ends, as the
+  // rest of today is what it is there for.
+  const shown = (id: BlockId): boolean =>
+    row.plan.blocks.some((block) => block.id === id && !block.empty);
   const facts: unknown[] = [...extra];
   if (extra.length === 0) {
-    if (content.hours) facts.push(timeSpan(content.hours.start, content.hours.end, ctx));
-    if (content.homework.length > 0)
-      facts.push(ctx.t("homeworkCount", { n: content.homework.length }));
+    if (content.hours && shown("timetable")) {
+      facts.push(timeSpan(content.hours.start, content.hours.end, ctx));
+    }
+    if (shown("homework")) facts.push(ctx.t("homeworkCount", { n: content.homework.length }));
     if (facts.length === 0 && content.view.lessons.length === 0)
       facts.push(ctx.t("noTimetableInAula"));
   }
   const line2 = [
-    ...content.events.map(
+    ...(shown("events") ? content.events : []).map(
       (event) =>
         html`<span
-          >${icon(eventIcon(event.type))}${aula(event.title, ctx)}${
-            event.all_day ? nothing : html`&nbsp;${timeText(event.start, ctx)}`
-          }</span
+          >${icon(eventIcon(event.type))}<span
+            >${aula(event.title, ctx)}${event.all_day ? nothing : ` ${timeText(event.start, ctx)}`}</span
+          ></span
         >`,
     ),
-    ...content.birthdays.map(
+    ...(shown("birthdays") ? content.birthdays : []).map(
       (birthday) => html`<span>${icon("mdi:cake-variant-outline")}${birthday.name}</span>`,
     ),
   ];
@@ -194,15 +199,17 @@ function weekRow(item: WeekRow, child: Child, ctx: ViewContext, state: CardState
         ...row.content.events.map(
           (event) =>
             html`<span
-              >${icon(eventIcon(event.type))}${aula(event.title, ctx)},
-              ${formatWeekdayShort(row.day, ctx.language).toLocaleLowerCase(ctx.language)}.</span
+              >${icon(eventIcon(event.type))}<span
+                >${aula(event.title, ctx)}, ${weekdayAbbreviation(row.day, ctx)}</span
+              ></span
             >`,
         ),
         ...row.content.birthdays.map(
           (birthday) =>
             html`<span
-              >${icon("mdi:cake-variant-outline")}${birthday.name},
-              ${formatWeekdayShort(row.day, ctx.language).toLocaleLowerCase(ctx.language)}.</span
+              >${icon("mdi:cake-variant-outline")}<span
+                >${birthday.name}, ${weekdayAbbreviation(row.day, ctx)}</span
+              ></span
             >`,
         ),
       ]);
@@ -248,6 +255,11 @@ function weekRow(item: WeekRow, child: Child, ctx: ViewContext, state: CardState
         </span>
       </div>`;
   }
+}
+
+/** Returns a weekday's abbreviation as a word in a sentence: "lør.", "sat.". */
+function weekdayAbbreviation(day: string, ctx: ViewContext): string {
+  return `${formatWeekdayShort(day, ctx.language).toLocaleLowerCase(ctx.language)}.`;
 }
 
 function relation(row: DayRowView, ctx: ViewContext): unknown[] {

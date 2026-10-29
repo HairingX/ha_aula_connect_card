@@ -83,6 +83,8 @@ interface Shot {
   readonly config?: Readonly<Record<string, unknown>>;
   /** A suffix for the name, for a configuration of its own. */
   readonly tag?: string;
+  /** Whether to check the wall screen's first glance: the header and the children's columns. */
+  readonly glance?: boolean;
 }
 
 // What a family would set up: the things to bring for sports and swimming.
@@ -139,7 +141,7 @@ const SETS: Record<string, () => Shot[]> = {
       shot(card, "thu-1010", 304, { primary: "indigo" }),
       shot(card, "thu-1010", 380, { locale: "en-US" }),
     ]),
-    shot("day", "thu-0715", 800, { large: true, children: 2 }),
+    shot("day", "thu-0715", 800, { large: true, children: 2, glance: true }),
     shot("day", "thu-0715", 800, { large: true, children: 2, theme: "dark" }),
     shot("day", "thu-1930", 380, { config: { order: ["timetable"] }, tag: "order-timetable" }),
     shot("week", "thu-1930", 380, {
@@ -163,7 +165,7 @@ const SETS: Record<string, () => Shot[]> = {
     shot("day", "thu-1010", 380, { locale: "en-US", primary: "orange" }),
     shot("day", "no-week-plan", 380),
     shot("day", "thu-0715", 800),
-    shot("day", "thu-0715", 800, { large: true, children: 2 }),
+    shot("day", "thu-0715", 800, { large: true, children: 2, glance: true }),
     shot("day", "thu-1530", 800, { theme: "dark", children: 2 }),
     shot("day", "two-schools", 800, { children: 2 }),
     shot("homework", "thu-1530", 380),
@@ -308,6 +310,50 @@ function mount(arg: Mount): void {
   document.body.append(card);
 }
 
+// A kitchen tablet of 1280 × 800, less Home Assistant's header.
+const FIRST_SCREEN = 800 - 56;
+
+/**
+ * Runs in the page: tells what is wrong with the first glance at a wall screen, if anything. The
+ * header's title must be the largest text, and the header and each child's first block must
+ * begin on the first screen.
+ */
+function glance(arg: { tag: string; screen: number }): string[] {
+  const root = document.querySelector(arg.tag)?.shadowRoot;
+  if (!root) return ["no card"];
+  const problems: string[] = [];
+  const title = root.querySelector(".hero .title");
+  const size = (element: Element): number => parseFloat(getComputedStyle(element).fontSize);
+  const largest = Math.max(
+    ...[...root.querySelectorAll("*")]
+      .filter((element) => !title?.contains(element) && !element.closest(".sr"))
+      .filter((element) =>
+        [...element.childNodes].some(
+          (node) => node.nodeType === 3 && (node.textContent ?? "").trim() !== "",
+        ),
+      )
+      .map(size),
+  );
+  if (!title || size(title) <= largest)
+    problems.push(
+      `the title is ${String(title && size(title))} px, other text ${String(largest)} px`,
+    );
+  const top = root.host.getBoundingClientRect().top;
+  const hero = root.querySelector(".hero")?.getBoundingClientRect();
+  if (!hero || hero.bottom - top > arg.screen)
+    problems.push("the header is not on the first screen");
+  const children = [...root.querySelectorAll(".child")];
+  if (children.length < 2) problems.push("the children are not shown");
+  for (const child of children) {
+    const first = child.querySelector(".block")?.getBoundingClientRect();
+    if (!first || first.top - top > arg.screen)
+      problems.push("a child's first block is not on the first screen");
+  }
+  const tops = new Set(children.map((child) => Math.round(child.getBoundingClientRect().top)));
+  if (tops.size !== 1) problems.push("the children are not side by side");
+  return problems;
+}
+
 function rendered(tag: string): boolean {
   const root = document.querySelector(tag)?.shadowRoot;
   return root?.querySelector(".body") != null && root.querySelector('[aria-busy="true"]') == null;
@@ -380,6 +426,10 @@ for (const item of shots) {
     null,
   )) as string[];
   if (errors.length > 0) throw new Error(`${name(item)}: ${errors.join("; ")}`);
+  if (item.glance === true) {
+    const problems = (await tab.evaluate(glance, { tag, screen: FIRST_SCREEN })) as string[];
+    if (problems.length > 0) throw new Error(`${name(item)}: ${problems.join("; ")}`);
+  }
   const file = `${name(item)}.png`;
   await tab.locator(tag).screenshot({ path: join(out, file), animations: "disabled" });
   done.push({ file, item, scenario });

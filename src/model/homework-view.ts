@@ -11,6 +11,7 @@ import type { StoreSnapshot } from "../core/store.ts";
 import type { Child, Day } from "../core/types.ts";
 import { dayContent } from "./blocks.ts";
 import { childBases, type ChildState, type Hold, type ViewOptions } from "./child.ts";
+import { isSchoolDay, isTimetabled } from "./days.ts";
 import type { Focus } from "./focus.ts";
 import type { NoteView } from "./notes.ts";
 
@@ -110,12 +111,17 @@ export function homeworkCardView(
       const items = homework(view.day);
       if (view.day < cutoff && items.length > 0) earlier.push(group(view.day, items));
     }
+    // A week without a school day, as a holiday, has no plan to wait for.
+    const timetabled = isTimetabled(basis.days);
     const notYet = [...new Set(known.map((view) => startOfWeek(view.day)))]
-      .filter(
-        (week) =>
+      .filter((week) => {
+        const days = known.filter((view) => startOfWeek(view.day) === week);
+        return (
           week > thisWeek &&
-          !known.some((view) => startOfWeek(view.day) === week && view.notes.length > 0),
-      )
+          days.some((view) => isSchoolDay(view, timetabled)) &&
+          !days.some((view) => view.notes.length > 0)
+        );
+      })
       .map((week) => weekNumber(week));
     return {
       ...empty,
