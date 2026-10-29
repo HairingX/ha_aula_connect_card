@@ -1,0 +1,6 @@
+dist/
+coverage/
+package-lock.json
+# Kept word for word as HairingX/workflows' template has them.
+.github/
+CLAUDE.md
