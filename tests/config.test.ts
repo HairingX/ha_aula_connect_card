@@ -117,7 +117,7 @@ describe("defaultSections", () => {
   it("names them in English for any other language", () => {
     expect(defaultSections("fr").map((section) => section.title)).toEqual([
       "Homework",
-      "Today's plan",
+      "Plan for the day",
     ]);
   });
 });

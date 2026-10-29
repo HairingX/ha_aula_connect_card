@@ -626,7 +626,7 @@ describe("the week", () => {
     expect(texts(dayAt(card, 3), ".lesson-time > time")[0]).toMatch(/^8:00\sAM$/);
     expect(dayAt(card, 3).querySelector(".lesson-time .period")?.textContent).toBe("AM");
     expect(texts(dayAt(card, 4), ".day-summary .count")[0]).toBe("8:00 AM – 1:40 PM");
-    expect(texts(dayAt(card, 3), ".block-title")).toEqual(["Homework", "Today's plan"]);
+    expect(texts(dayAt(card, 3), ".block-title")).toEqual(["Homework", "Plan for the day"]);
   });
 
   it("formats dates in the language of hass when the locale names none", async () => {

@@ -36,7 +36,7 @@ const en = {
   break: "Break",
   earlierDays: "Earlier days ({n})",
   sectionHomework: "Homework",
-  sectionPlan: "Today's plan",
+  sectionPlan: "Plan for the day",
   sectionOther: "Other",
   editorChildren: "Children",
   editorChildrenHelper: "None selected shows every child.",
