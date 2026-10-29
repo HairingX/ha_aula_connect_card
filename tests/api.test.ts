@@ -36,6 +36,7 @@ describe("subscribeWeek", () => {
     await subscribeWeek(connection, IDA, "2026-10-26", "2026-11-09", callback, vi.fn());
     const send = (message: unknown): void => connection.subscriptions[0]?.callback(message);
     send({
+      week_plan: false,
       start: "2026-10-26",
       end: "2026-11-09",
       lessons: [],
@@ -47,6 +48,7 @@ describe("subscribeWeek", () => {
     expect(callback.mock.calls).toEqual([
       [
         {
+          week_plan: false,
           start: "2026-10-26",
           end: "2026-11-09",
           lessons: [],
@@ -57,6 +59,7 @@ describe("subscribeWeek", () => {
       ],
       [
         {
+          week_plan: true,
           start: "2026-10-26",
           end: "2026-11-09",
           lessons: [],

@@ -33,13 +33,11 @@ function tidy(text: string): string {
     .trim();
 }
 
-/**
- * Returns a teacher's initials when given a full name, as schools refer to teachers by them, and
- * the text as it is when it is one word, which is taken to be initials already.
- */
+/** Returns the initials of a full name, as schools refer to teachers by them. */
 export function initials(name: string): string {
-  const words = name.trim().split(/\s+/);
-  return words.length < 2
-    ? name.trim()
-    : words.map((word) => word.charAt(0).toUpperCase()).join("");
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase())
+    .join("");
 }

@@ -12,9 +12,14 @@ next. It is read on a phone and on a shared wall screen, in Danish or English.
   - `aula_connect/children` lists the children: `entry_id`, `child_id`, `first_name`, `name`,
     `institution_name`.
   - `aula_connect/week/subscribe` with `entry_id`, `child_id`, `start` (inclusive) and `end`
-    (exclusive, at most 21 days) sends the whole range - `lessons`, `events`, `tasks`,
-    `birthdays` - whenever it can have changed, and `{"ended": true}` once when the entry is
-    reloaded or the child is gone; errors are `not_found` and `invalid_format`.
+    (exclusive, at most 21 days) sends the whole range - `week_plan`, `lessons`, `events`,
+    `tasks`, `birthdays` - whenever it can have changed, and `{"ended": true}` once when the
+    entry is reloaded or the child is gone; errors are `not_found` and `invalid_format`.
+  - All-day events have days (`YYYY-MM-DD`, the end the day after the last); lessons and other
+    events have ISO date-times with offset. `teachers` are full names. A lesson's `status` is
+    `normal`, `substitute`, or another value shown as it is.
+  - Notes and birthdays come only from a week plan: without one (`week_plan` false) the card
+    leaves them out, and says nothing of homework.
   - The card moves to a new day and week by its own clock, as events come only on change. It
     subscribes again after a lost connection, and lists the children again after `ended`.
 - A week plan's note may hold HTML: it is shown as plain text, never as markup.

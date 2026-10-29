@@ -26,12 +26,12 @@ export const CHILDREN: Child[] = [
 ];
 
 const SUBJECTS: [string, string[], string][] = [
-  ["Dansk", ["KL"], "B12"],
+  ["Dansk", ["Karen Lund"], "B12"],
   ["Matematik", ["Mette Juhl"], "B12"],
-  ["Engelsk", ["TR"], "B14"],
-  ["Natur/teknologi", ["PS", "AH"], "Lab 2"],
-  ["Idræt", ["JB"], "Gymnastiksal"],
-  ["Musik", ["SN"], "Musiklokale"],
+  ["Engelsk", ["Tina Rask"], "B14"],
+  ["Natur/teknologi", ["Pia Sand", "Anders Holm"], "Lab 2"],
+  ["Idræt", ["Jonas Berg"], "Gymnastiksal"],
+  ["Musik", ["Sofie Nørgaard"], "Musiklokale"],
 ];
 
 const SLOTS: [string, string][] = [
@@ -62,7 +62,7 @@ export function lessons(monday: string): Lesson[] {
         title,
         teachers,
         location,
-        status: day === 3 && slot === 5 ? "cancelled" : null,
+        status: day === 3 && slot === 5 ? "substitute" : null,
       });
     });
   }
@@ -138,6 +138,7 @@ export function weekData(monday: string): WeekData {
     return date.toISOString().slice(0, 10);
   };
   return {
+    week_plan: true,
     start: monday,
     end: day(14),
     lessons: lessons(monday),

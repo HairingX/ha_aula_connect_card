@@ -40,7 +40,7 @@ describe("initials", () => {
     expect(initials("Mette  juhl Hansen")).toBe("MJH");
   });
 
-  it("keeps a single word, taken to be initials already", () => {
-    expect(initials(" KL ")).toBe("KL");
+  it("gives the initial of a single name", () => {
+    expect(initials(" Karen ")).toBe("K");
   });
 });

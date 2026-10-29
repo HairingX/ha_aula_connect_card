@@ -50,6 +50,7 @@ export function subscribeWeek(
         return;
       }
       callback({
+        week_plan: data.week_plan !== false,
         start: typeof data.start === "string" ? data.start : start,
         end: typeof data.end === "string" ? data.end : end,
         lessons: list(data.lessons),

@@ -21,18 +21,22 @@ For each child, under the child's first name and school:
   closed day sums itself up: the school hours, the number of notes in each section, the events
   and the birthdays. On a wide screen the two weeks stand side by side.
 - **The timetable**: each lesson's time, subject, teachers (by their initials) and room, with
-  the lesson going on now marked, and cancelled lessons struck through and labelled.
+  the lesson going on now marked, and a lesson that is not as planned - with a substitute, say -
+  labelled.
 - **Homework and things to remember** from the week plan, on the day they are for, sorted into
   sections - by default _Lektier_ (homework) and _Husk_ (remember) - each with its subject.
-- **Events** and **birthdays**.
+- **Events**, all-day ones on each day they cover, and **birthdays**.
+
+Notes and birthdays come from the school's week plan. Where the school has none, the card leaves
+them out rather than say there is no homework.
 
 The card is in Danish when Home Assistant is, and in English otherwise, and follows the user's
 time format, first weekday and time zone.
 
 ## Installation
 
-You need [Aula Connect](https://github.com/HairingX/ha_aula_connect) set up, in the first
-release after 0.0.3 or a later one: the card reads the websocket API it added.
+You need [Aula Connect](https://github.com/HairingX/ha_aula_connect) 0.0.4 or later set up: the
+card reads the websocket API that release added.
 
 Through HACS:
 

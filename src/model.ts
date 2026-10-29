@@ -42,10 +42,9 @@ export function eventDays(event: CalendarEvent, zone: string): string[] {
   let last: string;
   if (event.all_day) {
     // An all-day event's end is the day after its last, as in Home Assistant's calendars.
-    first = event.start.slice(0, 10);
-    if (!isDay(first)) return [];
-    const end = event.end.slice(0, 10);
-    last = isDay(end) && end > first ? addDays(end, -1) : first;
+    if (!isDay(event.start)) return [];
+    first = event.start;
+    last = isDay(event.end) && event.end > first ? addDays(event.end, -1) : first;
   } else {
     const start = instant(event.start);
     if (!start) return [];

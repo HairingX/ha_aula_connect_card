@@ -21,6 +21,7 @@ function calendarEvent(fields: Partial<CalendarEvent>): CalendarEvent {
 
 function empty(fields: Partial<WeekData> = {}): WeekData {
   return {
+    week_plan: true,
     start: "2026-10-26",
     end: "2026-11-09",
     lessons: [],
@@ -44,13 +45,13 @@ describe("eventDays", () => {
     expect(eventDays(calendarEvent({ end: "2026-10-29" }), ZONE)).toEqual(["2026-10-29"]);
   });
 
-  it("takes the day of an all-day event given with a time", () => {
+  it("gives no days for an all-day event whose start is not a day", () => {
     expect(
       eventDays(
         calendarEvent({ start: "2026-10-29T00:00:00+01:00", end: "2026-10-30T00:00:00+01:00" }),
         ZONE,
       ),
-    ).toEqual(["2026-10-29"]);
+    ).toEqual([]);
   });
 
   it("gives no days for an event without a readable start", () => {

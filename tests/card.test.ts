@@ -105,6 +105,7 @@ function calendarEvent(fields: Partial<CalendarEvent>): CalendarEvent {
 
 function week(fields: Partial<WeekData>): WeekData {
   return {
+    week_plan: true,
     start: "2026-10-26",
     end: "2026-11-09",
     lessons: [],
@@ -354,9 +355,7 @@ describe("the week", () => {
     expect(mathematics.querySelector("abbr")?.getAttribute("title")).toBe("Mette Juhl");
     expect(mathematics.querySelector("abbr")?.textContent).toBe("MJ");
     expect(text(card, ".today .lesson:nth-child(5) .lesson-meta")).toBe("Lærere: MJ · Lokale: B12");
-    const cancelled = present(lessons[5]);
-    expect(cancelled.classList.contains("cancelled")).toBe(true);
-    expect(cancelled.querySelector(".tag")?.textContent).toBe("Aflyst");
+    expect(present(lessons[5]).querySelector(".tag")?.textContent).toBe("Vikar");
   });
 
   it("sorts notes into the sections, with subject chips and their HTML as text", async () => {
@@ -430,10 +429,10 @@ describe("the week", () => {
       week({
         lessons: [
           lesson({ id: 1, title: "Bare", teachers: [" "] }),
-          lesson({ id: 2, title: "Teacher", teachers: ["KL"], status: "normal" }),
-          lesson({ id: 3, title: "Room", location: "B12", status: "Substitute" }),
+          lesson({ id: 2, title: "Teacher", teachers: ["Karen Lund"], status: "normal" }),
+          lesson({ id: 3, title: "Room", location: "B12", status: "substitute" }),
           lesson({ id: 4, title: "Odd", status: "moved" }),
-          lesson({ id: 5, title: "Off", status: "Aflyst" }),
+          lesson({ id: 5, title: "Off", status: "cancelled" }),
         ],
       }),
     );
@@ -448,8 +447,42 @@ describe("the week", () => {
       undefined,
       "Substitute",
       "moved",
-      "Cancelled",
+      "cancelled",
     ]);
+    expect(present(lessons[1]).querySelector("abbr")?.getAttribute("title")).toBe("Karen Lund");
+    expect(root(card).querySelector(".cancelled, s, del")).toBeNull();
+  });
+
+  it("shows an all-day event on each day it covers", async () => {
+    const { card, hass } = await mount();
+    await send(
+      hass,
+      week({
+        events: [calendarEvent({ start: "2026-10-29", end: "2026-10-31", title: "Lejrskole" })],
+      }),
+    );
+    expect(texts(dayAt(card, 3), ".item")).toEqual(["Hele dagen Lejrskole"]);
+    expect(texts(dayAt(card, 4), ".day-summary .count")).toEqual(["Begivenheder: 1"]);
+    expect(texts(dayAt(card, 5), ".day-summary .count")).toEqual([]);
+  });
+
+  it("implies nothing about homework or birthdays where the school has no week plan", async () => {
+    const { card, hass } = await mount();
+    const data = weekData("2026-10-26");
+    await send(hass, { ...data, week_plan: false });
+    expect(root(card).querySelector(".task, .block-title")).toBeNull();
+    expect(texts(card, ".quiet")).not.toContain("Ingen lektier");
+    expect(texts(dayAt(card, 4), ".day-summary .count")).toEqual([
+      "08.00–13.30",
+      "Begivenheder: 1",
+    ]);
+    expect(texts(dayAt(card, 3), ".lesson").length).toBe(6);
+  });
+
+  it("says there is no homework where the school has a week plan without notes", async () => {
+    const { card, hass } = await mount();
+    await send(hass, { ...weekData("2026-10-26"), tasks: [], birthdays: [] });
+    expect(text(dayAt(card, 3), ".day-body > .quiet")).toBe("Ingen lektier");
   });
 
   it("leaves out the parts of a note it does not have", async () => {

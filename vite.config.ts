@@ -13,7 +13,9 @@ export default defineConfig({
       fileName: () => "aula-connect-card.js",
     },
     target: "es2022",
-    minify: true,
+    // Vite keeps whitespace in a library's ES module for the bundlers that consume it; this one
+    // is loaded by the browser as it is.
+    rolldownOptions: { output: { minify: true } },
     sourcemap: false,
     emptyOutDir: true,
   },

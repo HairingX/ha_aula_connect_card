@@ -358,10 +358,6 @@ export const styles = css`
     font-weight: var(--acc-weight-medium);
     overflow-wrap: anywhere;
   }
-  .lesson.cancelled .subject {
-    text-decoration: line-through;
-    color: var(--acc-text-secondary);
-  }
   .lesson-meta {
     color: var(--acc-text-secondary);
     font-size: var(--acc-font-s);
@@ -379,9 +375,6 @@ export const styles = css`
   }
   .now-tag {
     background: color-mix(in srgb, var(--acc-primary) 24%, transparent);
-  }
-  .cancelled-tag {
-    background: color-mix(in srgb, var(--acc-error) 16%, transparent);
   }
 
   .tasks {

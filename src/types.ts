@@ -81,11 +81,11 @@ export interface Lesson {
   end: string;
   /** The subject. */
   title: string;
-  /** The teachers, as initials or full names. */
+  /** The teachers' full names. */
   teachers: string[];
   /** The room. */
   location: string | null;
-  /** Null or "normal" for a normal lesson; else, as "cancelled" or "substitute", what is different. */
+  /** Null or "normal" for a normal lesson, "substitute" for one with a substitute teacher, or another state as Aula names it. */
   status: string | null;
 }
 
@@ -93,7 +93,7 @@ export interface Lesson {
 export interface CalendarEvent {
   /** Aula's id of the event. */
   id: string | number;
-  /** A date (`YYYY-MM-DD`) for an all-day event, else an ISO 8601 date and time. */
+  /** The first day of an all-day event, `YYYY-MM-DD`, else an ISO 8601 date and time. */
   start: string;
   /** The day after the last of an all-day event, else the ISO 8601 date and time it ends. */
   end: string;
@@ -137,6 +137,8 @@ export interface Birthday {
 
 /** An event of `aula_connect/week/subscribe`: everything in the range, replacing the last. */
 export interface WeekData {
+  /** Whether the institution has a week plan, which is where notes and birthdays come from. */
+  week_plan: boolean;
   /** The first day of the range, `YYYY-MM-DD`. */
   start: string;
   /** The day after the last of the range. */

@@ -73,27 +73,16 @@ function time(text: string, ctx: RenderContext): TemplateResult | typeof nothing
   >`;
 }
 
-function lessonStatus(
-  status: string | null,
-  t: Translate,
-): { cancelled: boolean; label: string | undefined } {
-  if (status === null) return { cancelled: false, label: undefined };
-  const value = status.trim().toLowerCase();
-  if (value === "" || value === "normal") return { cancelled: false, label: undefined };
-  if (value.includes("cancel") || value.includes("aflys")) {
-    return { cancelled: true, label: t("cancelled") };
-  }
-  if (value.includes("substitut") || value.includes("vikar")) {
-    return { cancelled: false, label: t("substitute") };
-  }
-  return { cancelled: false, label: status };
+function lessonStatus(status: string | null, t: Translate): string | undefined {
+  if (status === null || status === "" || status === "normal") return undefined;
+  return status === "substitute" ? t("substitute") : status;
 }
 
 function lesson(item: Lesson, ctx: RenderContext): TemplateResult {
-  const { cancelled, label } = lessonStatus(item.status, ctx.t);
-  const now = !cancelled && new Date(item.start) <= ctx.now && ctx.now < new Date(item.end);
+  const label = lessonStatus(item.status, ctx.t);
+  const now = new Date(item.start) <= ctx.now && ctx.now < new Date(item.end);
   const teachers = item.teachers.filter((name) => name.trim() !== "");
-  return html`<li class="lesson ${cancelled ? "cancelled" : ""} ${now ? "now" : ""}">
+  return html`<li class="lesson ${now ? "now" : ""}">
     <span class="lesson-time"
       >${time(item.start, ctx)}<span class="end">${time(item.end, ctx)}</span></span
     >
@@ -101,7 +90,7 @@ function lesson(item: Lesson, ctx: RenderContext): TemplateResult {
       <span class="lesson-title">
         <span class="subject">${item.title}</span>
         ${now ? html`<span class="tag now-tag">${ctx.t("now")}</span>` : nothing}
-        ${label ? html`<span class="tag ${cancelled ? "cancelled-tag" : ""}">${label}</span>` : nothing}
+        ${label ? html`<span class="tag">${label}</span>` : nothing}
       </span>
       ${
         teachers.length > 0 || item.location
@@ -309,6 +298,11 @@ export function child(
   const { t } = ctx;
   const id = `child-${String(item.child_id)}`;
   const weeks = buildWeeks(state?.data, ctx.start, ctx.weeks, ctx.zone);
+  // Without a week plan there are no notes or birthdays, so their absence says nothing.
+  const dayCtx =
+    state?.data?.week_plan === false
+      ? { ...ctx, show: { ...ctx.show, tasks: false, birthdays: false } }
+      : ctx;
   const nothingAtAll =
     state?.data !== undefined &&
     [state.data.lessons, state.data.events, state.data.tasks, state.data.birthdays].every(
@@ -331,7 +325,7 @@ export function child(
                 ${repeat(
                   week.days,
                   (view) => view.day,
-                  (view) => day(view, ctx),
+                  (view) => day(view, dayCtx),
                 )}
               </ol>
             </section>`,
