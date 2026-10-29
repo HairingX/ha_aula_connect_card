@@ -26,18 +26,15 @@ export const styles = css`
     --acc-text: var(--ha-color-text-primary, var(--primary-text-color, #212121));
     --acc-text-secondary: var(--ha-color-text-secondary, var(--secondary-text-color, #616161));
     --acc-divider: var(--divider-color, rgba(0, 0, 0, 0.12));
-    --acc-primary: var(--primary-color, #03a9f4);
+    --acc-primary: var(--primary-color);
+    --acc-surface: var(--ha-card-background, var(--card-background-color, transparent));
     --acc-quiet-fill: var(
       --ha-color-fill-neutral-quiet-resting,
       var(--secondary-background-color, rgba(127, 127, 127, 0.1))
     );
-    --acc-today-fill: var(
-      --ha-color-fill-primary-quiet-resting,
-      color-mix(in srgb, var(--acc-primary) 9%, transparent)
-    );
     --acc-error: var(--error-color, #db4437);
     --acc-warning: var(--warning-color, #ffa600);
-    --acc-info: var(--info-color, #039be5);
+    --acc-info: var(--info-color, var(--acc-text-secondary));
     display: block;
   }
 
@@ -105,6 +102,7 @@ export const styles = css`
   }
   .alert.info {
     --acc-alert: var(--acc-info);
+    background: var(--acc-quiet-fill);
   }
 
   .loading {
@@ -156,7 +154,7 @@ export const styles = css`
     font-weight: var(--acc-weight-bold);
     font-size: var(--acc-font-l);
     color: var(--acc-text);
-    background: color-mix(in srgb, var(--acc-primary) 24%, transparent);
+    background: var(--acc-quiet-fill);
   }
   .child-names {
     display: flex;
@@ -207,13 +205,14 @@ export const styles = css`
     gap: var(--acc-space-1);
   }
 
-  .day {
+  .day,
+  .earlier {
     border-radius: var(--acc-radius-l);
     min-width: 0;
   }
-  .day.today {
-    background: var(--acc-today-fill);
-    box-shadow: inset 3px 0 0 var(--acc-primary);
+  .day > details[open] {
+    border-radius: var(--acc-radius-l);
+    background: var(--acc-quiet-fill);
   }
   .day.past .day-name,
   .day.past .day-summary {
@@ -238,9 +237,19 @@ export const styles = css`
     outline: 2px solid var(--acc-primary);
     outline-offset: -2px;
   }
+  .earlier > details > summary {
+    flex-direction: row;
+    align-items: center;
+    color: var(--acc-text-secondary);
+    font-size: var(--acc-font-s);
+    font-weight: var(--acc-weight-medium);
+  }
+  .earlier > details[open] > summary {
+    margin-bottom: var(--acc-space-1);
+  }
   .day-head {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: var(--acc-space-2);
     min-width: 0;
   }
@@ -253,21 +262,20 @@ export const styles = css`
     text-transform: uppercase;
   }
   .badge {
+    flex: none;
     font-size: var(--acc-font-s);
     font-weight: var(--acc-weight-bold);
-    padding: 1px var(--acc-space-2);
-    border-radius: var(--acc-radius-pill);
-    border: 1px solid var(--acc-primary);
-    color: var(--acc-text);
+    color: var(--acc-text-secondary);
   }
   .today .badge {
-    background: color-mix(in srgb, var(--acc-primary) 24%, transparent);
+    color: var(--acc-primary);
   }
   .chevron {
     margin-left: auto;
+    align-self: center;
     transition: transform 0.2s ease;
   }
-  details[open] .chevron {
+  details[open] > summary .chevron {
     transform: rotate(180deg);
   }
   details:not([open]) > .day-body {
@@ -290,6 +298,12 @@ export const styles = css`
   }
   .count ha-icon {
     --mdc-icon-size: 14px;
+  }
+  .span {
+    white-space: nowrap;
+  }
+  .period {
+    font-size: 0.8em;
   }
   .quiet {
     color: var(--acc-text-secondary);
@@ -316,33 +330,38 @@ export const styles = css`
   }
 
   .lessons {
-    display: flex;
-    flex-direction: column;
-  }
-  .lesson {
     display: grid;
-    grid-template-columns: 3.6em minmax(0, 1fr);
-    gap: var(--acc-space-3);
-    padding: var(--acc-space-1) 0;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: var(--acc-space-2) var(--acc-space-3);
   }
-  .lesson + .lesson {
-    border-top: 1px solid var(--acc-divider);
+  .lesson,
+  .break {
+    grid-column: 1 / -1;
+    display: grid;
+    /* Where subgrid is unknown, each row sizes its own time column. */
+    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-columns: subgrid;
+    column-gap: var(--acc-space-3);
   }
   .lesson-time {
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
+    white-space: nowrap;
     font-variant-numeric: tabular-nums;
-    font-weight: var(--acc-weight-medium);
     line-height: 1.3;
+  }
+  .lesson-time .start {
+    font-weight: var(--acc-weight-medium);
   }
   .lesson-time .end {
     color: var(--acc-text-secondary);
     font-size: var(--acc-font-s);
-    font-weight: normal;
   }
   .lesson-main {
     display: flex;
     flex-direction: column;
+    justify-content: center;
     min-width: 0;
     border-left: 2px solid var(--acc-divider);
     padding-left: var(--acc-space-3);
@@ -363,18 +382,27 @@ export const styles = css`
     font-size: var(--acc-font-s);
     overflow-wrap: anywhere;
   }
+  .break-main {
+    grid-column: 2;
+    border-left: 2px dashed var(--acc-divider);
+    padding-left: var(--acc-space-3);
+    color: var(--acc-text-secondary);
+    font-size: var(--acc-font-s);
+  }
   abbr {
     text-decoration: none;
+    white-space: nowrap;
   }
   .tag {
     font-size: var(--acc-font-s);
     font-weight: var(--acc-weight-medium);
     padding: 0 var(--acc-space-2);
     border-radius: var(--acc-radius-pill);
-    background: var(--acc-quiet-fill);
+    background: var(--acc-surface);
   }
   .now-tag {
-    background: color-mix(in srgb, var(--acc-primary) 24%, transparent);
+    color: var(--acc-primary);
+    font-weight: var(--acc-weight-bold);
   }
 
   .tasks {
@@ -388,7 +416,7 @@ export const styles = css`
     gap: var(--acc-space-1);
     padding: var(--acc-space-2) var(--acc-space-3);
     border-radius: var(--acc-radius-m);
-    background: var(--acc-quiet-fill);
+    background: var(--acc-surface);
     min-width: 0;
   }
   .task-head {
@@ -402,8 +430,7 @@ export const styles = css`
     font-weight: var(--acc-weight-bold);
     padding: 0 var(--acc-space-2);
     border-radius: var(--acc-radius-pill);
-    border: 1px solid var(--acc-divider);
-    background: var(--card-background-color, var(--ha-card-background, transparent));
+    background: var(--acc-quiet-fill);
   }
   .task-title {
     font-weight: var(--acc-weight-medium);
@@ -465,6 +492,11 @@ export const styles = css`
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       align-items: start;
+    }
+    /* An open day beside a closed one would leave a gap the height of its timetable. */
+    .weeks.one .days > .earlier,
+    .weeks.one .days > .focus {
+      grid-column: 1 / -1;
     }
   }
 `;

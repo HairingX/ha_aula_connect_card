@@ -107,21 +107,24 @@ describe("resolveConfig", () => {
 });
 
 describe("defaultSections", () => {
-  it("names homework and things to remember in Danish", () => {
+  it("names homework and the day's plan in Danish", () => {
     expect(defaultSections("da")).toEqual([
       { title: "Lektier", icon: "mdi:book-open-variant", type: "task" },
-      { title: "Husk", icon: "mdi:bell-outline", type: "comment" },
+      { title: "Dagens plan", icon: "mdi:clipboard-text-outline", type: "comment" },
     ]);
   });
 
   it("names them in English for any other language", () => {
-    expect(defaultSections("fr").map((section) => section.title)).toEqual(["Homework", "Remember"]);
+    expect(defaultSections("fr").map((section) => section.title)).toEqual([
+      "Homework",
+      "Today's plan",
+    ]);
   });
 });
 
 describe("stubConfig", () => {
   it("is a valid configuration showing everything", () => {
-    const config = stubConfig("en");
+    const config = stubConfig();
     expect(config.type).toBe("custom:aula-connect-card");
     expect(resolveConfig(config).show).toEqual({
       timetable: true,
@@ -129,6 +132,10 @@ describe("stubConfig", () => {
       events: true,
       birthdays: true,
     });
-    expect(config.sections).toEqual(defaultSections("en"));
+  });
+
+  it("leaves the sections out, so that the defaults apply and follow their changes", () => {
+    expect(stubConfig()).not.toHaveProperty("sections");
+    expect(resolveConfig(stubConfig()).sections).toBeUndefined();
   });
 });

@@ -1,10 +1,38 @@
 import { describe, expect, it } from "vitest";
 
-import { buildWeeks, eventDays } from "../src/model";
-import type { CalendarEvent, WeekData } from "../src/types";
+import {
+  buildWeeks,
+  eventDays,
+  focusDay,
+  hasContent,
+  isShown,
+  mergeLessons,
+  sameLesson,
+  timeline,
+  type DayView,
+} from "../src/model";
+import type { CalendarEvent, Lesson, WeekData } from "../src/types";
 import { weekData } from "./fixtures/week";
 
 const ZONE = "Europe/Copenhagen";
+const ALL = { timetable: true, tasks: true, events: true, birthdays: true };
+
+function lesson(id: number, start: string, end: string, fields: Partial<Lesson> = {}): Lesson {
+  return {
+    id,
+    start: `2026-10-29T${start}:00+01:00`,
+    end: `2026-10-29T${end}:00+01:00`,
+    title: "IDR",
+    teachers: ["Signe Vang"],
+    location: "Hal",
+    status: null,
+    ...fields,
+  };
+}
+
+function view(day: string, fields: Partial<DayView> = {}): DayView {
+  return { day, lessons: [], tasks: [], events: [], birthdays: [], ...fields };
+}
 
 function calendarEvent(fields: Partial<CalendarEvent>): CalendarEvent {
   return {
@@ -115,10 +143,9 @@ describe("buildWeeks", () => {
     expect(thursday?.lessons.map((lesson) => lesson.start.slice(11, 16))).toEqual([
       "08:00",
       "08:45",
-      "09:50",
-      "10:35",
-      "12:00",
-      "12:45",
+      "10:05",
+      "10:50",
+      "12:10",
     ]);
     expect(thursday?.tasks.map((task) => task.id)).toEqual([1, 2, 3]);
     expect(week?.days[4]?.events.map((event) => event.title)).toEqual(["Skolefoto"]);
@@ -213,5 +240,175 @@ describe("buildWeeks", () => {
     const days = buildWeeks(data, "2026-10-26", 1, ZONE)[0]?.days;
     expect(days?.[1]?.lessons).toHaveLength(1);
     expect(days?.[0]?.lessons).toHaveLength(0);
+  });
+});
+
+describe("sameLesson", () => {
+  const first = lesson(1, "08:00", "08:45");
+
+  it("is the same for another lesson but for its times and id", () => {
+    expect(sameLesson(first, lesson(2, "08:45", "09:30"))).toBe(true);
+  });
+
+  it("is the same for two lessons without a room", () => {
+    expect(
+      sameLesson(
+        lesson(1, "08:00", "08:45", { location: null }),
+        lesson(2, "08:45", "09:30", { location: null }),
+      ),
+    ).toBe(true);
+  });
+
+  it("takes the teachers in any order, and null and normal as the same status", () => {
+    expect(
+      sameLesson(
+        lesson(1, "08:00", "08:45", { teachers: ["A B", "C D"], status: null }),
+        lesson(2, "08:45", "09:30", { teachers: ["C D ", "A B", " "], status: "normal" }),
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["subject", { title: "DAN" }],
+    ["teachers", { teachers: ["Other Teacher"] }],
+    ["room", { location: null }],
+    ["status", { status: "substitute" }],
+  ])("is not the same for another %s", (_, fields: Partial<Lesson>) => {
+    expect(sameLesson(first, lesson(2, "08:45", "09:30", fields))).toBe(false);
+  });
+});
+
+describe("mergeLessons", () => {
+  it("shows a double lesson as one block", () => {
+    expect(
+      mergeLessons([lesson(1, "08:00", "08:45"), lesson(2, "08:45", "09:30")]).map((block) => [
+        block.lesson.id,
+        block.start.slice(11, 16),
+        block.end.slice(11, 16),
+        block.count,
+      ]),
+    ).toEqual([[1, "08:00", "09:30", 2]]);
+  });
+
+  it("joins a lesson beginning up to ten minutes after the one before", () => {
+    expect(
+      mergeLessons([
+        lesson(1, "08:00", "08:45"),
+        lesson(2, "08:55", "09:40"),
+        lesson(3, "09:51", "10:30"),
+      ]).map((block) => block.count),
+    ).toEqual([2, 1]);
+  });
+
+  it("keeps apart lessons that differ, overlap, or have times that cannot be read", () => {
+    expect(
+      mergeLessons([
+        lesson(1, "08:00", "08:45"),
+        lesson(2, "08:45", "09:30", { title: "DAN" }),
+        lesson(3, "09:00", "09:45", { title: "DAN" }),
+      ]).map((block) => block.count),
+    ).toEqual([1, 1, 1]);
+    expect(
+      mergeLessons([
+        { ...lesson(1, "08:00", "08:45"), end: "later" },
+        lesson(2, "08:45", "09:30"),
+      ]).map((block) => block.count),
+    ).toEqual([1, 1]);
+  });
+
+  it("keeps the lessons as received", () => {
+    const lessons = [lesson(1, "08:00", "08:45"), lesson(2, "08:45", "09:30")];
+    const copy = structuredClone(lessons);
+    mergeLessons(lessons);
+    expect(lessons).toEqual(copy);
+  });
+});
+
+describe("timeline", () => {
+  function rows(lessons: Lesson[]): string[] {
+    return timeline(mergeLessons(lessons)).map((entry) =>
+      entry.kind === "break"
+        ? `break ${entry.start.slice(11, 16)}-${entry.end.slice(11, 16)}`
+        : String(entry.block.lesson.id),
+    );
+  }
+
+  it("shows a break of twenty minutes or more between lessons", () => {
+    expect(
+      rows([
+        lesson(1, "08:00", "08:45"),
+        lesson(2, "08:45", "09:30"),
+        lesson(3, "09:50", "10:35", { title: "DAN" }),
+        lesson(4, "10:54", "11:35", { title: "ENG" }),
+      ]),
+    ).toEqual(["1", "break 09:30-09:50", "3", "4"]);
+  });
+
+  it("shows no break before the first lesson or after the last", () => {
+    expect(rows([lesson(1, "10:00", "10:45")])).toEqual(["1"]);
+  });
+
+  it("shows no break while a longer lesson beside the others lasts", () => {
+    expect(
+      rows([
+        lesson(1, "08:00", "12:00", { title: "Tur" }),
+        lesson(2, "09:00", "09:45", { title: "DAN" }),
+        lesson(3, "10:30", "11:15", { title: "ENG" }),
+        lesson(4, "12:30", "13:15", { title: "MAT" }),
+      ]),
+    ).toEqual(["1", "2", "3", "break 12:00-12:30", "4"]);
+  });
+
+  it("makes no break from a time that cannot be read", () => {
+    expect(
+      rows([
+        { ...lesson(1, "08:00", "08:45"), end: "later" },
+        lesson(2, "10:00", "10:45", { title: "DAN" }),
+        { ...lesson(3, "11:00", "11:45", { title: "ENG" }), start: "soon" },
+      ]),
+    ).toEqual(["1", "2", "3"]);
+  });
+});
+
+describe("days shown", () => {
+  const busy = view("2026-10-31", { events: [calendarEvent({ start: "2026-10-31" })] });
+
+  it("tells whether a day has anything of the parts shown", () => {
+    expect(hasContent(view("2026-10-31"), ALL)).toBe(false);
+    expect(hasContent(busy, ALL)).toBe(true);
+    expect(hasContent(busy, { ...ALL, events: false })).toBe(false);
+    expect(
+      [
+        view("d", { lessons: [lesson(1, "08:00", "08:45")] }),
+        view("d", { tasks: weekData("2026-10-26").tasks }),
+        view("d", { birthdays: [{ date: "d", name: "Alma" }] }),
+      ].map((item) => [
+        hasContent(item, ALL),
+        hasContent(item, {
+          timetable: false,
+          tasks: false,
+          events: false,
+          birthdays: false,
+        }),
+      ]),
+    ).toEqual([
+      [true, false],
+      [true, false],
+      [true, false],
+    ]);
+  });
+
+  it("shows every weekday, and a Saturday or Sunday only with something on it", () => {
+    expect(isShown(view("2026-10-30"), ALL)).toBe(true);
+    expect(isShown(view("2026-10-31"), ALL)).toBe(false);
+    expect(isShown(view("2026-11-01"), ALL)).toBe(false);
+    expect(isShown(busy, ALL)).toBe(true);
+  });
+
+  it("opens today, unless it is a Saturday or Sunday with nothing on it", () => {
+    expect(focusDay("2026-10-29", [], ALL)).toBe("2026-10-29");
+    expect(focusDay("2026-10-31", [busy], ALL)).toBe("2026-10-31");
+    expect(focusDay("2026-10-31", [view("2026-10-31")], ALL)).toBe("2026-11-02");
+    expect(focusDay("2026-11-01", [], ALL)).toBe("2026-11-02");
   });
 });

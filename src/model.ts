@@ -4,8 +4,15 @@
  * @packageDocumentation
  */
 
-import { addDays, dayOf, daysBetween, isDay, weekNumber } from "./dates";
+import type { ShowKey } from "./config";
+import { addDays, dayOf, daysBetween, isDay, isWeekend, weekday, weekNumber } from "./dates";
 import type { Birthday, CalendarEvent, Lesson, Task, WeekData } from "./types";
+
+/** The most time between two lessons that are shown as one, as between a double lesson's halves. */
+export const MERGE_GAP_MS = 10 * 60_000;
+
+/** The least time between two lessons that is shown as a break. */
+export const BREAK_MS = 20 * 60_000;
 
 /** Everything on one day. */
 export interface DayView {
@@ -106,4 +113,117 @@ export function buildWeeks(
   for (const task of data.tasks) days.get(task.date)?.tasks.push(task);
   for (const birthday of data.birthdays) days.get(birthday.date)?.birthdays.push(birthday);
   return result;
+}
+
+/** One lesson, or back-to-back lessons that are the same, shown as one. */
+export interface LessonBlock {
+  /** The first lesson; the others differ only in their times and ids. */
+  lesson: Lesson;
+  /** When the first lesson begins. */
+  start: string;
+  /** When the last lesson ends. */
+  end: string;
+  /** The number of lessons. */
+  count: number;
+}
+
+/** A row of a day's timetable: lessons, or a break between them. */
+export type TimelineEntry =
+  { kind: "lessons"; block: LessonBlock } | { kind: "break"; start: string; end: string };
+
+function normal(status: string | null): string {
+  return status === null || status === "normal" ? "" : status;
+}
+
+function people(teachers: readonly string[]): string {
+  return JSON.stringify(
+    teachers
+      .map((name) => name.trim())
+      .filter((name) => name !== "")
+      .sort(),
+  );
+}
+
+/** Tells whether two lessons are the same but for their times: subject, teachers, room, status. */
+export function sameLesson(a: Lesson, b: Lesson): boolean {
+  return (
+    a.title.trim() === b.title.trim() &&
+    people(a.teachers) === people(b.teachers) &&
+    (a.location ?? "").trim() === (b.location ?? "").trim() &&
+    normal(a.status) === normal(b.status)
+  );
+}
+
+function millis(text: string): number {
+  return new Date(text).getTime();
+}
+
+/**
+ * Joins back-to-back lessons that are the same into blocks: a lesson joins the block before it
+ * when it is the same and begins at most `MERGE_GAP_MS` after the block ends. The lessons are
+ * taken in the order given, which should be the order they begin.
+ */
+export function mergeLessons(lessons: readonly Lesson[]): LessonBlock[] {
+  const blocks: LessonBlock[] = [];
+  for (const lesson of lessons) {
+    const last = blocks[blocks.length - 1];
+    const gap = millis(lesson.start) - millis(last?.end ?? "");
+    if (last && sameLesson(last.lesson, lesson) && gap >= 0 && gap <= MERGE_GAP_MS) {
+      last.end = lesson.end;
+      last.count++;
+    } else {
+      blocks.push({ lesson, start: lesson.start, end: lesson.end, count: 1 });
+    }
+  }
+  return blocks;
+}
+
+/**
+ * Returns a day's timetable rows: the blocks, with a break between two where nothing is on for
+ * `BREAK_MS` or more. Times that cannot be read make no break.
+ */
+export function timeline(blocks: readonly LessonBlock[]): TimelineEntry[] {
+  const result: TimelineEntry[] = [];
+  // The latest end so far: a long lesson beside shorter ones leaves no break while it lasts.
+  let latest: { end: string; time: number } | undefined;
+  for (const block of blocks) {
+    if (latest && millis(block.start) - latest.time >= BREAK_MS) {
+      result.push({ kind: "break", start: latest.end, end: block.start });
+    }
+    result.push({ kind: "lessons", block });
+    const ends = millis(block.end);
+    if (!Number.isNaN(ends) && (!latest || ends > latest.time)) {
+      latest = { end: block.end, time: ends };
+    }
+  }
+  return result;
+}
+
+/** Tells whether a day has anything of the parts shown. */
+export function hasContent(view: DayView, show: Record<ShowKey, boolean>): boolean {
+  return (
+    (show.timetable && view.lessons.length > 0) ||
+    (show.tasks && view.tasks.length > 0) ||
+    (show.events && view.events.length > 0) ||
+    (show.birthdays && view.birthdays.length > 0)
+  );
+}
+
+/** Tells whether a day is shown: every weekday, and a Saturday or Sunday with something on it. */
+export function isShown(view: DayView, show: Record<ShowKey, boolean>): boolean {
+  return !isWeekend(view.day) || hasContent(view, show);
+}
+
+/**
+ * Returns the day the card opens: today, unless today is a Saturday or Sunday with nothing on it
+ * among `days`, then the Monday after.
+ */
+export function focusDay(
+  today: string,
+  days: readonly DayView[],
+  show: Record<ShowKey, boolean>,
+): string {
+  const view = days.find((item) => item.day === today);
+  if (!isWeekend(today) || (view !== undefined && hasContent(view, show))) return today;
+  return addDays(today, weekday(today) === 6 ? 2 : 1);
 }

@@ -4,10 +4,10 @@ import {
   addDays,
   dayOf,
   daysBetween,
-  firstWeekday,
   formatDay,
-  formatTime,
+  formatTimeParts,
   isDay,
+  isWeekend,
   startOfWeek,
   timeZone,
   useAmPm,
@@ -21,7 +21,6 @@ function locale(fields: Partial<HassLocale>): HassLocale {
   return {
     language: "da",
     time_format: "language",
-    first_weekday: "language",
     time_zone: "server",
     ...fields,
   };
@@ -52,43 +51,6 @@ describe("timeZone", () => {
     expect(
       timeZone(fakeHass({ timeZone: "America/New_York", locale: { time_zone: "local" } })),
     ).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
-  });
-});
-
-describe("firstWeekday", () => {
-  it.each([
-    ["monday", 1],
-    ["sunday", 0],
-    ["saturday", 6],
-  ])("takes a weekday the user chose, %s", (first_weekday, expected) => {
-    expect(firstWeekday(locale({ first_weekday }))).toBe(expected);
-  });
-
-  it("takes the language's: Monday in Danish, Sunday in American English", () => {
-    expect(firstWeekday(locale({ language: "da" }))).toBe(1);
-    expect(firstWeekday(locale({ language: "en-US" }))).toBe(0);
-  });
-
-  it("asks getWeekInfo where the browser has it", () => {
-    class WeekInfoLocale {
-      getWeekInfo(): { firstDay: number } {
-        return { firstDay: 6 };
-      }
-    }
-    vi.stubGlobal("Intl", { ...Intl, Locale: WeekInfoLocale });
-    expect(firstWeekday(locale({}))).toBe(6);
-  });
-
-  it("is Monday where the browser knows no week", () => {
-    class BareLocale {
-      readonly language = "da";
-    }
-    vi.stubGlobal("Intl", { ...Intl, Locale: BareLocale });
-    expect(firstWeekday(locale({}))).toBe(1);
-  });
-
-  it("is Monday for a language that is no language", () => {
-    expect(firstWeekday(locale({ language: "not a language!" }))).toBe(1);
   });
 });
 
@@ -137,12 +99,20 @@ describe("calendar arithmetic", () => {
     expect(weekday("2026-11-01")).toBe(0);
   });
 
-  it("gives the first day of the week for each first weekday", () => {
-    expect(startOfWeek("2026-10-29", 1)).toBe("2026-10-26");
-    expect(startOfWeek("2026-11-01", 1)).toBe("2026-10-26");
-    expect(startOfWeek("2026-10-26", 1)).toBe("2026-10-26");
-    expect(startOfWeek("2026-10-29", 0)).toBe("2026-10-25");
-    expect(startOfWeek("2026-10-29", 6)).toBe("2026-10-24");
+  it("tells Saturdays and Sundays from weekdays", () => {
+    expect(["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02"].map(isWeekend)).toEqual([
+      false,
+      true,
+      true,
+      false,
+    ]);
+  });
+
+  it("starts every week on Monday, as Aula's weeks do", () => {
+    expect(startOfWeek("2026-10-29")).toBe("2026-10-26");
+    expect(startOfWeek("2026-11-01")).toBe("2026-10-26");
+    expect(startOfWeek("2026-10-26")).toBe("2026-10-26");
+    expect(startOfWeek("2026-10-25")).toBe("2026-10-19");
   });
 
   it("counts days between two days", () => {
@@ -152,8 +122,7 @@ describe("calendar arithmetic", () => {
 
   it.each([
     ["2026-10-26", 44],
-    ["2026-10-25", 44],
-    ["2026-10-24", 44],
+    ["2026-10-19", 43],
     ["2026-12-28", 53],
     ["2027-01-04", 1],
     ["2024-12-30", 1],
@@ -172,8 +141,24 @@ describe("formatting", () => {
 
   it("formats a time in the time zone, in 24 or 12 hours", () => {
     const morning = new Date("2026-10-29T07:05:00Z");
-    expect(formatTime(morning, "da", "Europe/Copenhagen", false)).toBe("08.05");
-    expect(formatTime(morning, "en", "Europe/Copenhagen", true)).toMatch(/^8:05\sAM$/);
-    expect(formatTime(morning, "en", "UTC", false)).toBe("07:05");
+    const format = (language: string, zone: string, amPm: boolean): string =>
+      formatTimeParts(morning, language, zone, amPm)
+        .map((part) => part.value)
+        .join("");
+    expect(format("da", "Europe/Copenhagen", false)).toBe("08.05");
+    expect(format("en", "Europe/Copenhagen", true)).toMatch(/^8:05\sAM$/);
+    expect(format("en", "UTC", false)).toBe("07:05");
+  });
+
+  it("gives AM and PM as a part of their own", () => {
+    const parts = formatTimeParts(new Date("2026-10-29T12:55:00Z"), "en-US", "UTC", true);
+    expect(parts.filter((part) => part.type === "dayPeriod").map((part) => part.value)).toEqual([
+      "PM",
+    ]);
+    expect(
+      formatTimeParts(new Date("2026-10-29T12:55:00Z"), "da", "UTC", false).some(
+        (part) => part.type === "dayPeriod",
+      ),
+    ).toBe(false);
   });
 });
