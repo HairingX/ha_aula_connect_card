@@ -210,13 +210,13 @@ export function eventTime(event: CalendarEvent, ctx: ViewContext): TemplateResul
 
 /** Shows the who line: a child's initial and name, and what the card is about. */
 export function who(child: Child, meta: readonly string[], end: unknown = nothing): TemplateResult {
-  return html`<div class="who">
+  return html`<span class="who">
     ${avatar(child)}<span class="who-name">${child.first_name}</span>${meta.map(
       (part) =>
         html`<span class="who-meta" aria-hidden="true">·</span
           ><span class="who-meta">${part}</span>`,
     )}${end === nothing ? nothing : html`<span class="who-end">${end}</span>`}
-  </div>`;
+  </span>`;
 }
 
 /** Returns names joined as a sentence: "Ida og Oskar", "Ida and Oskar". */
