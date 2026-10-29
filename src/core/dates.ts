@@ -154,9 +154,19 @@ export function formatShortDate(day: Day, language: string): string {
   return format(language, { timeZone: "UTC", day: "numeric", month: "short" }).format(utc(day));
 }
 
-/** Formats a day's day of month alone, such as "29". */
+/** Formats a day as its weekday and short date, such as "fredag 30. okt." or "Friday, Oct 30". */
+export function formatWeekdayShortDate(day: Day, language: string): string {
+  return format(language, {
+    timeZone: "UTC",
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  }).format(utc(day));
+}
+
+/** Formats a day's day of month alone, such as "29", without the dot Danish dates put after it. */
 export function formatDayNumber(day: Day, language: string): string {
-  return format(language, { timeZone: "UTC", day: "numeric" }).format(utc(day));
+  return format(language, { timeZone: "UTC", day: "numeric" }).format(utc(day)).replace(/\.$/, "");
 }
 
 /**

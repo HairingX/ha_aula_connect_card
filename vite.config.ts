@@ -8,7 +8,7 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: "src/aula-connect-card.ts",
+      entry: "src/index.ts",
       formats: ["es"],
       fileName: () => "aula-connect-card.js",
     },
