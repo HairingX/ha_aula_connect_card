@@ -10,8 +10,6 @@ import type { HassLocale, HomeAssistant } from "./types";
 
 const DAY_MS = 86_400_000;
 
-const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-
 const formats = new Map<string, Intl.DateTimeFormat>();
 
 function format(language: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
@@ -38,24 +36,6 @@ export function timeZone(hass: HomeAssistant): string {
   return hass.locale.time_zone === "server"
     ? hass.config.time_zone
     : Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
-
-interface WeekInfoLocale {
-  getWeekInfo?: () => { firstDay: number };
-  weekInfo?: { firstDay: number };
-}
-
-/** Returns the first day of the week, 0 for Sunday to 6 for Saturday; Monday when unknown. */
-export function firstWeekday(locale: HassLocale): number {
-  const named = WEEKDAYS.indexOf(locale.first_weekday);
-  if (named >= 0) return named;
-  try {
-    const intl = new Intl.Locale(locale.language) as WeekInfoLocale;
-    const info = intl.getWeekInfo?.() ?? intl.weekInfo;
-    return info ? info.firstDay % 7 : 1;
-  } catch {
-    return 1;
-  }
 }
 
 /** Tells whether times are shown with AM and PM. */
@@ -90,16 +70,23 @@ export function weekday(day: string): number {
   return utc(day).getUTCDay();
 }
 
-/** Returns the first day of the week `day` is in. */
-export function startOfWeek(day: string, first: number): string {
-  return addDays(day, -((weekday(day) - first + 7) % 7));
+/** Tells whether a day is a Saturday or a Sunday. */
+export function isWeekend(day: string): boolean {
+  return weekday(day) % 6 === 0;
 }
 
-/** Returns the ISO 8601 number of the week whose first day is `start`, counting from Monday. */
-export function weekNumber(start: string): number {
-  // The Thursday on or after the first day decides the week for a week starting Monday, and for
-  // one starting Saturday or Sunday it is in the Monday-week the most of its days are in.
-  const thursday = utc(addDays(start, (4 - weekday(start) + 7) % 7));
+/**
+ * Returns the Monday of the week `day` is in. Aula's weeks are ISO 8601 weeks, Monday to Sunday,
+ * whatever the user's own first weekday.
+ */
+export function startOfWeek(day: string): string {
+  return addDays(day, -((weekday(day) + 6) % 7));
+}
+
+/** Returns the ISO 8601 number of the week whose Monday is `monday`. */
+export function weekNumber(monday: string): number {
+  // The Thursday of a week decides the year it is numbered in.
+  const thursday = utc(addDays(monday, 3));
   const firstThursday = utc(`${String(thursday.getUTCFullYear())}-01-01`);
   firstThursday.setUTCDate(1 + ((4 - firstThursday.getUTCDay() + 7) % 7));
   return 1 + Math.round((thursday.getTime() - firstThursday.getTime()) / (7 * DAY_MS));
@@ -120,12 +107,20 @@ export function formatDay(day: string, language: string): string {
   }).format(utc(day));
 }
 
-/** Formats the time of day of an instant in a time zone, such as "08.15" or "8:15 AM". */
-export function formatTime(instant: Date, language: string, zone: string, amPm: boolean): string {
+/**
+ * Formats the time of day of an instant in a time zone, such as "08.15" or "8:15 AM", in parts:
+ * the day period, "AM" or "PM", is a part of its own of type `dayPeriod`.
+ */
+export function formatTimeParts(
+  instant: Date,
+  language: string,
+  zone: string,
+  amPm: boolean,
+): Intl.DateTimeFormatPart[] {
   return format(language, {
     timeZone: zone,
     hour: amPm ? "numeric" : "2-digit",
     minute: "2-digit",
     hourCycle: amPm ? "h12" : "h23",
-  }).format(instant);
+  }).formatToParts(instant);
 }

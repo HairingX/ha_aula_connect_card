@@ -1,6 +1,9 @@
 /**
- * Renders the built card with made-up data in Chromium, in a light and a dark theme, and saves
- * the screenshots in `docs/`. Run `npm run build` first, then `node scripts/screenshot.ts`.
+ * Renders the built card with made-up data in Chromium - on a phone and a wall screen, in light
+ * and dark themes, in Danish and in American English, and with an orange primary colour - and
+ * saves the screenshots in `docs/`. Run `npm run build` first, then `node scripts/screenshot.ts`.
+ * A directory as the first argument saves them there instead; `all` as the second adds the
+ * weekend, for a review of the card rather than its documentation.
  *
  * @packageDocumentation
  */
@@ -35,7 +38,7 @@ const ICONS = [
   "mdi:alert-circle-outline",
   "mdi:information-outline",
   "mdi:book-open-variant",
-  "mdi:bell-outline",
+  "mdi:clipboard-text-outline",
   "mdi:note-text-outline",
   "mdi:calendar-blank-outline",
   "mdi:cake-variant-outline",
@@ -61,10 +64,11 @@ const THEMES = {
     --divider-color:rgba(225,225,225,.14);--error-color:#ef6b5f;background:#111;`,
 };
 
+const ORANGE = "--primary-color:#ff6d00;";
+
 const page = (theme: string): string => `<!doctype html>
 <html><head><meta charset="utf-8"><style>
   body { margin: 0; padding: 16px; font-family: Roboto, "Segoe UI", system-ui, sans-serif; ${theme} }
-  #root { display: flex; gap: 16px; align-items: flex-start; }
 </style></head><body></body></html>`;
 
 const shims = `
@@ -88,22 +92,90 @@ customElements.define("ha-card", class extends HTMLElement {
 });
 `;
 
+interface Shot {
+  file: string;
+  theme: keyof typeof THEMES;
+  width: number;
+  language: string;
+  localeLanguage: string;
+  primary?: string;
+  time?: string;
+  review?: boolean;
+}
+
+// Thursday of week 44, at the start of the third lesson.
+const THURSDAY = "2026-10-29T10:05:00+01:00";
+
+const SHOTS: Shot[] = [
+  { file: "screenshot.png", theme: "light", width: 380, language: "da", localeLanguage: "da" },
+  { file: "screenshot-dark.png", theme: "dark", width: 380, language: "da", localeLanguage: "da" },
+  {
+    file: "screenshot-wide-light.png",
+    theme: "light",
+    width: 820,
+    language: "da",
+    localeLanguage: "da",
+  },
+  {
+    file: "screenshot-wide-dark.png",
+    theme: "dark",
+    width: 820,
+    language: "da",
+    localeLanguage: "da",
+  },
+  {
+    file: "screenshot-en-us.png",
+    theme: "light",
+    width: 380,
+    language: "en",
+    localeLanguage: "en-US",
+  },
+  {
+    file: "screenshot-orange.png",
+    theme: "light",
+    width: 380,
+    language: "da",
+    localeLanguage: "da",
+    primary: ORANGE,
+  },
+  {
+    file: "review-saturday-en-us-dark.png",
+    theme: "dark",
+    width: 320,
+    language: "en",
+    localeLanguage: "en-US",
+    time: "2026-10-31T09:00:00+01:00",
+    review: true,
+  },
+  {
+    file: "review-sunday-wide-orange-dark.png",
+    theme: "dark",
+    width: 1100,
+    language: "en",
+    localeLanguage: "en-US",
+    primary: ORANGE,
+    time: "2026-11-01T09:00:00+01:00",
+    review: true,
+  },
+];
+
+const [directory = "docs", extra] = process.argv.slice(2);
 const browser = await chromium.launch();
 const bundle = readFileSync("dist/aula-connect-card.js", "utf8");
 const data = weekData("2026-10-26");
-for (const [name, theme] of Object.entries(THEMES)) {
-  const tab = await browser.newPage({ deviceScaleFactor: 2, colorScheme: name });
-  await tab.clock.install({ time: new Date("2026-10-29T10:05:00+01:00") });
-  await tab.setViewportSize({ width: 1240, height: 900 });
-  await tab.setContent(page(theme));
+for (const shot of SHOTS.filter((item) => extra === "all" || item.review !== true)) {
+  const tab = await browser.newPage({ deviceScaleFactor: 2, colorScheme: shot.theme });
+  await tab.clock.install({ time: new Date(shot.time ?? THURSDAY) });
+  await tab.setViewportSize({ width: shot.width + 32, height: 900 });
+  await tab.setContent(page(THEMES[shot.theme] + (shot.primary ?? "")));
   await tab.addScriptTag({ content: shims, type: "module" });
   await tab.addScriptTag({ content: bundle, type: "module" });
   await tab.evaluate(
-    ({ children, week }) => {
+    ({ children, week, settings }) => {
       const hass = {
-        language: "da",
+        language: settings.language,
         locale: {
-          language: "da",
+          language: settings.localeLanguage,
           time_format: "language",
           first_weekday: "language",
           time_zone: "server",
@@ -121,32 +193,21 @@ for (const [name, theme] of Object.entries(THEMES)) {
           removeEventListener: () => undefined,
         },
       };
-      const root = document.createElement("div");
-      root.id = "root";
-      document.body.append(root);
-      const widths = [380, 820];
-      for (const width of widths) {
-        const card = document.createElement("aula-connect-card") as HTMLElement & {
-          setConfig(config: unknown): void;
-          hass: unknown;
-        };
-        card.style.width = `${String(width)}px`;
-        card.setConfig({ type: "custom:aula-connect-card", children: [1001] });
-        card.hass = hass;
-        root.append(card);
-      }
+      const card = document.createElement("aula-connect-card") as HTMLElement & {
+        setConfig(config: unknown): void;
+        hass: unknown;
+      };
+      card.style.width = `${String(settings.width)}px`;
+      card.setConfig({ type: "custom:aula-connect-card", children: [1001] });
+      card.hass = hass;
+      document.body.append(card);
     },
-    { children: CHILDREN, week: data },
+    { children: CHILDREN, week: data, settings: shot },
   );
   await tab.waitForFunction(
-    () => document.querySelector("aula-connect-card")?.shadowRoot?.querySelector(".lesson") != null,
+    () => document.querySelector("aula-connect-card")?.shadowRoot?.querySelector(".day") != null,
   );
-  await tab.locator("aula-connect-card >> nth=0").screenshot({
-    path: name === "light" ? "docs/screenshot.png" : `docs/screenshot-${name}.png`,
-  });
-  await tab.locator("aula-connect-card >> nth=1").screenshot({
-    path: `docs/screenshot-wide-${name}.png`,
-  });
+  await tab.locator("aula-connect-card").screenshot({ path: `${directory}/${shot.file}` });
   await tab.close();
 }
 await browser.close();

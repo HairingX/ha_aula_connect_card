@@ -74,8 +74,11 @@ export interface FakeHassOptions {
   childrenError?: Error;
   /** The connection; a new one by default. */
   connection?: FakeConnection;
-  /** Display preferences besides the defaults. */
-  locale?: Partial<HomeAssistant["locale"]>;
+  /**
+   * Display preferences besides the defaults; Home Assistant also gives the user's first weekday,
+   * which the card does not use.
+   */
+  locale?: Partial<HomeAssistant["locale"]> & { first_weekday?: string };
   /** Home Assistant's time zone, Copenhagen's by default. */
   timeZone?: string;
 }
@@ -104,7 +107,6 @@ export function fakeHass(options: FakeHassOptions = {}): FakeHass {
     locale: {
       language,
       time_format: "language",
-      first_weekday: "language",
       time_zone: "server",
       ...options.locale,
     },

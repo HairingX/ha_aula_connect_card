@@ -180,7 +180,7 @@ describe("card API", () => {
   it("gives a stub configuration in the user's language, and remembers the children", async () => {
     const hass = fakeHass({ language: "en", children: CHILDREN });
     const config = await AulaConnectCard.getStubConfig(hass);
-    expect(config.sections?.map((section) => section.title)).toEqual(["Homework", "Remember"]);
+    expect(config).not.toHaveProperty("sections");
     expect(configForm().computeLabel({ name: "children" })).toBe("Children");
     expect(AulaConnectCard.getConfigForm().schema[0]).toMatchObject({
       selector: { select: { mode: "list" } },
@@ -190,7 +190,7 @@ describe("card API", () => {
   it("gives a stub configuration when the children cannot be listed", async () => {
     const hass = fakeHass({ childrenError: wsError("unknown_command", "Unknown command.") });
     const config = await AulaConnectCard.getStubConfig(hass);
-    expect(config.sections?.map((section) => section.title)).toEqual(["Lektier", "Husk"]);
+    expect(config.type).toBe("custom:aula-connect-card");
   });
 
   it("gives a stub configuration without hass", async () => {
@@ -302,7 +302,7 @@ describe("the week", () => {
   it("shows this week and next with their week numbers", async () => {
     const { card } = await full();
     expect(texts(card, ".week-title")).toEqual(["Denne uge Uge 44", "Næste uge Uge 45"]);
-    expect(root(card).querySelectorAll("li.day")).toHaveLength(14);
+    expect(root(card).querySelectorAll("li.day")).toHaveLength(12);
     expect(root(card).querySelector(".weeks")?.classList.contains("two")).toBe(true);
   });
 
@@ -322,15 +322,15 @@ describe("the week", () => {
       "past",
       "past",
       "past",
-      "today",
-      ...Array<string>(10).fill("future"),
+      "today focus",
+      ...Array<string>(8).fill("future"),
     ]);
     expect(days.map((element) => element.querySelector("details")?.open)).toEqual([
       false,
       false,
       false,
       true,
-      ...Array<boolean>(10).fill(false),
+      ...Array<boolean>(8).fill(false),
     ]);
     expect(text(card, ".today .day-name")).toBe("torsdag 29. oktober");
     expect(text(card, ".today .badge")).toBe("I dag");
@@ -340,44 +340,66 @@ describe("the week", () => {
   it("shows the lessons as a timeline, with initials, rooms and their state", async () => {
     const { card } = await full();
     const lessons = [...dayAt(card, 3).querySelectorAll(".lesson")];
-    expect(lessons.map((element) => element.querySelector("time")?.textContent)).toEqual([
-      "08.00",
-      "08.45",
-      "09.50",
-      "10.35",
-      "12.00",
-      "12.45",
+    expect(lessons.map((element) => texts(element, "time"))).toEqual([
+      ["08.00", "09.30"],
+      ["10.05", "11.35"],
+      ["12.10", "12.55"],
     ]);
-    const now = present(lessons[2]);
+    const now = present(lessons[1]);
     expect(now.classList.contains("now")).toBe(true);
     expect(now.querySelector(".tag")?.textContent).toBe("Nu");
-    const mathematics = present(lessons[4]);
-    expect(mathematics.querySelector("abbr")?.getAttribute("title")).toBe("Mette Juhl");
-    expect(mathematics.querySelector("abbr")?.textContent).toBe("MJ");
-    expect(text(card, ".today .lesson:nth-child(5) .lesson-meta")).toBe("Lærere: MJ · Lokale: B12");
-    expect(present(lessons[5]).querySelector(".tag")?.textContent).toBe("Vikar");
+    expect(present(lessons[0]).querySelector("abbr")?.getAttribute("title")).toBe(
+      "Jonas Berg Vestergaard",
+    );
+    expect(text(present(lessons[0]), ".lesson-meta")).toBe(
+      "2 lektioner · Lærere: JBV · Lokale: HAL - Idrætshal",
+    );
+    const english = present(lessons[2]);
+    expect(text(english, ".lesson-meta")).toBe("Lærere: TR, BV · Lokale: B14");
+    expect(english.querySelector(".tag")?.textContent).toBe("Vikar");
+    expect(english.querySelector(".lesson-count")).toBeNull();
+  });
+
+  it("joins a double lesson into one block that is now for its whole length", async () => {
+    vi.setSystemTime(new Date("2026-10-29T08:50:00+01:00"));
+    const { card } = await full();
+    const [first] = dayAt(card, 3).querySelectorAll(".lesson");
+    expect(texts(present(first), "time")).toEqual(["08.00", "09.30"]);
+    expect(present(first).classList.contains("now")).toBe(true);
+    expect(text(present(first), ".lesson-count")).toBe("2 lektioner");
+  });
+
+  it("shows the breaks between lessons, with their times", async () => {
+    const { card } = await full();
+    expect(texts(dayAt(card, 3), ".lessons > li")).toEqual([
+      expect.stringMatching(/^08\.00–09\.30 Idræt/) as string,
+      "Frikvarter 09.30–10.05",
+      expect.stringMatching(/^10\.05–11\.35 Dansk/) as string,
+      "Frikvarter 11.35–12.10",
+      expect.stringMatching(/^12\.10–12\.55 Engelsk/) as string,
+    ]);
   });
 
   it("sorts notes into the sections, with subject chips and their HTML as text", async () => {
     const { card } = await full();
     const today = dayAt(card, 3);
-    expect(texts(today, ".block-title")).toEqual(["Lektier", "Husk"]);
-    expect(texts(today, ".chip")).toEqual(["Dansk", "Matematik", "Idræt"]);
+    expect(texts(today, ".block-title")).toEqual(["Lektier", "Dagens plan"]);
+    expect(texts(today, ".chip")).toEqual(["Dansk", "Matematik", "Dansk"]);
     const content = today.querySelector(".task-content");
     expect(content?.textContent).toBe("Læs kapitel 4 i Rejsen til Saturn.\nSkriv tre spørgsmål.");
     expect(content?.querySelector("b, p")).toBeNull();
-    expect(texts(today, ".task-author")).toEqual(["Karen Lund", "Mette Juhl", "Jonas Berg"]);
+    expect(texts(today, ".task-author")).toEqual(["Karen Lund", "Mette Juhl", "Karen Lund"]);
   });
 
   it("sums up a closed day: its school hours, notes, events and birthdays", async () => {
     const { card } = await full();
     expect(texts(dayAt(card, 4), ".day-summary .count")).toEqual([
-      "08.00–13.30",
-      "Husk: 1",
+      "08.00–13.40",
+      "Dagens plan: 1",
       "Begivenheder: 1",
       "Alma har fødselsdag",
     ]);
-    expect(text(dayAt(card, 5), ".day-summary")).toBe("Intet planlagt");
+    expect(texts(dayAt(card, 5), ".day-summary .count")).toEqual(["Begivenheder: 1"]);
   });
 
   it("shows events and birthdays with their times", async () => {
@@ -386,7 +408,7 @@ describe("the week", () => {
       "Hele dagen Skolefoto",
       "Alma har fødselsdag",
     ]);
-    expect(texts(dayAt(card, 8), ".items .item")).toEqual([
+    expect(texts(dayAt(card, 7), ".items .item")).toEqual([
       "17.00–18.30 Forældremøde 3.B Kantinen",
     ]);
   });
@@ -394,7 +416,79 @@ describe("the week", () => {
   it("says there is no homework on a school day without notes", async () => {
     const { card } = await full();
     expect(text(dayAt(card, 0), ".day-body .quiet")).toBe("Ingen lektier");
-    expect(text(dayAt(card, 5), ".day-body .quiet")).toBe("Intet planlagt");
+  });
+
+  it("hides a Saturday or Sunday with nothing on it, and shows one with something", async () => {
+    const { card } = await full();
+    const names = texts(card, ".day-name");
+    expect(names).toContain("lørdag 31. oktober");
+    expect(names).toContain("søndag 8. november");
+    expect(names).not.toContain("søndag 1. november");
+    expect(names).not.toContain("lørdag 7. november");
+  });
+
+  it("keeps a weekday with nothing on it, saying so", async () => {
+    const { card, hass } = await mount();
+    await send(hass, week({}));
+    expect(root(card).querySelectorAll("li.day")).toHaveLength(10);
+    expect(text(dayAt(card, 3), ".day-body")).toBe("Intet planlagt");
+  });
+
+  it("folds the days before today into one quiet row, closed", async () => {
+    const { card } = await full();
+    const earlier = present(root(card).querySelector(".week .days > li.earlier"));
+    expect(text(earlier, "summary")).toBe("Tidligere dage (3)");
+    expect(earlier.querySelector("details")?.open).toBe(false);
+    expect(texts(earlier, ".day-name")).toEqual([
+      "mandag 26. oktober",
+      "tirsdag 27. oktober",
+      "onsdag 28. oktober",
+    ]);
+    expect(earlier.nextElementSibling?.className).toBe("day today focus");
+  });
+
+  it("folds nothing on a Monday", async () => {
+    vi.setSystemTime(new Date("2026-10-26T09:00:00+01:00"));
+    const { card } = await full();
+    expect(root(card).querySelector(".earlier")).toBeNull();
+  });
+
+  it("opens today on a Saturday with something on it", async () => {
+    vi.setSystemTime(new Date("2026-10-31T09:00:00+01:00"));
+    const { card } = await full();
+    expect(text(card, ".focus .day-name")).toBe("lørdag 31. oktober");
+    expect(text(card, ".earlier summary")).toBe("Tidligere dage (5)");
+  });
+
+  it("opens the next Monday on a Saturday with nothing on it, below this week", async () => {
+    vi.setSystemTime(new Date("2026-11-07T09:00:00+01:00"));
+    const { card, hass } = await mount();
+    await send(hass, { ...weekData("2026-11-02"), events: [] });
+    expect(root(card).querySelector(".today")).toBeNull();
+    const focus = present(root(card).querySelector<HTMLElement>("li.focus"));
+    expect(text(focus, ".day-name")).toBe("mandag 9. november");
+    expect(focus.querySelector("details")?.open).toBe(true);
+    expect(root(card).querySelector(".weeks")?.classList.contains("one")).toBe(true);
+  });
+
+  it("puts the weeks side by side while this week has days to come", async () => {
+    const { card } = await full();
+    expect(root(card).querySelector(".weeks")?.classList.contains("two")).toBe(true);
+  });
+
+  it("shows a double lesson's count alone when it has no teachers or room", async () => {
+    const { card, hass } = await mount();
+    await send(
+      hass,
+      week({
+        lessons: [
+          lesson({ id: 1 }),
+          lesson({ id: 2, start: "2026-10-29T08:45:00+01:00", end: "2026-10-29T09:30:00+01:00" }),
+        ],
+      }),
+    );
+    expect(texts(dayAt(card, 3), ".lesson-meta")).toEqual(["2 lektioner"]);
+    expect(dayAt(card, 3).querySelector(".break")).toBeNull();
   });
 
   it("shows a time of day for the first day of a timed event only", async () => {
@@ -473,10 +567,10 @@ describe("the week", () => {
     expect(root(card).querySelector(".task, .block-title")).toBeNull();
     expect(texts(card, ".quiet")).not.toContain("Ingen lektier");
     expect(texts(dayAt(card, 4), ".day-summary .count")).toEqual([
-      "08.00–13.30",
+      "08.00–13.40",
       "Begivenheder: 1",
     ]);
-    expect(texts(dayAt(card, 3), ".lesson").length).toBe(6);
+    expect(texts(dayAt(card, 3), ".lesson").length).toBe(3);
   });
 
   it("says there is no homework where the school has a week plan without notes", async () => {
@@ -530,7 +624,9 @@ describe("the week", () => {
     expect(text(card, ".today .day-name")).toBe("Thursday, October 29");
     expect(text(card, ".today .badge")).toBe("Today");
     expect(texts(dayAt(card, 3), ".lesson-time > time")[0]).toMatch(/^8:00\sAM$/);
-    expect(texts(dayAt(card, 3), ".block-title")).toEqual(["Homework", "Remember"]);
+    expect(dayAt(card, 3).querySelector(".lesson-time .period")?.textContent).toBe("AM");
+    expect(texts(dayAt(card, 4), ".day-summary .count")[0]).toBe("8:00 AM – 1:40 PM");
+    expect(texts(dayAt(card, 3), ".block-title")).toEqual(["Homework", "Plan for the day"]);
   });
 
   it("formats dates in the language of hass when the locale names none", async () => {
@@ -538,13 +634,17 @@ describe("the week", () => {
     expect(text(card, ".today .day-name")).toBe("Thursday, October 29");
   });
 
-  it("starts the week on the user's first weekday", async () => {
-    const { card, hass } = await full({ locale: { first_weekday: "sunday" } });
-    expect(hass.connection.subscriptions[0]?.message).toMatchObject({
-      start: "2026-10-25",
-      end: "2026-11-08",
+  it("starts the week on Monday, as Aula's weeks do, whatever the user's first weekday", async () => {
+    const { card, hass } = await full({
+      language: "en",
+      locale: { language: "en-US", first_weekday: "sunday" },
     });
-    expect(text(dayAt(card, 0), ".day-name")).toBe("søndag 25. oktober");
+    expect(hass.connection.subscriptions[0]?.message).toMatchObject({
+      start: "2026-10-26",
+      end: "2026-11-09",
+    });
+    expect(text(dayAt(card, 0), ".day-name")).toBe("Monday, October 26");
+    expect(texts(card, ".week-title")).toEqual(["This week Week 44", "Next week Week 45"]);
   });
 
   it("takes today in Home Assistant's time zone", async () => {
@@ -607,11 +707,13 @@ describe("subscriptions", () => {
     expect(hass.callWS).toHaveBeenCalledOnce();
   });
 
-  it("subscribes again for another first weekday", async () => {
+  it("keeps its subscriptions when the user's first weekday changes", async () => {
     const { card, hass } = await mount();
-    card.hass = { ...hass, locale: { ...hass.locale, first_weekday: "sunday" } };
+    const sunday = { ...hass.locale, first_weekday: "sunday" };
+    card.hass = { ...hass, locale: sunday };
     await settle();
-    expect(hass.connection.active.map((item) => item.message.start)).toEqual(["2026-10-25"]);
+    expect(hass.connection.subscriptions).toHaveLength(1);
+    expect(hass.connection.active.map((item) => item.message.start)).toEqual(["2026-10-26"]);
   });
 
   it("moves today at midnight without waiting for an event", async () => {

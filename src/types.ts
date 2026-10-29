@@ -31,8 +31,6 @@ export interface HassLocale {
   language: string;
   /** "language", "system", "12" or "24". */
   time_format: string;
-  /** "language" or a weekday in English, lower case. */
-  first_weekday: string;
   /** "local" for the browser's time zone, "server" for Home Assistant's. */
   time_zone: string;
 }

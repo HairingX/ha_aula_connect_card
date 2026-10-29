@@ -134,20 +134,25 @@ export function resolveConfig(config: unknown): ResolvedConfig {
   };
 }
 
-/** Returns the default sections in a display language: homework, and things to remember. */
+/**
+ * Returns the default sections in a display language: homework, and the teacher's plan for the
+ * day, which the week plan gives as notes of type `comment`.
+ */
 export function defaultSections(language: string | undefined): SectionConfig[] {
   const t = translator(language);
   return [
     { title: t("sectionHomework"), icon: "mdi:book-open-variant", type: "task" },
-    { title: t("sectionRemember"), icon: "mdi:bell-outline", type: "comment" },
+    { title: t("sectionPlan"), icon: "mdi:clipboard-text-outline", type: "comment" },
   ];
 }
 
-/** Returns a configuration that works as it is, with the sections in a display language. */
-export function stubConfig(language: string | undefined): CardConfig {
+/**
+ * Returns a configuration that works as it is. It names no sections, so that the defaults of the
+ * display language apply.
+ */
+export function stubConfig(): CardConfig {
   return {
     type: "custom:aula-connect-card",
     show: { timetable: true, tasks: true, events: true, birthdays: true },
-    sections: defaultSections(language),
   };
 }

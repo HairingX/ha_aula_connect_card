@@ -9,12 +9,20 @@ import { repeat } from "lit/directives/repeat.js";
 
 import { errorText } from "./api";
 import type { SectionConfig, ShowKey } from "./config";
-import { addDays, dayOf, formatDay, formatTime } from "./dates";
+import { addDays, dayOf, formatDay, formatTimeParts } from "./dates";
 import type { Translate } from "./i18n";
-import { buildWeeks, type DayView } from "./model";
+import {
+  buildWeeks,
+  focusDay,
+  isShown,
+  mergeLessons,
+  timeline,
+  type DayView,
+  type LessonBlock,
+} from "./model";
 import { groupTasks } from "./sections";
 import { htmlToText, initials } from "./text";
-import type { CalendarEvent, Child, Lesson, Task, WeekData } from "./types";
+import type { CalendarEvent, Child, Task, WeekData } from "./types";
 
 /** What the templates need to know besides the data. */
 export interface RenderContext {
@@ -65,11 +73,21 @@ export function loading(t: Translate): TemplateResult {
   </p>`;
 }
 
-function time(text: string, ctx: RenderContext): TemplateResult | typeof nothing {
+function time(text: string, ctx: RenderContext, cls = ""): TemplateResult | typeof nothing {
   const instant = new Date(text);
   if (Number.isNaN(instant.getTime())) return nothing;
-  return html`<time datetime=${text}
-    >${formatTime(instant, ctx.language, ctx.zone, ctx.amPm)}</time
+  // AM and PM are set smaller, so that a 12-hour time stays about as narrow as a 24-hour one.
+  return html`<time class=${cls} datetime=${text}
+    >${formatTimeParts(instant, ctx.language, ctx.zone, ctx.amPm).map((part) =>
+      part.type === "dayPeriod" ? html`<span class="period">${part.value}</span>` : part.value,
+    )}</time
+  >`;
+}
+
+function span(start: string, end: string, ctx: RenderContext): TemplateResult {
+  // Thin spaces set the dash off from "AM" and "PM", which would otherwise run into it.
+  return html`<span class="span"
+    >${time(start, ctx)}${ctx.amPm ? "\u2009–\u2009" : "–"}${time(end, ctx)}</span
   >`;
 }
 
@@ -78,13 +96,15 @@ function lessonStatus(status: string | null, t: Translate): string | undefined {
   return status === "substitute" ? t("substitute") : status;
 }
 
-function lesson(item: Lesson, ctx: RenderContext): TemplateResult {
+function lesson(block: LessonBlock, ctx: RenderContext): TemplateResult {
+  const item = block.lesson;
   const label = lessonStatus(item.status, ctx.t);
-  const now = new Date(item.start) <= ctx.now && ctx.now < new Date(item.end);
+  const now = new Date(block.start) <= ctx.now && ctx.now < new Date(block.end);
   const teachers = item.teachers.filter((name) => name.trim() !== "");
   return html`<li class="lesson ${now ? "now" : ""}">
     <span class="lesson-time"
-      >${time(item.start, ctx)}<span class="end">${time(item.end, ctx)}</span></span
+      >${time(block.start, ctx, "start")}<span class="sr">–</span
+      >${time(block.end, ctx, "end")}</span
     >
     <span class="lesson-main">
       <span class="lesson-title">
@@ -93,8 +113,18 @@ function lesson(item: Lesson, ctx: RenderContext): TemplateResult {
         ${label ? html`<span class="tag">${label}</span>` : nothing}
       </span>
       ${
-        teachers.length > 0 || item.location
+        block.count > 1 || teachers.length > 0 || item.location
           ? html`<span class="lesson-meta">
+              ${
+                block.count > 1
+                  ? html`<span class="lesson-count">${ctx.t("lessons", { n: block.count })}</span>`
+                  : nothing
+              }
+              ${
+                block.count > 1 && (teachers.length > 0 || item.location)
+                  ? html`<span aria-hidden="true"> · </span>`
+                  : nothing
+              }
               ${
                 teachers.length > 0
                   ? html`<span class="sr">${ctx.t("teachers")}:</span> ${teachers.map(
@@ -118,6 +148,18 @@ function lesson(item: Lesson, ctx: RenderContext): TemplateResult {
   </li>`;
 }
 
+function lessons(view: DayView, ctx: RenderContext): TemplateResult {
+  return html`<ol class="lessons">
+    ${timeline(mergeLessons(view.lessons)).map((entry) =>
+      entry.kind === "lessons"
+        ? lesson(entry.block, ctx)
+        : html`<li class="break">
+            <span class="break-main">${ctx.t("break")} ${span(entry.start, entry.end, ctx)}</span>
+          </li>`,
+    )}
+  </ol>`;
+}
+
 function task(item: Task): TemplateResult {
   const content = htmlToText(item.content);
   return html`<li class="task">
@@ -137,7 +179,7 @@ function event(item: CalendarEvent, day: string, ctx: RenderContext): TemplateRe
     <ha-icon icon="mdi:calendar-blank-outline" aria-hidden="true"></ha-icon>
     <span class="item-text">
       <span class="item-time"
-        >${startsToday ? html`${time(item.start, ctx)}–${time(item.end, ctx)}` : ctx.t("allDay")}</span
+        >${startsToday ? span(item.start, item.end, ctx) : ctx.t("allDay")}</span
       >
       <span class="item-title">${item.title}</span>
       ${item.location ? html`<span class="item-meta">${item.location}</span>` : nothing}
@@ -153,7 +195,7 @@ function summary(view: DayView, ctx: RenderContext, other: SectionConfig): Templ
     parts.push(
       html`<span class="count"
         ><ha-icon icon="mdi:clock-outline" aria-hidden="true"></ha-icon
-        >${time(first.start, ctx)}–${time(last.end, ctx)}</span
+        >${span(first.start, last.end, ctx)}</span
       >`,
     );
   }
@@ -193,17 +235,18 @@ function summary(view: DayView, ctx: RenderContext, other: SectionConfig): Templ
   return parts;
 }
 
-function day(view: DayView, ctx: RenderContext): TemplateResult {
+function day(view: DayView, ctx: RenderContext, focus: string): TemplateResult {
   const { t, show } = ctx;
   const other: SectionConfig = { title: t("sectionOther"), icon: "mdi:note-text-outline" };
   const isToday = view.day === ctx.today;
   const when = isToday ? "today" : view.day < ctx.today ? "past" : "future";
-  const lessons = show.timetable ? view.lessons : [];
+  const isFocus = view.day === focus;
+  const timetable = show.timetable ? view.lessons : [];
   const groups = show.tasks ? groupTasks(view.tasks, ctx.sections, other) : [];
   const events = show.events ? view.events : [];
   const birthdays = show.birthdays ? view.birthdays : [];
   const empty =
-    lessons.length + groups.length + events.length + birthdays.length === 0 &&
+    timetable.length + groups.length + events.length + birthdays.length === 0 &&
     !(show.tasks && view.lessons.length > 0);
   const parts = summary(view, ctx, other);
   const badge = isToday
@@ -211,8 +254,8 @@ function day(view: DayView, ctx: RenderContext): TemplateResult {
     : view.day === addDays(ctx.today, 1)
       ? t("tomorrow")
       : undefined;
-  return html`<li class="day ${when}">
-    <details ?open=${isToday}>
+  return html`<li class="day ${when}${isFocus ? " focus" : ""}">
+    <details ?open=${isFocus}>
       <summary>
         <div class="day-head">
           <h4 class="day-name">${formatDay(view.day, ctx.language)}</h4>
@@ -227,11 +270,9 @@ function day(view: DayView, ctx: RenderContext): TemplateResult {
       </summary>
       <div class="day-body">
         ${
-          lessons.length > 0
+          timetable.length > 0
             ? html`<section class="block" aria-label=${t("timetable")}>
-                <ol class="lessons">
-                  ${lessons.map((item) => lesson(item, ctx))}
-                </ol>
+                ${lessons(view, ctx)}
               </section>`
             : nothing
         }
@@ -289,6 +330,37 @@ function day(view: DayView, ctx: RenderContext): TemplateResult {
   </li>`;
 }
 
+// The days before today are folded into one row: what is to come is what matters.
+function days(views: readonly DayView[], ctx: RenderContext, focus: string): TemplateResult {
+  const shown = views.filter((view) => isShown(view, ctx.show));
+  const earlier = shown.filter((view) => view.day < ctx.today);
+  const rest = shown.filter((view) => view.day >= ctx.today);
+  const list = (items: DayView[]): TemplateResult =>
+    html`${repeat(
+      items,
+      (view) => view.day,
+      (view) => day(view, ctx, focus),
+    )}`;
+  return html`<ol class="days">
+    ${
+      earlier.length > 0
+        ? html`<li class="earlier">
+            <details>
+              <summary>
+                <span>${ctx.t("earlierDays", { n: earlier.length })}</span>
+                <ha-icon class="chevron" icon="mdi:chevron-down" aria-hidden="true"></ha-icon>
+              </summary>
+              <ol class="days">
+                ${list(earlier)}
+              </ol>
+            </details>
+          </li>`
+        : nothing
+    }
+    ${list(rest)}
+  </ol>`;
+}
+
 /** Shows a child: a header, then the child's weeks day by day, or why they cannot be shown. */
 export function child(
   item: Child,
@@ -303,6 +375,13 @@ export function child(
     state?.data?.week_plan === false
       ? { ...ctx, show: { ...ctx.show, tasks: false, birthdays: false } }
       : ctx;
+  // A week with nothing left to come would leave a column of its own all but empty.
+  const thisWeek = weeks.slice(0, 1).flatMap((week) => week.days);
+  const columns =
+    weeks.length > 1 && thisWeek.some((view) => view.day >= ctx.today && isShown(view, dayCtx.show))
+      ? 2
+      : 1;
+  const focus = focusDay(ctx.today, thisWeek, dayCtx.show);
   const nothingAtAll =
     state?.data !== undefined &&
     [state.data.lessons, state.data.events, state.data.tasks, state.data.birthdays].every(
@@ -313,7 +392,7 @@ export function child(
   else if (!state?.data) body = loading(t);
   else
     body = html`${nothingAtAll ? html`<p class="quiet week-empty">${t("noData")}</p>` : nothing}
-      <div class="weeks ${weeks.length > 1 ? "two" : "one"}">
+      <div class="weeks ${columns === 2 ? "two" : "one"}">
         ${weeks.map(
           (week, index) =>
             html`<section class="week" aria-labelledby="${id}-week-${String(index)}">
@@ -321,13 +400,7 @@ export function child(
                 <span>${index === 0 ? t("thisWeek") : t("nextWeek")}</span>
                 <span class="week-number">${t("weekNumber", { n: week.number })}</span>
               </h3>
-              <ol class="days">
-                ${repeat(
-                  week.days,
-                  (view) => view.day,
-                  (view) => day(view, dayCtx),
-                )}
-              </ol>
+              ${days(week.days, dayCtx, focus)}
             </section>`,
         )}
       </div>`;

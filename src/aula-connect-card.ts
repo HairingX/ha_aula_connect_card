@@ -16,7 +16,7 @@ import {
   type CardConfig,
   type ResolvedConfig,
 } from "./config";
-import { addDays, dayOf, firstWeekday, startOfWeek, timeZone, useAmPm } from "./dates";
+import { addDays, dayOf, startOfWeek, timeZone, useAmPm } from "./dates";
 import { configForm, rememberChildren, rememberLanguage, type ConfigForm } from "./editor";
 import { translator } from "./i18n";
 import { alert, child, loading, type ChildState, type RenderContext } from "./render";
@@ -70,7 +70,7 @@ export class AulaConnectCard extends LitElement {
         // The editor then takes child ids typed in.
       }
     }
-    return stubConfig(hass?.language);
+    return stubConfig();
   }
 
   /**
@@ -197,8 +197,8 @@ export class AulaConnectCard extends LitElement {
       : children.filter((item) => config.children.includes(item.child_id));
   }
 
-  private _range(hass: HomeAssistant, config: ResolvedConfig): { start: string; end: string } {
-    const start = startOfWeek(this._today, firstWeekday(locale(hass)));
+  private _range(config: ResolvedConfig): { start: string; end: string } {
+    const start = startOfWeek(this._today);
     return { start, end: addDays(start, 7 * config.weeks) };
   }
 
@@ -212,7 +212,7 @@ export class AulaConnectCard extends LitElement {
       this._setConnection(hass);
     }
     if (!this._children) return;
-    const { start, end } = this._range(hass, config);
+    const { start, end } = this._range(config);
     const selected = this._selected(config, this._children);
     const key = JSON.stringify([
       start,
@@ -279,7 +279,7 @@ export class AulaConnectCard extends LitElement {
     const t = translator(hass.language);
     if (children.length === 0) return alert("info", t("noChildren"));
     const zone = timeZone(hass);
-    const { start } = this._range(hass, config);
+    const { start } = this._range(config);
     const context: RenderContext = {
       t,
       language: locale(hass).language,
@@ -310,7 +310,6 @@ function settings(hass: HomeAssistant | undefined): string {
     hass?.language,
     hass?.locale.language,
     hass?.locale.time_format,
-    hass?.locale.first_weekday,
     hass?.locale.time_zone,
     hass?.config.time_zone,
   ]);
