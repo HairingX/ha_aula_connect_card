@@ -7,7 +7,7 @@
  * @packageDocumentation
  */
 
-import { fetchChildren, subscribeWeek } from "./api.ts";
+import { errorCode, fetchChildren, subscribeWeek } from "./api.ts";
 import { selectChildren } from "./children.ts";
 import { addDays, localTime, startOfWeek, timeZone } from "./dates.ts";
 import { rememberChildren, rememberSubjects } from "./memory.ts";
@@ -36,8 +36,17 @@ export const RELOAD_DELAY_MS = 3_000;
 /** The waits before each new listing while one fails or lacks a child; the last repeats. */
 export const RETRY_DELAYS_MS: readonly number[] = [5_000, 15_000, 30_000, 60_000];
 
-/** How long listings are retried before an error shows and missing children are dropped. */
+/** How long listings follow `RETRY_DELAYS_MS` before an error shows and missing children drop. */
 export const RETRY_WINDOW_MS = 600_000;
+
+/** The wait between listings once the window is over: they go on while a card watches. */
+export const RETRY_SLOW_MS = 300_000;
+
+/**
+ * How long an unknown command waits before it shows, while there is nothing else to show:
+ * Home Assistant answers so until the integration has loaded at a start.
+ */
+export const STARTING_MS = 30_000;
 
 /** Returns the days a store subscribes for on `today`: from the Monday of its week, 14 days. */
 export function rangeFor(today: Day): DayRange {
@@ -86,7 +95,8 @@ export interface WatchOptions {
 }
 
 interface Watcher {
-  readonly children: readonly number[];
+  /** The child ids wanted; null for none, when only the list is wanted. */
+  readonly children: readonly number[] | null;
   readonly onChange: () => void;
 }
 
@@ -118,10 +128,15 @@ export class AulaStore {
   private refreshing = false;
   /** Whether the list was confirmed since the connection or a subscription was last lost. */
   private listed = true;
-  /** Children kept from an earlier listing while retries look for them again. */
-  private readonly missing = new Set<ChildKey>();
+  /** Whether the last listing failed. */
+  private listFailed = false;
+  /** Children an earlier listing had and the last lacks: kept for the window, awaited after it. */
+  private readonly missing = new Map<ChildKey, Child>();
+  /** Children whose subscription was refused, until data comes for them. */
+  private readonly refused = new Set<ChildKey>();
   /** Counts listings, so that the answer of one replaced by a newer is ignored. */
   private listing = 0;
+  /** When the listings began to retry, for the window. */
   private retryStart: number | undefined;
   private retries = 0;
   private retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -171,7 +186,32 @@ export class AulaStore {
    * `LINGER_MS`, so a card made again at once finds its data.
    */
   watch(options: WatchOptions): () => void {
-    const watcher: Watcher = { children: [...options.children], onChange: options.onChange };
+    return this.add({ children: [...options.children], onChange: options.onChange });
+  }
+
+  /**
+   * Resolves once the children are listed, or after `timeout` milliseconds, without wanting any
+   * child's data: for the editor, which lists the children the cards have seen.
+   */
+  whenListed(timeout: number): Promise<void> {
+    return new Promise((resolve) => {
+      const done = (): void => {
+        clearTimeout(timer);
+        release();
+        resolve();
+      };
+      const timer = setTimeout(done, timeout);
+      const release = this.add({
+        children: null,
+        onChange: () => {
+          if (this.list !== undefined || this.listError !== undefined) done();
+        },
+      });
+      if (this.list !== undefined) done();
+    });
+  }
+
+  private add(watcher: Watcher): () => void {
     const idle = this.idle();
     this.watchers.add(watcher);
     if (idle) {
@@ -179,7 +219,7 @@ export class AulaStore {
       this.touch(new Date());
       // Listed again on waking: the integration may have been reloaded while nothing watched.
       this.listChildren();
-    }
+    } else this.retry();
     this.reconcile();
     let watching = true;
     return () => {
@@ -220,8 +260,7 @@ export class AulaStore {
     clearTimeout(this.reloadTimer);
     this.retryTimer = undefined;
     this.reloadTimer = undefined;
-    this.retryStart = undefined;
-    this.retries = 0;
+    this.stopRetrying();
     this.listing++;
   }
 
@@ -253,6 +292,7 @@ export class AulaStore {
     const result = new Map<ChildKey, Child>();
     if (!this.list) return result;
     for (const watcher of this.watchers) {
+      if (!watcher.children) continue;
       for (const child of selectChildren(this.list, watcher.children).shown) {
         result.set(childKey(child), child);
       }
@@ -308,6 +348,7 @@ export class AulaStore {
         );
         this.data.set(key, { range, data, error: undefined, stale: false });
         this.changed();
+        if (this.refused.delete(key)) this.retry();
       },
       () => {
         this.ended(key, subscription);
@@ -323,7 +364,10 @@ export class AulaStore {
           error,
           stale: current?.data !== undefined,
         });
+        this.refused.add(key);
         this.changed();
+        // A refused subscription is made again after the next listing.
+        this.retry();
       }
       return undefined;
     });
@@ -369,15 +413,36 @@ export class AulaStore {
     );
   }
 
-  /** Tells whether retries go on: the window opens at the first failing listing in a row. */
-  private retrying(): boolean {
+  /**
+   * Tells whether something a card waits for is missing: the last listing failed, lacked a child
+   * listed before or listed none, or a wanted child's subscription was refused.
+   */
+  private unresolved(): boolean {
+    if (this.listFailed || this.missing.size > 0 || this.list?.length === 0) return true;
+    const wanted = this.wanted();
+    return [...this.refused].some((key) => wanted.has(key));
+  }
+
+  /** Tells whether the window is open; it opens when listings begin to retry. */
+  private inWindow(): boolean {
     const now = Date.now();
     this.retryStart ??= now;
     return now - this.retryStart < RETRY_WINDOW_MS;
   }
 
-  private retryLater(): void {
-    const delay = RETRY_DELAYS_MS[Math.min(this.retries, RETRY_DELAYS_MS.length - 1)];
+  // While a card watches, a listing follows until nothing is missing: quickly for the window,
+  // then every few minutes, as an entry can load long after Home Assistant has started.
+  private retry(): void {
+    if (this.watchers.size === 0 || !this.unresolved()) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = undefined;
+      this.stopRetrying();
+      return;
+    }
+    if (this.retryTimer !== undefined) return;
+    const delay = this.inWindow()
+      ? RETRY_DELAYS_MS[Math.min(this.retries, RETRY_DELAYS_MS.length - 1)]
+      : RETRY_SLOW_MS;
     this.retries++;
     this.retryTimer = setTimeout(() => {
       this.retryTimer = undefined;
@@ -396,47 +461,52 @@ export class AulaStore {
   private onListed(children: Child[]): void {
     rememberChildren(children);
     const keys = new Set(children.map(childKey));
-    const lacking = (this.list ?? []).filter((child) => !keys.has(childKey(child)));
+    const before = [...(this.list ?? []), ...this.missing.values()];
     this.listed = true;
+    this.listFailed = false;
     this.listError = undefined;
     for (const [key, subscription] of this.subscriptions) {
       if (subscription.failed) this.subscriptions.delete(key);
     }
     this.missing.clear();
-    if ((lacking.length > 0 || children.length === 0) && this.retrying()) {
-      for (const child of lacking) this.missing.add(childKey(child));
+    for (const child of before) {
+      if (!keys.has(childKey(child))) this.missing.set(childKey(child), child);
+    }
+    if ((this.missing.size > 0 || children.length === 0) && this.inWindow()) {
       const kept = (this.list ?? []).filter(
         (child) => keys.has(childKey(child)) || this.missing.has(childKey(child)),
       );
       const known = new Set(kept.map(childKey));
       this.list = [...kept, ...children.filter((child) => !known.has(childKey(child)))];
       this.refreshing = true;
-      this.retryLater();
     } else {
       this.list = children;
       this.refreshing = false;
-      this.stopRetrying();
       for (const key of [...this.data.keys()]) if (!keys.has(key)) this.data.delete(key);
     }
     this.changed();
     this.reconcile();
+    this.retry();
   }
 
   private onListFailed(error: unknown): void {
-    if (this.retrying()) {
-      this.listError = this.list === undefined ? error : undefined;
-      this.refreshing = this.list !== undefined;
-      this.retryLater();
+    this.listFailed = true;
+    const inWindow = this.inWindow();
+    if (this.list === undefined) {
+      const starting =
+        errorCode(error) === "unknown_command" && Date.now() - (this.retryStart ?? 0) < STARTING_MS;
+      this.listError = starting ? undefined : error;
+      this.refreshing = false;
+    } else if (inWindow) {
+      this.listError = undefined;
+      this.refreshing = true;
     } else {
       this.listError = error;
       this.refreshing = false;
-      this.stopRetrying();
-      if (this.list && this.missing.size > 0) {
-        this.list = this.list.filter((child) => !this.missing.has(childKey(child)));
-        this.missing.clear();
-      }
+      this.list = this.list.filter((child) => !this.missing.has(childKey(child)));
     }
     this.changed();
+    this.retry();
   }
 }
 

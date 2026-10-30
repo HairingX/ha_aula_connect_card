@@ -6,10 +6,83 @@
  */
 
 import type { Translate } from "./i18n.ts";
-import type { CallWS, Child, DayRange, HassConnection, Unsubscribe, WeekData } from "./types.ts";
+import type {
+  Birthday,
+  CalendarEvent,
+  CallWS,
+  Child,
+  DayRange,
+  HassConnection,
+  Lesson,
+  Task,
+  Unsubscribe,
+  WeekData,
+} from "./types.ts";
 
 function list(value: unknown): unknown[] {
   return Array.isArray(value) ? (value as unknown[]) : [];
+}
+
+type Fields = Partial<Record<string, unknown>>;
+
+const text = (value: unknown): value is string => typeof value === "string";
+const or = <T>(value: unknown, fallback: T): string | T => (text(value) ? value : fallback);
+
+// Each item is taken only with the fields the cards read as the types they have; an item
+// without a time, a day or a title cannot be shown and is left out.
+function items<T>(value: unknown, make: (item: Fields) => T | undefined): T[] {
+  return list(value).flatMap((item) => {
+    const made = typeof item === "object" && item !== null ? make(item) : undefined;
+    return made === undefined ? [] : [made];
+  });
+}
+
+function id(item: Fields): string | number {
+  return typeof item.id === "number" ? item.id : or(item.id, "");
+}
+
+function lesson(item: Fields): Lesson | undefined {
+  if (!text(item.start) || !text(item.end) || !text(item.title)) return undefined;
+  return {
+    id: id(item),
+    start: item.start,
+    end: item.end,
+    title: item.title,
+    teachers: list(item.teachers).filter(text),
+    location: or(item.location, null),
+    status: or(item.status, null),
+  };
+}
+
+function event(item: Fields): CalendarEvent | undefined {
+  if (!text(item.start) || !text(item.end) || !text(item.title)) return undefined;
+  return {
+    id: id(item),
+    start: item.start,
+    end: item.end,
+    all_day: item.all_day === true,
+    title: item.title,
+    type: or(item.type, ""),
+    location: or(item.location, null),
+  };
+}
+
+function task(item: Fields): Task | undefined {
+  if (!text(item.date)) return undefined;
+  return {
+    id: id(item),
+    date: item.date,
+    type: or(item.type, ""),
+    title: or(item.title, null),
+    content: or(item.content, ""),
+    subject: or(item.subject, ""),
+    group: or(item.group, ""),
+    author: or(item.author, ""),
+  };
+}
+
+function birthday(item: Fields): Birthday | undefined {
+  return text(item.date) && text(item.name) ? { date: item.date, name: item.name } : undefined;
 }
 
 function isChild(value: unknown): value is Child {
@@ -60,13 +133,13 @@ export function subscribeWeek(
       }
       onData({
         week_plan: data.week_plan !== false,
-        start: typeof data.start === "string" ? data.start : range.start,
-        end: typeof data.end === "string" ? data.end : range.end,
-        lessons: list(data.lessons),
-        events: list(data.events),
-        tasks: list(data.tasks),
-        birthdays: list(data.birthdays),
-      } as WeekData);
+        start: or(data.start, range.start),
+        end: or(data.end, range.end),
+        lessons: items(data.lessons, lesson),
+        events: items(data.events, event),
+        tasks: items(data.tasks, task),
+        birthdays: items(data.birthdays, birthday),
+      });
     },
     {
       type: "aula_connect/week/subscribe",
@@ -85,10 +158,15 @@ function errorField(error: unknown, field: "code" | "message"): string | undefin
   return typeof value === "string" ? value : undefined;
 }
 
+/** Returns the code of an error from the API, such as `unknown_command`. */
+export function errorCode(error: unknown): string | undefined {
+  return errorField(error, "code");
+}
+
 /** Returns the text to show for an error from the API. */
 export function errorText(error: unknown, t: Translate): string {
   const message = errorField(error, "message") ?? String(error);
-  switch (errorField(error, "code")) {
+  switch (errorCode(error)) {
     case "unknown_command":
       return t("notLoaded");
     case "not_found":

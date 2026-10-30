@@ -9,6 +9,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe("the clock", () => {
@@ -38,6 +39,34 @@ describe("the clock", () => {
     expect(vi.getTimerCount()).toBe(1);
     stopSecond();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("keeps ticking for every card when one card's listener fails", () => {
+    const failing = vi.fn(() => {
+      throw new Error("bad zone");
+    });
+    const other = vi.fn();
+    const reported = vi.spyOn(globalThis, "queueMicrotask").mockImplementation(() => undefined);
+    const stopFailing = onMinute(failing);
+    const stopOther = onMinute(other);
+    vi.advanceTimersByTime(MINUTE_MS);
+    expect(other).toHaveBeenCalledOnce();
+    expect(reported).toHaveBeenCalledOnce();
+    expect(() => reported.mock.calls[0]?.[0]()).toThrow("bad zone");
+    expect(vi.getTimerCount()).toBe(1);
+    stopFailing();
+    stopOther();
+  });
+
+  it("renders nothing on a tick while the page is hidden", () => {
+    const listener = vi.fn();
+    const stop = onMinute(listener);
+    const state = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    vi.advanceTimersByTime(MINUTE_MS);
+    expect(listener).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(1);
+    state.mockRestore();
+    stop();
   });
 
   it("ticks at once when the page is shown again, and not while it is hidden", () => {

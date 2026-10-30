@@ -23,9 +23,21 @@ function schedule(): void {
 }
 
 function tick(): void {
-  const now = new Date();
-  for (const listener of [...listeners]) listener(now);
   schedule();
+  // A tab in the background renders nothing: the tick when it is shown again catches up.
+  if (document.visibilityState === "hidden") return;
+  const now = new Date();
+  for (const listener of [...listeners]) {
+    // One card that fails must not stop the clock of every card on the page; the error is
+    // still reported.
+    try {
+      listener(now);
+    } catch (error) {
+      queueMicrotask(() => {
+        throw error;
+      });
+    }
+  }
 }
 
 // A tablet that slept, or a tab in the background, catches up at once when it is shown again.

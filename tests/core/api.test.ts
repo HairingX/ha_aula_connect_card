@@ -81,6 +81,64 @@ describe("subscribeWeek", () => {
     ]);
   });
 
+  it("leaves out items it cannot show, and fills in the fields an item lacks", async () => {
+    const connection = new FakeConnection();
+    const callback = vi.fn();
+    await subscribeWeek(connection, IDA, RANGE, callback, vi.fn());
+    const start = "2026-10-29T08:00:00+01:00";
+    const end = "2026-10-29T08:45:00+01:00";
+    connection.subscriptions[0]?.callback({
+      lessons: [
+        { id: 1, start, end, title: "DAN", teachers: ["Karen Lund", 3], location: 7 },
+        { id: 2, start, end, title: null },
+        "lesson",
+      ],
+      events: [
+        { id: "e", start: "2026-10-30", end: "2026-10-31", all_day: true, title: "Skolefoto" },
+        { id: "f", start, title: "No end" },
+      ],
+      tasks: [{ id: {}, date: "2026-10-29", content: 5 }, { content: "No day" }],
+      birthdays: [{ date: "2026-10-30", name: "Alma" }, { date: "2026-10-30" }],
+    });
+    expect(callback.mock.calls[0]?.[0]).toMatchObject({
+      lessons: [
+        {
+          id: 1,
+          start,
+          end,
+          title: "DAN",
+          teachers: ["Karen Lund"],
+          location: null,
+          status: null,
+        },
+      ],
+      events: [
+        {
+          id: "e",
+          start: "2026-10-30",
+          end: "2026-10-31",
+          all_day: true,
+          title: "Skolefoto",
+          type: "",
+          location: null,
+        },
+      ],
+      tasks: [
+        {
+          id: "",
+          date: "2026-10-29",
+          type: "",
+          title: null,
+          content: "",
+          subject: "",
+          group: "",
+          author: "",
+        },
+      ],
+      birthdays: [{ date: "2026-10-30", name: "Alma" }],
+    });
+  });
+
   it("tells when the integration ends the subscription", async () => {
     const connection = new FakeConnection();
     const callback = vi.fn();

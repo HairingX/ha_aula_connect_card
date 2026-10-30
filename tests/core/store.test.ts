@@ -5,7 +5,9 @@ import {
   LINGER_MS,
   RELOAD_DELAY_MS,
   RETRY_DELAYS_MS,
+  RETRY_SLOW_MS,
   RETRY_WINDOW_MS,
+  STARTING_MS,
   rangeFor,
   storeFor,
   type AulaStore,
@@ -293,6 +295,16 @@ describe("the connection", () => {
     expect(store.snapshot.data.get(IDA_KEY)?.error).toBe(connection.refuse);
   });
 
+  it("keeps listing while a card wants a child whose subscription was refused", async () => {
+    const { connection, hass, store } = setup();
+    connection.refuse = wsError("not_found", "Child not found");
+    store.watch({ children: [1001], onChange: vi.fn() });
+    await vi.advanceTimersByTimeAsync(RETRY_WINDOW_MS + RETRY_SLOW_MS);
+    const listings = hass.callWS.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(RETRY_SLOW_MS);
+    expect(hass.callWS).toHaveBeenCalledTimes(listings + 1);
+  });
+
   it("ignores a refusal that comes after the subscription was given up", async () => {
     const { connection, store } = setup();
     let refuse: (error: Error) => void = () => undefined;
@@ -326,7 +338,7 @@ describe("the connection", () => {
 describe("listing the children again", () => {
   it("shows a failing first listing at once, and keeps trying", async () => {
     const { connection, store, answer } = setup();
-    const error = wsError("unknown_command", "Unknown command.");
+    const error = wsError("home_assistant_error", "Timeout");
     answer(error);
     store.watch({ children: [], onChange: vi.fn() });
     await settle();
@@ -339,6 +351,33 @@ describe("listing the children again", () => {
       refreshing: false,
     });
     expect(subscribedIds(connection)).toEqual([1001, 1002]);
+  });
+
+  it("says the integration is not loaded only once Home Assistant has had time to start", async () => {
+    const { store, answer } = setup();
+    const error = wsError("unknown_command", "Unknown command.");
+    answer(error);
+    store.watch({ children: [], onChange: vi.fn() });
+    await settle();
+    expect(store.snapshot.children).toEqual({
+      list: undefined,
+      error: undefined,
+      refreshing: false,
+    });
+    await vi.advanceTimersByTimeAsync(STARTING_MS);
+    expect(store.snapshot.children.error).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(RETRY_MAX_MS);
+    expect(store.snapshot.children).toEqual({ list: undefined, error, refreshing: false });
+  });
+
+  it("says it is refreshing, not that there are no children, while an empty list is retried", async () => {
+    const { store, answer } = setup();
+    answer([]);
+    store.watch({ children: [], onChange: vi.fn() });
+    await settle();
+    expect(store.snapshot.children).toEqual({ list: [], error: undefined, refreshing: true });
+    await vi.advanceTimersByTimeAsync(RETRY_WINDOW_MS + RETRY_MAX_MS);
+    expect(store.snapshot.children).toEqual({ list: [], error: undefined, refreshing: false });
   });
 
   it("recovers after a Home Assistant restart: unknown command, then no children, then the children", async () => {
@@ -392,7 +431,7 @@ describe("listing the children again", () => {
     expect(subscribedIds(connection)).toEqual([1002, 1001]);
   });
 
-  it("drops a child still missing when the retries are over", async () => {
+  it("drops a child still missing when the window is over, and takes it back when it returns", async () => {
     const { connection, store, answer } = setup();
     store.watch({ children: [], onChange: vi.fn() });
     await settle();
@@ -404,7 +443,60 @@ describe("listing the children again", () => {
     await vi.advanceTimersByTimeAsync(RETRY_WINDOW_MS + RETRY_MAX_MS);
     expect(store.snapshot.children).toEqual({ list: [OSKAR], error: undefined, refreshing: false });
     expect(store.snapshot.data.has(IDA_KEY)).toBe(false);
+    answer(CHILDREN);
+    await vi.advanceTimersByTimeAsync(RETRY_SLOW_MS);
+    expect(store.snapshot.children.list).toEqual(CHILDREN);
+    expect(subscribedIds(connection)).toContain(1001);
+  });
+
+  it("recovers when the entry loads an hour after a restart", async () => {
+    const { connection, hass, store, answer } = setup();
+    store.watch({ children: [], onChange: vi.fn() });
+    await settle();
+    connection.emit("disconnected");
+    answer([]);
+    connection.emit("ready");
+    await vi.advanceTimersByTimeAsync(60 * 60_000);
+    expect(store.snapshot.children).toEqual({ list: [], error: undefined, refreshing: false });
+    const listings = hass.callWS.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(RETRY_SLOW_MS);
+    expect(hass.callWS).toHaveBeenCalledTimes(listings + 1);
+    answer(CHILDREN);
+    await vi.advanceTimersByTimeAsync(RETRY_SLOW_MS);
+    expect(store.snapshot.children.list).toEqual(CHILDREN);
+    // The subscriptions the restart dropped are not ended; new ones are made.
+    expect(connection.subscriptions.slice(2).map((item) => item.message.child_id)).toEqual([
+      1001, 1002,
+    ]);
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("tries a refused subscription again while a card wants it", async () => {
+    const { connection, store } = setup();
+    connection.refuse = wsError("home_assistant_error", "Not ready");
+    store.watch({ children: [1001], onChange: vi.fn() });
+    await settle();
+    expect(store.snapshot.data.get(IDA_KEY)?.error).toBe(connection.refuse);
+    connection.refuse = undefined;
+    await vi.advanceTimersByTimeAsync(present(RETRY_DELAYS_MS[0]));
+    expect(subscribedIds(connection)).toEqual([1001]);
+    connection.active[0]?.callback(data());
+    expect(store.snapshot.data.get(IDA_KEY)).toMatchObject({ error: undefined, stale: false });
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("lists the children for the editor without subscribing, or gives up waiting", async () => {
+    const { connection, store } = setup();
+    await store.whenListed(1_000);
+    expect(store.snapshot.children.list).toEqual(CHILDREN);
+    expect(connection.subscriptions).toHaveLength(0);
+    await store.whenListed(1_000);
+    const silent = setup();
+    silent.hass.callWS.mockReturnValue(new Promise(() => undefined));
+    const waiting = silent.store.whenListed(1_000);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await waiting;
+    expect(silent.store.snapshot.children.list).toBeUndefined();
   });
 
   it("shows the error and drops missing children when a listing still fails after the window", async () => {
