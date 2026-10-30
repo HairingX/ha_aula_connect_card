@@ -18,8 +18,10 @@ import {
   type EmptyKind,
   type LessonRow,
   type LessonStatus,
+  type TimedEvent,
   type TimetableRow,
 } from "../model/blocks.ts";
+import type { CalendarEvent } from "../core/types.ts";
 import type { NoteView } from "../model/notes.ts";
 import type { Quote } from "../model/pack.ts";
 import type { SubjectLabel } from "../model/subjects.ts";
@@ -47,6 +49,10 @@ export interface Part {
   readonly quotes: readonly Quote[];
   /** The subjects Husk names: none beside the timetable. */
   readonly subjects: readonly SubjectLabel[];
+  /** The events lasting the whole day, first in the timetable. */
+  readonly allDay: readonly CalendarEvent[];
+  /** The events with a time, among the timetable's lessons. */
+  readonly timed: readonly TimedEvent[];
   /** Why the part says it has nothing; "none" for the block's own sentence. */
   readonly empty: EmptyKind | "none" | undefined;
   /** The child, named above the part when the block is for several. */
@@ -74,7 +80,7 @@ export const BLOCK_ICONS: Readonly<Record<BlockId, string>> = {
   task: "mdi:flag-outline",
   pack: "mdi:bag-personal-outline",
   timetable: "mdi:timetable",
-  comment: "mdi:clipboard-text-outline",
+  comment: "mdi:note-text-outline",
   events: "mdi:calendar-outline",
   birthdays: "mdi:cake-variant-outline",
 };
@@ -87,10 +93,8 @@ function title(id: BlockId, ctx: ViewContext): string {
       return ctx.t("blockPack");
     case "timetable":
       return ctx.t("blockTimetable");
-    case "comment":
-      return ctx.t("blockComment");
     default:
-      return ctx.t("blockEvents");
+      return ctx.t("blockComment");
   }
 }
 
@@ -138,9 +142,7 @@ export function emptyText(
             ? "noPack"
             : id === "timetable"
               ? "noLessons"
-              : id === "comment"
-                ? "noPlan"
-                : "noEvents",
+              : "noPlan",
       );
   }
 }
@@ -240,6 +242,80 @@ function lessonRow(row: TimetableRow, ctx: ViewContext, detailed: boolean): Temp
   </li>`;
 }
 
+// An event that began on an earlier day comes first; one that lasts the day is no time of day.
+function startOf(item: TimedEvent): string {
+  return item.span === "within" || item.span === "from" ? item.event.start : "";
+}
+
+/**
+ * Shows a day as a calendar does: the events lasting the whole day first, then the lessons and
+ * the events with a time in the order they begin, an event before a lesson beginning with it.
+ */
+function timeline<Row extends TimetableRow>(
+  part: Part,
+  rows: readonly Row[],
+  row: (item: Row) => TemplateResult,
+  full: boolean,
+  ctx: ViewContext,
+): unknown[] {
+  const event = (item: TimedEvent): TemplateResult => eventRow(item, ctx, full);
+  const whole = part.timed.filter(
+    (item) => item.span !== "within" && item.span !== "from" && item.span !== "until",
+  );
+  const timed = part.timed
+    .filter((item) => !whole.includes(item))
+    .sort((a, b) => startOf(a).localeCompare(startOf(b)));
+  const lines: unknown[] = [
+    ...part.allDay.map((item) => allDayRow(item, ctx, full)),
+    ...whole.map((item) => allDayRow(item.event, ctx, full)),
+  ];
+  let next = 0;
+  for (const item of rows) {
+    const start = item.kind === "lesson" ? item.block.start : item.start;
+    while (next < timed.length && startOf(timed[next] as TimedEvent) <= start) {
+      lines.push(event(timed[next] as TimedEvent));
+      next += 1;
+    }
+    lines.push(row(item));
+  }
+  for (const item of timed.slice(next)) lines.push(event(item));
+  return lines;
+}
+
+function allDayRow(item: CalendarEvent, ctx: ViewContext, full: boolean): TemplateResult {
+  const head = html`<span class="lesson-head"
+    >${icon(eventIcon(item.type))}${aula(item.title, ctx)}</span
+  >`;
+  return full
+    ? html`<li class="lesson event-row all-day">
+        <span class="lesson-time">${ctx.t("allDay")}</span>
+        <span class="lesson-main">${head}</span>
+      </li>`
+    : html`<li class="lesson event-row all-day">
+        ${head}<span class="event-when">${ctx.t("allDay")}</span>
+      </li>`;
+}
+
+function eventRow(item: TimedEvent, ctx: ViewContext, full: boolean): TemplateResult {
+  const place = item.event.location?.trim();
+  return full
+    ? html`<li class="lesson event-row">
+        <span class="lesson-time">${eventWhen(item, ctx)}</span>
+        <span class="lesson-main">
+          <span class="lesson-head"
+            >${icon(eventIcon(item.event.type))}${aula(item.event.title, ctx)}</span
+          >
+          ${place ? html`<span class="lesson-meta">${aula(place, ctx)}</span>` : nothing}
+        </span>
+      </li>`
+    : html`<li class="lesson event-row">
+        <span class="lesson-head"
+          >${icon(eventIcon(item.event.type))}${aula(item.event.title, ctx)}</span
+        >
+        <span class="event-when">${eventWhen(item, ctx)}</span>
+      </li>`;
+}
+
 /**
  * Shows the week plan's other notes in a quiet column, each folded after the configured lines and
  * opened by itself; `key` keeps their state.
@@ -281,25 +357,6 @@ function plan(part: Part, ctx: ViewContext, options: BlockOptions): TemplateResu
   return planNotes(part.content.plan, `${part.key}|plan|${options.day}`, ctx, options.state);
 }
 
-function events(part: Part, ctx: ViewContext): TemplateResult {
-  return html`<ul class="items">
-    ${part.content.timed.map(
-      (item) =>
-        html`<li class="item">
-          ${icon(eventIcon(item.event.type))}
-          <span class="item-text"
-            >${aula(item.event.title, ctx)}${
-              item.event.location
-                ? html`<span class="item-place">${aula(item.event.location, ctx)}</span>`
-                : nothing
-            }</span
-          >
-          <span class="item-time">${eventWhen(item, ctx)}</span>
-        </li>`,
-    )}
-  </ul>`;
-}
-
 function body(
   id: BlockId,
   part: Part,
@@ -315,15 +372,25 @@ function body(
     case "timetable":
       return unfolded
         ? html`<ol class="lessons">
-            ${part.content.timetable.map((row) => lessonRow(row, ctx, options.detailed))}
+            ${timeline(
+              part,
+              part.content.timetable,
+              (row) => lessonRow(row, ctx, options.detailed),
+              true,
+              ctx,
+            )}
           </ol>`
         : html`<ol class="lessons folded">
-            ${foldTimetable(part.content.timetable).map((row) => foldedRow(row, ctx))}
+            ${timeline(
+              part,
+              foldTimetable(part.content.timetable),
+              (row) => foldedRow(row, ctx),
+              false,
+              ctx,
+            )}
           </ol>`;
-    case "comment":
-      return plan(part, ctx, options);
     default:
-      return events(part, ctx);
+      return plan(part, ctx, options);
   }
 }
 

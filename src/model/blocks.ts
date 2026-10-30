@@ -266,6 +266,10 @@ export interface BlockPlan {
   readonly quotes: readonly Quote[];
   /** The subjects Husk names: none while the timetable, which lists them, is shown. */
   readonly subjects: readonly SubjectLabel[];
+  /** The events lasting the whole day the timetable shows first; none while events are hidden. */
+  readonly allDay: readonly CalendarEvent[];
+  /** The events with a time the timetable shows among the lessons; none while hidden. */
+  readonly timed: readonly TimedEvent[];
   /** Whether no block has anything: the day says "Intet i Aula for denne dag." */
   readonly nothing: boolean;
 }
@@ -277,21 +281,29 @@ function homeworkEmpty(content: DayContent): EmptyKind | undefined {
 }
 
 /**
- * Plans a day's blocks. A block without content is left out, except that homework on a school
- * day says why it has none, and the timetable says there is none on a weekday with other
- * content. Events lasting the whole day and birthdays are the header's, so the events block holds
- * the timed events only, and birthdays are no block.
+ * Plans a day's blocks. A block without content is left out, except that what the week plan
+ * marks says why there is none on a school day, and the timetable says there is none on a weekday
+ * with other content. The day's events are the timetable's, as in a calendar: those lasting the
+ * whole day first, the others among the lessons. Birthdays are the header's, so neither events
+ * nor birthdays are a block of their own.
  */
 export function planBlocks(content: DayContent, blocks: readonly BlockId[]): BlockPlan {
   const quoted =
     blocks.includes("task") || blocks.includes("comment") ? content.quotes : ([] as const);
   const subjects = blocks.includes("timetable") ? [] : content.subjects;
+  const events = blocks.includes("events");
+  const allDay = events
+    ? content.facts.flatMap((fact) =>
+        fact.kind === "event" && !isHolidayEvent(fact.event) ? [fact.event] : [],
+      )
+    : [];
+  const timed = events ? content.timed : [];
   const has: Record<BlockId, boolean> = {
     task: content.homework.length > 0,
     pack: subjects.length > 0 || content.pack.length > 0 || quoted.length > 0,
-    timetable: content.timetable.length > 0,
+    timetable: content.timetable.length > 0 || allDay.length > 0 || timed.length > 0,
     comment: content.plan.length > 0,
-    events: content.timed.length > 0,
+    events: false,
     birthdays: false,
   };
   // A day with something else on it says it has no timetable, so the header's facts count.
@@ -308,7 +320,14 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
     if (has[id]) planned.push({ id, empty: undefined });
     else if (empty) planned.push({ id, empty });
   }
-  return { blocks: planned, quotes: quoted, subjects, nothing: planned.length === 0 };
+  return {
+    blocks: planned,
+    quotes: quoted,
+    subjects,
+    allDay,
+    timed,
+    nothing: planned.length === 0,
+  };
 }
 
 /**
@@ -336,6 +355,13 @@ export function foldTimetable(rows: readonly TimetableRow[]): LessonRow[] {
     before = row;
   }
   return lines;
+}
+
+/** Returns what a day's header says: its holidays and birthdays, without a hidden one. */
+export function headerFacts(content: DayContent, blocks: readonly BlockId[]): Fact[] {
+  return visibleFacts(content, blocks).filter(
+    (fact) => fact.kind === "birthday" || isHolidayEvent(fact.event),
+  );
 }
 
 /** Returns a day's facts, without those of a hidden block. */

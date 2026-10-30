@@ -911,42 +911,20 @@ export const blocks = css`
     -webkit-tap-highlight-color: transparent;
   }
 
-  .items {
+  /* An event in the timetable: its icon before its title, its time where a lesson's is. */
+  .event-row .lesson-head {
     display: flex;
-    flex-direction: column;
+    align-items: baseline;
     gap: var(--aula-space-2);
+    --mdc-icon-size: calc(18px * var(--aula-scale));
   }
-  .item {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--aula-space-2);
-  }
-  .item-text {
-    flex: 1;
-    min-width: 0;
-    padding-top: 1px;
-    overflow-wrap: anywhere;
-  }
-  .item-place {
-    display: block;
-    color: var(--aula-text-2);
-    font-size: var(--aula-font-s);
-  }
-  .item-time {
+  .event-row ha-icon {
     flex: none;
-    color: var(--aula-text-2);
-    font-size: var(--aula-font-s);
-    white-space: nowrap;
-    padding-top: 2px;
+    align-self: center;
   }
-  /* On a wide card the time follows its event rather than sitting far from it. */
-  @container aula (min-width: 600px) {
-    .item-text {
-      flex: 0 1 auto;
-    }
-    .item-time::before {
-      content: "· ";
-    }
+  .event-when {
+    color: var(--aula-text-2);
+    white-space: nowrap;
   }
 `;
 

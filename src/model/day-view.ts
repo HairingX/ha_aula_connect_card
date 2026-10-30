@@ -13,6 +13,7 @@ import type { CalendarEvent, Child, Day } from "../core/types.ts";
 import {
   dayContent,
   planBlocks,
+  headerFacts,
   visibleFacts,
   type BlockId,
   type BlockPlan,
@@ -340,7 +341,7 @@ function childView(basis: ChildBasis, options: DayViewOptions, ctx: ViewContext)
     focus: basis.focus,
     content,
     plan: content && planBlocks(content, options.blocks),
-    facts: content ? visibleFacts(content, options.blocks) : [],
+    facts: content ? headerFacts(content, options.blocks) : [],
   };
 }
 

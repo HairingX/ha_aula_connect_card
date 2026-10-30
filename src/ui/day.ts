@@ -266,6 +266,8 @@ function blocks(group: DayGroup, day: Day, ctx: ViewContext, state: CardState): 
           content: part.content,
           quotes: part.plan.quotes,
           subjects: part.plan.subjects,
+          allDay: part.plan.allDay,
+          timed: part.plan.timed,
           empty: part.empty,
           child: several ? part.child.child : undefined,
           key: childKey(part.child.child),

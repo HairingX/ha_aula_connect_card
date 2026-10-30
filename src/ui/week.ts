@@ -23,6 +23,7 @@ import {
 import { glue } from "../core/text.ts";
 import { childKey, type Child, type Day } from "../core/types.ts";
 import type { BlockId } from "../model/blocks.ts";
+import { isHolidayEvent } from "../model/days.ts";
 import type { Focus } from "../model/focus.ts";
 import type {
   DayRowView,
@@ -64,9 +65,10 @@ function dayColumn(day: string, ctx: ViewContext): TemplateResult {
 /** A day opened: its whole-day events and birthdays, a line each, then its blocks. */
 function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardState): unknown {
   const { content, plan } = row;
-  const shown = factStack(row.facts, `${childKey(child)}|facts|${row.day}`, ctx, state);
+  const header = row.facts.filter((fact) => fact.kind === "birthday" || isHolidayEvent(fact.event));
+  const shown = factStack(header, `${childKey(child)}|facts|${row.day}`, ctx, state);
   if (plan.nothing) {
-    return row.facts.length > 0 ? shown : html`<p class="empty">${ctx.t("nothingThisDay")}</p>`;
+    return header.length > 0 ? shown : html`<p class="empty">${ctx.t("nothingThisDay")}</p>`;
   }
   return html`${shown}
     <div class="blocks">
@@ -78,6 +80,8 @@ function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardStat
               content,
               quotes: plan.quotes,
               subjects: plan.subjects,
+              allDay: plan.allDay,
+              timed: plan.timed,
               empty: block.empty,
               child: undefined,
               key: childKey(child),
@@ -94,7 +98,7 @@ function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardStat
 // A closed row names an event or a birthday when it is the only one of its kind, else counts
 // them, as "2 begivenheder": the row is one line to glance at, and opens for the rest.
 function line2(row: DayRowView, ctx: ViewContext): TemplateResult | typeof nothing {
-  const timed = row.plan.blocks.some((block) => block.id === "events") ? row.content.timed : [];
+  const timed = row.plan.timed;
   const events = row.facts.filter((item) => item.kind === "event");
   const born = row.facts.filter((item) => item.kind === "birthday");
   const count = events.length + timed.length;

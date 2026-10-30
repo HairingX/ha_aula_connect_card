@@ -161,8 +161,9 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
         select: {
           multiple: true,
           reorder: true,
-          // Birthdays are said in the day's header, never as a block that could move.
-          options: BLOCKS.filter((id) => id !== "birthdays").map((id) => ({
+          // Birthdays are said in the day's header and events in the timetable, never as a block
+          // that could move.
+          options: BLOCKS.filter((id) => id !== "birthdays" && id !== "events").map((id) => ({
             value: id,
             label: t(BLOCK_LABELS[id]),
           })),
