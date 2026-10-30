@@ -112,6 +112,17 @@ describe("school days", () => {
     expect(isSchoolDay(day({}), true)).toBe(false);
   });
 
+  it("are not weekdays whose every lesson is cancelled, unless the school has an event", () => {
+    const [first] = weekData("2026-10-26").lessons;
+    if (!first) throw new Error("no lesson");
+    const cancelled = { ...first, status: "Aflyst" };
+    expect(isSchoolDay(day({ lessons: [cancelled], notes: [note] }), true)).toBe(false);
+    expect(isSchoolDay(day({ lessons: [cancelled], events: [event("excursion")] }), true)).toBe(
+      true,
+    );
+    expect(isSchoolDay(day({ lessons: [cancelled, first] }), true)).toBe(true);
+  });
+
   it("are every weekday where the school keeps no timetable in Aula", () => {
     expect(isSchoolDay(day({}), false)).toBe(true);
   });

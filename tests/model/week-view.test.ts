@@ -150,6 +150,43 @@ describe("the week card", () => {
     });
   });
 
+  it("shows a Saturday with a lesson as a day of its own, with its hours", () => {
+    const [thisWeek] = weeks("thu-1930-satlesson");
+    expect(thisWeek?.rows.map(shape)).toEqual(["earlier 4", "focus 30 tomorrow", "day 31"]);
+    const saturday = thisWeek?.rows[2];
+    expect(saturday?.kind === "day" && saturday.row.content.hours).toBeTruthy();
+  });
+
+  it("keeps a holiday's own dates on its first row, and the next week's days on the next", () => {
+    const [first, second] = weeks("before-holiday");
+    const holidays = [first, second].flatMap((week) =>
+      (week?.rows ?? []).flatMap((row) =>
+        row.kind === "holiday" ? [[row.first, row.last, row.whole]] : [],
+      ),
+    );
+    expect(holidays).toEqual([
+      ["2026-10-10", "2026-10-18", false],
+      ["2026-10-12", "2026-10-18", true],
+    ]);
+  });
+
+  it("names the days a holiday covers in its second week, when not the whole week", () => {
+    const [, second] = weeks("two-holidays", { children: [1002] });
+    const row = second?.rows.find((item) => item.kind === "holiday");
+    expect(row?.kind === "holiday" && [row.first, row.last, row.whole]).toEqual([
+      "2026-10-12",
+      "2026-10-18",
+      true,
+    ]);
+  });
+
+  it("keeps a day whose every lesson is cancelled open for its school event, without hours", () => {
+    const [thisWeek] = weeks("thu-1930-allcancelled");
+    const friday = thisWeek?.rows[1];
+    expect(friday && shape(friday)).toBe("focus 30 tomorrow");
+    expect(friday?.kind === "focus" && friday.row.content.hours).toBeUndefined();
+  });
+
   it("shows a camp on its last day by when it ends", () => {
     const [thisWeek] = weeks("tue-1930-camp");
     const thursday = thisWeek?.rows.find(

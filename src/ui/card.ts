@@ -258,7 +258,9 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     try {
       const view = this.view(snapshot, config, ctx, this.#hold);
       this.#lastSize = view.size;
-      return html`${top}${view.missing.map((id) => alert("warning", t("childNotFound", { id })))}${this.content(
+      // A child not listed yet is waited for while the listing is retried, as at a start.
+      const missing = children.refreshing ? [] : view.missing;
+      return html`${top}${missing.map((id) => alert("warning", t("childNotFound", { id })))}${this.content(
         view,
         config,
         ctx,

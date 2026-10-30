@@ -413,12 +413,22 @@ export class AulaStore {
     );
   }
 
+  /** Tells whether a card wants a child id the list lacks, as an entry not loaded yet has. */
+  #lacking(list: readonly Child[]): boolean {
+    return [...this.#watchers].some(
+      (watcher) => selectChildren(list, watcher.children ?? []).missing.length > 0,
+    );
+  }
+
   /**
    * Tells whether something a card waits for is missing: the last listing failed, lacked a child
-   * listed before or listed none, or a wanted child's subscription was refused.
+   * listed before or one a card names, or listed none, or a wanted child's subscription was
+   * refused.
    */
   #unresolved(): boolean {
-    if (this.#listFailed || this.#missing.size > 0 || this.#list?.length === 0) return true;
+    const list = this.#list ?? [];
+    if (this.#listFailed || this.#missing.size > 0 || list.length === 0 || this.#lacking(list))
+      return true;
     const wanted = this.#wanted();
     return [...this.#refused].some((key) => wanted.has(key));
   }
@@ -457,7 +467,8 @@ export class AulaStore {
 
   // While Home Assistant starts, the integration answers with an empty list until its entry has
   // loaded, and an entry being reloaded lacks its children until it is back: a listing that
-  // lacks a child listed before, or that lists none, is retried, keeping what was shown.
+  // lacks a child listed before or named by a card, or that lists none, is retried, keeping what
+  // was shown.
   #onListed(children: Child[]): void {
     rememberChildren(children);
     const keys = new Set(children.map(childKey));
@@ -472,7 +483,10 @@ export class AulaStore {
     for (const child of before) {
       if (!keys.has(childKey(child))) this.#missing.set(childKey(child), child);
     }
-    if ((this.#missing.size > 0 || children.length === 0) && this.#inWindow()) {
+    if (
+      (this.#missing.size > 0 || children.length === 0 || this.#lacking(children)) &&
+      this.#inWindow()
+    ) {
       const kept = (this.#list ?? []).filter(
         (child) => keys.has(childKey(child)) || this.#missing.has(childKey(child)),
       );

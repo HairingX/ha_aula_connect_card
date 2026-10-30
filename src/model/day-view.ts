@@ -59,14 +59,22 @@ export interface BridgeLine {
   readonly only: readonly Child[];
 }
 
+/** Something of today's, and the children who have it when not every child does. */
+export interface Shared<T> {
+  /** The thing. */
+  readonly item: T;
+  /** The children who have it; empty when every child does. */
+  readonly only: readonly Child[];
+}
+
 /** The rows above a day's header: the rest of today, and the days passed over. */
 export interface AboveRows {
   /** What is left of today, per child; empty when the focus day is today. */
   readonly today: readonly TodayEntry[];
-  /** Today's events at a time still to come, each once. */
-  readonly events: readonly TimedEvent[];
+  /** Today's events at a time still to come, each once, in the order they begin. */
+  readonly events: readonly Shared<TimedEvent>[];
   /** Today's whole-day events and birthdays on a day without school, each once. */
-  readonly facts: readonly Fact[];
+  readonly facts: readonly Shared<Fact>[];
   /** The bridge rows that fit. */
   readonly bridges: readonly BridgeLine[];
   /** The days passed over in the rows that did not fit. */
@@ -194,7 +202,18 @@ function rest(basis: ChildBasis, ctx: ViewContext, blocks: readonly BlockId[]) {
     : visibleFacts(dayContent(view, basis.rules, ctx.now, true), blocks).filter(
         (fact) => fact.kind !== "event" || fact.event.id !== holiday?.id,
       );
-  return todayRest(view, ctx.now, ctx.zone, facts);
+  return todayRest(view, ctx.now, ctx.zone, facts, blocks.includes("events"));
+}
+
+function add<T>(
+  map: Map<string, { item: T; children: Child[] }>,
+  key: string,
+  item: T,
+  child: Child,
+) {
+  const entry = map.get(key) ?? { item, children: [] };
+  entry.children.push(child);
+  map.set(key, entry);
 }
 
 function above(
@@ -204,22 +223,28 @@ function above(
   hero: Hero,
 ): AboveRows {
   const today: TodayEntry[] = [];
-  const events = new Map<string, TimedEvent>();
-  const facts = new Map<string, Fact>();
+  const events = new Map<string, { item: TimedEvent; children: Child[] }>();
+  const facts = new Map<string, { item: Fact; children: Child[] }>();
   for (const basis of bases) {
     const left = rest(basis, ctx, blocks);
     if (!left) continue;
     const running = left.running && basis.rules.namer(left.running.lesson.title);
     today.push({ child: basis.child, rest: left, running });
-    for (const item of left.events) events.set(String(item.event.id), item);
-    for (const fact of left.facts) facts.set(factKey(fact), fact);
+    for (const item of left.events) add(events, String(item.event.id), item, basis.child);
+    for (const fact of left.facts) add(facts, factKey(fact), fact, basis.child);
   }
+  const shared = <T>(entries: Iterable<{ item: T; children: Child[] }>): Shared<T>[] =>
+    [...entries].map(({ item, children }) => ({
+      item,
+      only: children.length === bases.length ? [] : children,
+    }));
   const named = new Set(
-    [...facts.values()].flatMap((fact) => (fact.kind === "event" ? [fact.event.id] : [])),
+    [...facts.values()].flatMap(({ item }) => (item.kind === "event" ? [item.event.id] : [])),
   );
+  const show = { events: blocks.includes("events"), birthdays: blocks.includes("birthdays") };
   const lines = new Map<string, { row: BridgeRow; children: Child[] }>();
   for (const basis of bases) {
-    for (const row of bridgeRows(basis.days, basis.focus, named)) {
+    for (const row of bridgeRows(basis.days, basis.focus, named, show)) {
       // The header names the holiday that lasts to the end of the data.
       if (hero.kind === "holiday" && row.kind === "holiday" && row.event.id === hero.event.id)
         continue;
@@ -238,8 +263,8 @@ function above(
   );
   return {
     today,
-    events: [...events.values()],
-    facts: [...facts.values()],
+    events: shared(events.values()),
+    facts: shared(facts.values()),
     bridges: rows.map((row) => {
       const children = lines.get(rowKey(row))?.children ?? [];
       return { row, only: children.length === bases.length ? [] : children };
@@ -249,12 +274,15 @@ function above(
 }
 
 /**
- * Returns the header of a child with no school day ahead: the holiday that covers the last day
- * the data has, and the weekday after it when that is beyond the data; else that last day.
+ * Returns the header of a child with no school day from today up to `horizon`, the last day the
+ * data has: the last holiday of those days, and the weekday after its own last day when that is
+ * beyond the data, as school starts again then; else that last day.
  */
 export function noSchoolHero(basis: ChildBasis, horizon: Day): NoSchoolHero {
-  const view = dayIn(basis, horizon);
-  const holiday = view && holidayOf(view);
+  let holiday: CalendarEvent | undefined;
+  for (const view of basis.days) {
+    if (view.day >= basis.focus.today && view.day <= horizon) holiday = holidayOf(view) ?? holiday;
+  }
   if (!holiday) return { kind: "none", horizon };
   const { first, last } = holidaySpan(holiday, horizon);
   let resumes = addDays(last, 1);
@@ -266,6 +294,18 @@ export function noSchoolHero(basis: ChildBasis, horizon: Day): NoSchoolHero {
     last,
     resumes: resumes > horizon ? resumes : undefined,
   };
+}
+
+/** Returns what makes two headers say the same. */
+export function heroKey(hero: Hero): string {
+  switch (hero.kind) {
+    case "day":
+      return `${hero.focus.day ?? ""}|${hero.focus.reason}`;
+    case "holiday":
+      return `holiday|${String(hero.event.id)}|${hero.resumes ?? ""}`;
+    case "none":
+      return `none|${hero.horizon}`;
+  }
 }
 
 function heroOf(basis: ChildBasis): Hero {
@@ -359,10 +399,8 @@ export function dayCardView(
   const ready = bases.every((basis) => basis.state.kind === "ready");
   const together = new Map<string, ChildBasis[]>();
   for (const basis of bases) {
-    const { focus } = basis;
-    const key = ready
-      ? `${focus.day ?? ""}|${focus.reason}|${focus.horizon ?? ""}`
-      : String(together.size);
+    // Children without a school day ahead share a header only when it says the same for each.
+    const key = ready ? heroKey(heroOf(basis)) : String(together.size);
     together.set(key, [...(together.get(key) ?? []), basis]);
   }
   const groups = [...together.values()].map((items) => group(items, options, ctx));

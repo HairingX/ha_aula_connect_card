@@ -23,12 +23,13 @@ import type {
   HomeworkHero,
   HomeworkPart,
 } from "../model/homework-view.ts";
-import { homeworkList } from "./blocks.ts";
+import { homeworkList, sameEmpty } from "./blocks.ts";
 import type { CardState } from "./card.ts";
 import {
   apiError,
   aula,
   avatar,
+  columns,
   dayTitle,
   headingOf,
   icon,
@@ -67,29 +68,40 @@ function day(
     )}`;
   const index = (child: Child): number =>
     view.children.findIndex((entry) => childKey(entry.child) === childKey(child)) + 1;
+  const texts = item.parts.map((part) =>
+    part.items.length > 0 ? undefined : partText(part, weekNumber(item.day), ctx),
+  );
+  const once = several ? sameEmpty(texts) : undefined;
   return html`<section class="hw-day ${item.focus ? "focus" : ""}">
     ${headingOf(level, head, "day-head")}
-    <div class="cols">
-      ${item.parts.map(
-        (part) =>
-          html`<div class="part" style="--col: ${index(part.child)}">
-            ${
-              several
-                ? headingOf(
-                    level + 1,
-                    html`${avatar(part.child)}<span>${part.child.first_name}</span>`,
-                    "part-who",
-                  )
-                : nothing
-            }
-            ${
-              part.items.length > 0
-                ? homeworkList(part.items, ctx)
-                : html`<p class="empty">${partText(part, weekNumber(item.day), ctx)}</p>`
-            }
-          </div>`,
-      )}
-    </div>
+    ${
+      once === undefined
+        ? html`<div class="cols">
+            ${item.parts.map(
+              (part, at) =>
+                html`<div
+                  class="part ${texts[at] === undefined ? "" : "is-empty"}"
+                  style="--col: ${index(part.child)}"
+                >
+                  ${
+                    several
+                      ? headingOf(
+                          level + 1,
+                          html`${avatar(part.child)}<span>${part.child.first_name}</span>`,
+                          "part-who",
+                        )
+                      : nothing
+                  }
+                  ${
+                    texts[at] === undefined
+                      ? homeworkList(part.items, ctx)
+                      : html`<p class="empty">${texts[at]}</p>`
+                  }
+                </div>`,
+            )}
+          </div>`
+        : html`<p class="empty">${once}</p>`
+    }
   </section>`;
 }
 
@@ -132,32 +144,37 @@ export function renderHomework(
       ctx,
     ),
   });
-  const count = view.children.length;
+  const children = view.children.map((child) => child.child);
+  const count = children.length;
   const several = count > 1;
-  const meta = (child: Child): string[] => [
-    ...(view.differentSchools ? [child.institution_name] : []),
-    t("homework"),
-  ];
+  const [from, to] = view.weeks;
+  // The card's title: whose homework it is, and the weeks it covers.
+  const title = html`<h2 class="title-who">
+    <span class="who"
+      ><span class="avatars">${children.map(avatar)}</span>${segments([
+        html`<span class="who-name">${names(children, ctx)}</span>`,
+        html`<span class="who-meta">${t("homework")}</span>`,
+        html`<span class="who-meta"
+          >${from === to ? t("weekShort", { n: from }) : t("weeksShort", { from, to })}</span
+        >`,
+      ])}</span
+    >
+  </h2>`;
   // Kept by the first child, so that it closes when that child's focus day moves on.
-  const first = view.children[0];
-  const key = `${first ? childKey(first.child) : ""}|earlier`;
-  return html`<section
-    class="homework-card stack n-${String(Math.min(count, 3))}"
-    aria-label=${label}
-  >
+  const key = `${children[0] ? childKey(children[0]) : ""}|earlier`;
+  return html`<section class="homework-card stack ${columns(count)}" aria-label=${label}>
+    ${title}
     ${
       several
         ? html`<div class="strip cols" aria-hidden="true">
-            ${view.children.map(
+            ${children.map(
               (child, index) =>
                 html`<div class="kid" style="--col: ${index + 1}">
-                  ${who(child.child, meta(child.child))}
+                  ${who(child, view.differentSchools ? [child.institution_name] : [])}
                 </div>`,
             )}
           </div>`
-        : view.children.map(
-            (child) => html`<h2 class="title-who">${who(child.child, meta(child.child))}</h2>`,
-          )
+        : nothing
     }
     ${view.children.map((child) =>
       child.state.kind === "ready"
@@ -170,7 +187,7 @@ export function renderHomework(
           </div>`,
     )}
     ${view.heroes.map((item) => heroLine(item, ctx))}
-    ${view.days.map((item) => day(item, view, ctx, 3))}
+    ${view.days.length > 0 ? html`<div class="hw-days">${view.days.map((item) => day(item, view, ctx, 3))}</div>` : nothing}
     ${view.notYet.map(
       (item) =>
         html`<p class="not-yet">
@@ -189,7 +206,7 @@ export function renderHomework(
             </summary>
             ${
               state.isOpen(key, false)
-                ? html`<div class="earlier-days">
+                ? html`<div class="hw-days earlier-days">
                     ${view.earlier.map((item) => day(item, view, ctx, 4))}
                   </div>`
                 : nothing

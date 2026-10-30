@@ -67,6 +67,7 @@ export function unmountAll(): void {
 /** Returns the text of an element of a card, its white space collapsed. */
 export function text(card: Card, selector = ".body"): string {
   return (present(card.shadowRoot).querySelector(selector)?.textContent ?? "")
+    .replace(/\u2060/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }

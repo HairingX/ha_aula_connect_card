@@ -25,6 +25,7 @@ import {
   icon,
   label,
   nowLabel,
+  segments,
   time,
 } from "./primitives.ts";
 
@@ -143,7 +144,8 @@ function pack(part: Part, ctx: ViewContext): TemplateResult {
     ${
       content.subjects.length > 0
         ? html`<li class="pack-subjects">
-            ${aula(ctx.t("subjects", { subjects: content.subjects.map((item) => item.name).join(", ") }), ctx)}
+            <span class="pack-label">${ctx.t("subjects")}</span>
+            ${aula(content.subjects.map((item) => item.name).join(", "), ctx)}
           </li>`
         : nothing
     }
@@ -185,11 +187,13 @@ function lessonRow(row: TimetableRow, ctx: ViewContext, detailed: boolean): Temp
   const meta: TemplateResult[] = [];
   if (detailed && teachers.length > 0) {
     meta.push(
-      html`<span class="sr">${ctx.t("teachers")}:</span>
-        ${teachers.map((name, index) => html`${index > 0 ? ", " : ""}<abbr title=${name}>${initials(name)}</abbr>`)}`,
+      html`<span class="sr">${ctx.t("teachers")}: </span>${teachers.map(
+          (name, index) =>
+            html`${index > 0 ? ", " : ""}<abbr title=${name}>${initials(name)}</abbr>`,
+        )}`,
     );
   }
-  if (room) meta.push(html`<span class="sr">${ctx.t("room")}:</span> ${aula(room, ctx)}`);
+  if (room) meta.push(html`<span class="sr">${ctx.t("room")}: </span>${aula(room, ctx)}`);
   return html`<li class="lesson ${row.time ?? ""} ${row.cancelled ? "cancelled" : ""}">
     <span class="lesson-time"
       >${time(block.start, ctx, "start")}<span class="sr">–</span
@@ -209,13 +213,7 @@ function lessonRow(row: TimetableRow, ctx: ViewContext, detailed: boolean): Temp
               : nothing
         }
       </span>
-      ${
-        meta.length > 0
-          ? html`<span class="lesson-meta"
-              >${meta.map((part, index) => html`${index > 0 ? html`<span aria-hidden="true"> · </span>` : nothing}${part}`)}</span
-            >`
-          : nothing
-      }
+      ${meta.length > 0 ? segments(meta, "lesson-meta") : nothing}
     </span>
   </li>`;
 }
@@ -263,7 +261,7 @@ function events(part: Part, ctx: ViewContext): TemplateResult {
           <span class="item-text"
             >${aula(item.event.title, ctx)}${
               item.event.location
-                ? html`<span class="quiet"> · ${aula(item.event.location, ctx)}</span>`
+                ? html`<span class="item-place">${aula(item.event.location, ctx)}</span>`
                 : nothing
             }</span
           >
@@ -290,7 +288,19 @@ function body(id: BlockId, part: Part, ctx: ViewContext, options: BlockOptions):
   }
 }
 
-/** Shows a block: its header, then each child's part, named when the block is for several. */
+/**
+ * Returns the one sentence every part says when none has anything, so that it is said once for
+ * every child; undefined when a part has something, or the parts say different things.
+ */
+export function sameEmpty(texts: readonly (string | undefined)[]): string | undefined {
+  const [first] = texts;
+  return first !== undefined && texts.every((text) => text === first) ? first : undefined;
+}
+
+/**
+ * Shows a block: its header, then each child's part, named when the block is for several. When
+ * no child has anything and each would say the same, the block says it once, naming no one.
+ */
 export function renderBlock(
   id: BlockId,
   parts: readonly Part[],
@@ -298,28 +308,39 @@ export function renderBlock(
   options: BlockOptions,
 ): TemplateResult {
   const day = parts[0]?.content.view.day ?? ctx.today;
+  const texts = parts.map((part) =>
+    part.empty === undefined ? undefined : emptyText(id, part.empty, part.content, ctx),
+  );
+  const once = sameEmpty(texts);
   return html`<section class="block" data-block=${id}>
     ${headingOf(options.level, html`${icon(ICONS[id])}<span>${title(id, day, ctx)}</span>`, "block-head")}
-    <div class="cols">
-      ${parts.map(
-        (part) =>
-          html`<div class="part" style="--col: ${part.col}">
-            ${
-              part.child
-                ? headingOf(
-                    options.level + 1,
-                    html`${avatar(part.child)}<span>${part.child.first_name}</span>`,
-                    "part-who",
-                  )
-                : nothing
-            }
-            ${
-              part.empty === undefined
-                ? body(id, part, ctx, options)
-                : html`<p class="empty">${emptyText(id, part.empty, part.content, ctx)}</p>`
-            }
-          </div>`,
-      )}
-    </div>
+    ${
+      once === undefined
+        ? html`<div class="cols">
+            ${parts.map(
+              (part, index) =>
+                html`<div
+                  class="part ${texts[index] === undefined ? "" : "is-empty"}"
+                  style="--col: ${part.col}"
+                >
+                  ${
+                    part.child
+                      ? headingOf(
+                          options.level + 1,
+                          html`${avatar(part.child)}<span>${part.child.first_name}</span>`,
+                          "part-who",
+                        )
+                      : nothing
+                  }
+                  ${
+                    texts[index] === undefined
+                      ? body(id, part, ctx, options)
+                      : html`<p class="empty">${texts[index]}</p>`
+                  }
+                </div>`,
+            )}
+          </div>`
+        : html`<p class="empty">${once}</p>`
+    }
   </section>`;
 }

@@ -47,6 +47,7 @@ async function mount(
 
 function text(card: Card, selector = ".body"): string {
   return (present(card.shadowRoot).querySelector(selector)?.textContent ?? "")
+    .replace(/\u2060/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -57,7 +58,10 @@ function spoken(card: Card, selector: string): string {
     true,
   ) as Element;
   for (const hidden of element.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
-  return element.textContent.replace(/\s+/g, " ").trim();
+  return element.textContent
+    .replace(/\u2060/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 beforeEach(() => {
@@ -172,8 +176,12 @@ describe("before there is anything to show", () => {
     expect(text(card, '[role="alert"]')).toContain("Aula Connect er ikke indlæst");
   });
 
-  it("says when there are no children once retries are over, and names a missing child", async () => {
+  it("says when there are no children, or names a missing child, once retries are over", async () => {
     const { card } = await mount("aula-connect-homework-card", "thu-1930", { children: [1001, 9] });
+    expect(text(card, '[role="alert"]')).toBe("");
+    expect(text(card, '[role="status"]')).toBe("Opdaterer fra Aula…");
+    await vi.advanceTimersByTimeAsync(RETRY_WINDOW_MS + 60_000);
+    await card.updateComplete;
     expect(text(card, '[role="alert"]')).toBe("Aula Connect har intet barn med id 9.");
     const empty = await mount("aula-connect-card", "thu-1930", {}, (hass) => {
       hass.callWS.mockResolvedValue({ children: [] });

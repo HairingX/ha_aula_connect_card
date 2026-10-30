@@ -192,7 +192,7 @@ export function tasks(monday: string): Task[] {
       "Historie",
       "Vi ser første del af filmen om vikingerne. Husk madpakke – vi spiser i klassen.",
     ),
-    note(monday, 7, 10, "task", "Engelsk", "Øv gloserne fra uge 44.", "Glosetest"),
+    note(monday, 7, 10, "task", "Engelsk", "Øv ugens gloser.", "Glosetest"),
     note(monday, 7, 11, "comment", "Dansk", "Vi begynder på et nyt forløb om eventyr."),
     note(monday, 7, 12, "comment", "Musik", "Vi øver sange til juleafslutningen. Husk blokfløjte."),
     note(

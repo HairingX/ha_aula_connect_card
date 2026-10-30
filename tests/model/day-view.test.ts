@@ -72,7 +72,7 @@ describe("the rows above the school day's header", () => {
 
   it("shows Saturday's event going on as the rest of today", () => {
     const rows = above("sat-1000");
-    expect(rows.events.map((item) => [item.event.title, item.span])).toEqual([
+    expect(rows.events.map(({ item }) => [item.event.title, item.span])).toEqual([
       ["Loppemarked i skolegården", "within"],
     ]);
     expect(rows.bridges).toEqual([]);
@@ -80,7 +80,7 @@ describe("the rows above the school day's header", () => {
 
   it("names today's whole-day events and birthdays on a day without school, and not again later", () => {
     const rows = above("sat-1000-birthday");
-    expect(named(rows.facts)).toEqual(["Spejdertur", "Karl"]);
+    expect(named(rows.facts.map(({ item }) => item))).toEqual(["Spejdertur", "Karl"]);
     expect(rows.bridges).toEqual([]);
   });
 
@@ -97,6 +97,40 @@ describe("the rows above the school day's header", () => {
   it("names a holiday by its own dates, even beyond the range", () => {
     const [line] = above("holiday").bridges;
     expect(line?.row).toMatchObject({ kind: "holiday", first: "2026-10-10", last: "2026-10-18" });
+  });
+
+  it("leaves out hidden events and birthdays, today and on the days passed over", () => {
+    const show = { blocks: DEFAULT_ORDER.filter((id) => id !== "events" && id !== "birthdays") };
+    const saturday = group("sat-1000-birthday", show).above;
+    expect(saturday).toMatchObject({ today: [], events: [], facts: [], bridges: [] });
+    expect(group("fri-1400", show).above?.bridges).toEqual([]);
+  });
+
+  it("says a weekday passed over has every lesson cancelled", () => {
+    const item = scenarioNamed("thu-1930");
+    const snapshot = snapshotOf(item);
+    const key = "entry-a/1001";
+    const entry = snapshot.data.get(key);
+    if (!entry?.data) throw new Error("no data");
+    const data = new Map(snapshot.data);
+    const friday = (start: string): boolean => start.startsWith("2026-10-30");
+    data.set(key, {
+      ...entry,
+      data: {
+        ...entry.data,
+        lessons: entry.data.lessons.map((lesson) =>
+          friday(lesson.start) ? { ...lesson, status: "Aflyst" } : lesson,
+        ),
+        events: entry.data.events.filter((event) => !friday(event.start)),
+      },
+    });
+    const [first] = view("thu-1930", {}, { ...snapshot, data }).groups;
+    expect(first?.hero).toMatchObject({ kind: "day", focus: { day: "2026-11-02" } });
+    expect(first?.above?.bridges[0]?.row).toEqual({
+      kind: "empty",
+      days: ["2026-10-30"],
+      cancelled: true,
+    });
   });
 
   it("names a holiday going on today once, by its dates rather than in the rest of today", () => {
@@ -135,6 +169,15 @@ describe("the header", () => {
     });
     expect(item.above?.bridges).toEqual([]);
     expect(item.blocks).toEqual([]);
+  });
+
+  it("finds the holiday and the day school starts again when the holiday ends on a Friday", () => {
+    expect(group("before-weekday-holiday").hero).toMatchObject({
+      kind: "holiday",
+      first: "2026-10-12",
+      last: "2026-10-16",
+      resumes: "2026-10-19",
+    });
   });
 
   it("says what it knows when no holiday explains the days without school", () => {
@@ -184,6 +227,25 @@ describe("several children", () => {
       [["Oskar"], "2026-11-03"],
     ]);
     expect(shown.groups[1]?.above?.bridges.map((line) => line.row.kind)).toEqual(["holiday"]);
+  });
+
+  it("keep a header of their own for each holiday and the day each school starts again", () => {
+    const shown = view("two-holidays", { children: [] });
+    expect(
+      shown.groups.map((item) => [
+        item.children.map((child) => child.child.first_name),
+        item.hero?.kind === "holiday" ? item.hero.resumes : undefined,
+      ]),
+    ).toEqual([
+      [["Ida"], "2026-10-19"],
+      [["Oskar"], "2026-10-21"],
+    ]);
+  });
+
+  it("share a holiday's header when it says the same for each", () => {
+    const shown = view("before-holiday", { children: [] });
+    expect(shown.groups).toHaveLength(1);
+    expect(shown.groups[0]?.children).toHaveLength(2);
   });
 
   it("list each school's end time in one row of today, leaving out a cancelled lesson", () => {
@@ -252,7 +314,7 @@ describe("the school day's blocks", () => {
     const item = group("tue-1930-camp");
     expect(item.hero).toMatchObject({ focus: { day: "2026-11-04", reason: "tomorrow" } });
     expect(named(item.facts)).toEqual(["Lejrskole i Thy"]);
-    expect(item.above?.events.map((entry) => [entry.event.title, entry.span])).toEqual([
+    expect(item.above?.events.map(({ item: entry }) => [entry.event.title, entry.span])).toEqual([
       ["Lejrskole i Thy", "from"],
     ]);
   });

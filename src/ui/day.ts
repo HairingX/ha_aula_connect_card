@@ -11,6 +11,7 @@ import { html, nothing, type TemplateResult } from "lit";
 
 import type { ViewContext } from "../core/context.ts";
 import { capitalize, formatDay, formatDayRange, formatWeekday } from "../core/dates.ts";
+import { glue } from "../core/text.ts";
 import { childKey, type Child } from "../core/types.ts";
 import type { BridgeRow } from "../model/bridges.ts";
 import type { AboveRows, DayCardView, DayChildView, DayGroup, Hero } from "../model/day-view.ts";
@@ -22,6 +23,7 @@ import {
   apiError,
   aula,
   avatar,
+  columns,
   eventIcon,
   eventWhen,
   fact,
@@ -67,30 +69,36 @@ function factText(item: Fact, ctx: ViewContext): unknown {
     : ctx.t("birthdayOf", { name: item.birthday.name });
 }
 
-function todayRow(above: AboveRows, ctx: ViewContext): TemplateResult | typeof nothing {
+function whose(only: readonly Child[], ctx: ViewContext): string {
+  return only.length > 0 ? ` (${names(only, ctx)})` : "";
+}
+
+// With several children each time is named, so that one child's is never read as every child's.
+function todayRow(
+  above: AboveRows,
+  ctx: ViewContext,
+  several: boolean,
+): TemplateResult | typeof nothing {
   const { t } = ctx;
   if (above.today.length === 0) return nothing;
   const parts: unknown[] = [];
-  const [one] = above.today;
-  if (one && above.today.length === 1) {
-    if (one.running) parts.push(t("nowLesson", { subject: one.running.name }));
-    if (one.rest.ends !== undefined)
-      parts.push(t("schoolEnds", { time: timeText(one.rest.ends, ctx) }));
-  } else {
-    for (const entry of above.today) {
-      if (entry.rest.ends !== undefined) {
-        parts.push(
-          t("childEnds", { name: entry.child.first_name, time: timeText(entry.rest.ends, ctx) }),
-        );
-      }
+  for (const { child, rest, running } of above.today) {
+    const time = rest.ends === undefined ? undefined : timeText(rest.ends, ctx);
+    if (several) {
+      if (time !== undefined) parts.push(t("childEnds", { name: child.first_name, time }));
+    } else {
+      if (running) parts.push(t("nowLesson", { subject: running.name }));
+      if (time !== undefined) parts.push(t("schoolEnds", { time }));
     }
   }
-  parts.push(...above.facts.map((item) => factText(item, ctx)));
-  for (const item of above.events) {
+  for (const { item, only } of above.events) {
     parts.push(
-      html`${aula(item.event.title, ctx)} ${eventWhen(item, ctx, !isRunning(item.event, ctx.now))}`,
+      html`${aula(item.event.title, ctx)}
+      ${eventWhen(item, ctx, !isRunning(item.event, ctx.now))}${whose(only, ctx)}`,
     );
   }
+  for (const { item, only } of above.facts)
+    parts.push(html`${factText(item, ctx)}${whose(only, ctx)}`);
   return line("mdi:clock-outline", t("today"), joined(parts, ctx));
 }
 
@@ -107,19 +115,19 @@ function bridgeLabel(row: BridgeRow, ctx: ViewContext): string {
     case "empty":
       return first === last
         ? weekday(first)
-        : `${weekday(first)}–${formatWeekday(last, ctx.language)}`;
+        : glue(`${weekday(first)}–${formatWeekday(last, ctx.language)}`);
   }
 }
 
 function bridge(row: BridgeRow, only: readonly Child[], ctx: ViewContext): TemplateResult {
-  const whose = only.length > 0 ? ` (${names(only, ctx)})` : "";
+  const who = whose(only, ctx);
   switch (row.kind) {
     case "holiday":
       return line(
         eventIcon(row.event.type),
-        html`${aula(bridgeLabel(row, ctx), ctx)}${whose}`,
+        html`${aula(bridgeLabel(row, ctx), ctx)}${who}`,
         nothing,
-        formatDayRange(row.first, row.last, ctx.language, "long"),
+        formatDayRange(row.first, row.last, ctx.language, "short"),
       );
     case "weekend": {
       const [first] = row.items;
@@ -132,7 +140,7 @@ function bridge(row: BridgeRow, only: readonly Child[], ctx: ViewContext): Templ
       return line(
         first?.kind === "event" ? eventIcon(first.event.type) : "mdi:cake-variant-outline",
         bridgeLabel(row, ctx),
-        html`${joined(titles, ctx)}${whose}`,
+        html`${joined(titles, ctx)}${who}`,
         timed ? timeText(first.event.start, ctx) : nothing,
       );
     }
@@ -140,17 +148,21 @@ function bridge(row: BridgeRow, only: readonly Child[], ctx: ViewContext): Templ
       return line(
         "mdi:calendar-remove-outline",
         bridgeLabel(row, ctx),
-        `${ctx.t("noTimetableInAula")}${whose}`,
+        `${ctx.t(row.cancelled ? "allCancelled" : "noTimetableInAula")}${who}`,
       );
   }
 }
 
-function aboveRows(above: AboveRows, ctx: ViewContext): TemplateResult | typeof nothing {
+function aboveRows(
+  above: AboveRows,
+  ctx: ViewContext,
+  several: boolean,
+): TemplateResult | typeof nothing {
   if (above.today.length === 0 && above.bridges.length === 0 && above.moreDays === 0) {
     return nothing;
   }
   return html`<ul class="above">
-    ${todayRow(above, ctx)}${above.bridges.map((item) => bridge(item.row, item.only, ctx))}
+    ${todayRow(above, ctx, several)}${above.bridges.map((item) => bridge(item.row, item.only, ctx))}
     ${
       above.moreDays > 0
         ? html`<li class="bridge-more">${ctx.t("daysWithoutSchool", { n: above.moreDays })}</li>`
@@ -221,7 +233,11 @@ function strip(group: DayGroup, view: DayCardView, ctx: ViewContext): TemplateRe
           ${
             child.content?.hours
               ? hours(child.content.hours, ctx)
-              : html`<span class="quiet">${ctx.t("noTimetable")}</span>`
+              : child.content
+                ? html`<span class="quiet"
+                    >${ctx.t(child.content.view.lessons.length > 0 ? "allCancelled" : "noTimetable")}</span
+                  >`
+                : nothing
           }
           ${factList(
             child.facts.map((item) => fact(item, ctx)),
@@ -273,11 +289,11 @@ function group(
   const one = count === 1 ? first : undefined;
   const school = (child: Child): string[] =>
     view.differentSchools ? [child.institution_name] : [];
-  return html`<div class="child n-${String(Math.min(count, 3))} ${one ? "single" : ""}">
+  return html`<div class="child ${columns(count)} ${one ? "single" : ""}">
     ${one ? who(one.child, school(one.child)) : nothing} ${one ? childError(one, ctx) : nothing}
     ${
       item.hero
-        ? html`${item.above ? aboveRows(item.above, ctx) : nothing}
+        ? html`${item.above ? aboveRows(item.above, ctx, count > 1) : nothing}
           ${hero(item.hero, item.facts, one?.content?.hours, ctx, several ? one?.child : undefined)}
           ${count > 1 ? strip(item, view, ctx) : nothing}
           ${item.hero.kind === "day" ? blocks(item, ctx, state) : nothing}`
@@ -298,7 +314,7 @@ export function renderDay(view: DayCardView, ctx: ViewContext, state: CardState)
   // Children at schools with different days stand side by side; a shared day has its columns.
   const side =
     several && view.groups.every((item) => item.children.length === 1)
-      ? `kids-${String(Math.min(view.groups.length, 3))}`
+      ? columns(view.groups.length, "kids-")
       : "";
   return html`<section class="day stack" aria-label=${label}>
     <div class="kids">

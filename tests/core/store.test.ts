@@ -449,6 +449,28 @@ describe("listing the children again", () => {
     expect(subscribedIds(connection)).toContain(1001);
   });
 
+  it("lists again for a child a card names that was never listed, as an entry still loading", async () => {
+    const { connection, store, answer } = setup([IDA]);
+    store.watch({ children: [1001, 1002], onChange: vi.fn() });
+    await settle();
+    expect(store.snapshot.children).toEqual({ list: [IDA], error: undefined, refreshing: true });
+    answer(CHILDREN);
+    await vi.advanceTimersByTimeAsync(present(RETRY_DELAYS_MS[0]));
+    expect(store.snapshot.children.refreshing).toBe(false);
+    expect(subscribedIds(connection)).toEqual([1001, 1002]);
+  });
+
+  it("keeps listing for a child a card names after the window, every few minutes", async () => {
+    const { hass, store } = setup([IDA]);
+    store.watch({ children: [1002], onChange: vi.fn() });
+    await settle();
+    await vi.advanceTimersByTimeAsync(RETRY_WINDOW_MS + RETRY_MAX_MS);
+    expect(store.snapshot.children.refreshing).toBe(false);
+    const listings = hass.callWS.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(RETRY_SLOW_MS);
+    expect(hass.callWS).toHaveBeenCalledTimes(listings + 1);
+  });
+
   it("recovers when the entry loads an hour after a restart", async () => {
     const { connection, hass, store, answer } = setup();
     store.watch({ children: [], onChange: vi.fn() });

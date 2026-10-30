@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { htmlToText, initials, TEXT_CACHE_SIZE } from "../../src/core/text.ts";
+import { glue, htmlToText, initials, TEXT_CACHE_SIZE } from "../../src/core/text.ts";
 
 describe("htmlToText", () => {
   it("keeps plain text as it is, trimmed", () => {
@@ -47,5 +47,21 @@ describe("initials", () => {
 
   it("gives the initial of a single name", () => {
     expect(initials(" Karen ")).toBe("K");
+  });
+});
+
+describe("glue", () => {
+  it.each([
+    [
+      "Husk madpakke – vi spiser i klassen.",
+      "Husk madpakke\u00a0–\u2060\u00a0vi spiser i klassen.",
+    ],
+    ["Side 32–33", "Side 32–\u206033"],
+    ["Frikvarter · 35 min", "Frikvarter\u00a0·\u2060\u00a035 min"],
+    ["Oct 10\u2009–\u200918", "Oct 10\u202f–\u2060\u202f18"],
+    ["Pause — så videre", "Pause\u00a0—\u2060\u00a0så videre"],
+    ["Ingen streg", "Ingen streg"],
+  ])("joins the dashes and dots of %j to the words beside them", (text, glued) => {
+    expect(glue(text)).toBe(glued);
   });
 });

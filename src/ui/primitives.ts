@@ -22,6 +22,7 @@ import {
   instant,
 } from "../core/dates.ts";
 import type { Translate } from "../core/i18n.ts";
+import { glue } from "../core/text.ts";
 import type { Child, Day } from "../core/types.ts";
 import type { Fact, TimedEvent } from "../model/blocks.ts";
 import type { FocusReason } from "../model/focus.ts";
@@ -56,9 +57,13 @@ export function refreshing(t: Translate): TemplateResult {
   return html`<p class="status" role="status">${t("updating")}</p>`;
 }
 
-/** Marks Aula's own text as Danish when the cards are in English, for screen readers. */
+/**
+ * Shows Aula's own text, marked as Danish when the cards are in English, for screen readers; its
+ * dashes and dots never begin or end a line.
+ */
 export function aula(text: string, ctx: ViewContext): TemplateResult | string {
-  return ctx.lang === "da" ? text : html`<span lang="da">${text}</span>`;
+  const shown = glue(text);
+  return ctx.lang === "da" ? shown : html`<span lang="da">${shown}</span>`;
 }
 
 /** Shows a time of day, with AM and PM set smaller, so a 12-hour time stays narrow. */
@@ -72,12 +77,15 @@ export function time(text: string, ctx: ViewContext, cls = ""): TemplateResult |
   >`;
 }
 
-/** Shows a time span, such as "08.00–12.55" or "8:00 AM – 12:55 PM". */
+/**
+ * Shows a time span, such as "08.00–12.55" or "8:00 AM – 12:55 PM", kept on one line. Where a
+ * wall screen's column is too narrow, a 12-hour span may break before its dash, never after it.
+ */
 export function timeSpan(start: string, end: string, ctx: ViewContext): TemplateResult {
-  // Thin spaces set the dash off from AM and PM, which would otherwise run into it; the one
-  // after it never breaks, so that a line does not end with the dash.
-  return html`<span class="tabular"
-    >${time(start, ctx)}${ctx.amPm ? " – " : "–"}${time(end, ctx)}</span
+  // Thin spaces set the dash off from AM and PM, which would otherwise run into it; a word
+  // joiner keeps the dash with the time after it.
+  return html`<span class="tabular span"
+    >${time(start, ctx)}${ctx.amPm ? "\u2009–\u2060\u202f" : "–\u2060"}${time(end, ctx)}</span
   >`;
 }
 
@@ -95,6 +103,16 @@ export function label(content: unknown, cls = ""): TemplateResult {
 /** Shows the "Nu" label of the lesson going on, with its dot in the theme's colour. */
 export function nowLabel(t: Translate): TemplateResult {
   return label(html`<span class="dot" aria-hidden="true"></span>${t("now")}`, "now");
+}
+
+/**
+ * Returns the classes of a set of children's columns: one column a child up to three; with more,
+ * two rows, as a column narrower than a third of a wall screen cannot hold its type.
+ */
+export function columns(count: number, prefix = "n-"): string {
+  return count > 3
+    ? `${prefix}${String(Math.min(3, Math.ceil(count / 2)))} tworow`
+    : `${prefix}${String(count)}`;
 }
 
 /** Shows a child's initial in a circle. */
@@ -133,14 +151,14 @@ export function eventIcon(type: string): string {
 export function fact(item: Fact, ctx: ViewContext, after: unknown = nothing): TemplateResult {
   if (item.kind === "event") {
     const { event } = item;
+    const title = aula(event.title, ctx);
+    // The place's dot is cut where it would begin a line, so no line ends with one.
     return html`<span class="fact"
-      >${icon(eventIcon(event.type))}<span
-        >${aula(event.title, ctx)}${
-          event.location
-            ? html`<span class="quiet"> · ${aula(event.location, ctx)}</span>`
-            : nothing
-        }${after}</span
-      ></span
+      >${icon(eventIcon(event.type))}${
+        event.location
+          ? segments([title, html`${aula(event.location, ctx)}${after}`])
+          : html`<span>${title}${after}</span>`
+      }</span
     >`;
   }
   const name = item.birthday.name;

@@ -20,6 +20,7 @@ import {
   formatWeekdayShort,
   formatWeekdayShortDate,
 } from "../core/dates.ts";
+import { glue } from "../core/text.ts";
 import { childKey, type Child, type Day } from "../core/types.ts";
 import type { BlockId } from "../model/blocks.ts";
 import type { Focus } from "../model/focus.ts";
@@ -129,7 +130,8 @@ function summary(
     row.plan.blocks.some((block) => block.id === id && block.empty === undefined);
   const facts: unknown[] = [...extra];
   if (extra.length === 0) {
-    if (content.hours && shown("timetable")) facts.push(hours(content.hours, ctx));
+    if (shown("timetable"))
+      facts.push(content.hours ? hours(content.hours, ctx) : ctx.t("allCancelled"));
     if (shown("homework")) facts.push(ctx.t("homeworkCount", { n: content.homework.length }));
     if (facts.length === 0 && content.view.lessons.length === 0)
       facts.push(ctx.t("noTimetableInAula"));
@@ -203,12 +205,17 @@ function weekendRow(
       entry.days.push(row.day);
       entries.set(id, entry);
     };
-    for (const entry of row.facts) {
-      add(
-        entry.kind === "event" ? `e${String(entry.event.id)}` : `b${entry.birthday.name}`,
-        (after) => fact(entry, ctx, after),
-      );
-    }
+    const facts = (): void => {
+      for (const entry of row.facts) {
+        add(
+          entry.kind === "event" ? `e${String(entry.event.id)}` : `b${entry.birthday.name}`,
+          (after) => fact(entry, ctx, after),
+        );
+      }
+    };
+    const today = row.day === ctx.today;
+    // What is on now or later today comes first, as it is what the row is read for today.
+    if (!today) facts();
     for (const timed of row.content.timed) {
       add(
         `e${String(timed.event.id)}`,
@@ -218,16 +225,17 @@ function weekendRow(
               >${aula(timed.event.title, ctx)}${after}</span
             ></span
           >`,
-        row.day === ctx.today ? eventWhen(timed, ctx) : nothing,
+        today ? eventWhen(timed, ctx) : nothing,
       );
     }
+    if (today) facts();
   }
   const items = [...entries.values()].map(({ show, days, when }) => {
     const words = days.map((day) => weekdayWord(day, ctx));
     const where =
       when === nothing
         ? words.length > 1
-          ? `${words[0] ?? ""}–${words[words.length - 1] ?? ""}`
+          ? glue(`${words[0] ?? ""}–${words[words.length - 1] ?? ""}`)
           : words[0]
         : when;
     return html`<span class="weekend-item"
@@ -343,7 +351,7 @@ function weekRow(item: WeekRow, child: Child, ctx: ViewContext, state: CardState
             ${item.today ? label(ctx.t("today"), "relation") : nothing}</span
           >
           <span class="line-2"
-            >${formatDayRange(item.first, item.last, ctx.language, "short")}</span
+            >${item.whole ? t("wholeWeek") : formatDayRange(item.first, item.last, ctx.language, "short")}</span
           >
         </span>
       </div>`;

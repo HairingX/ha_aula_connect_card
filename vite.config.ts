@@ -6,8 +6,10 @@ import { defineConfig } from "vitest/config";
 const version = process.env.CARD_VERSION ?? "0.0.0";
 
 /**
- * Returns CSS without its comments and the whitespace it needs only to be read. Quoted strings,
- * such as a generated ", ", are kept as they are.
+ * Returns CSS without its comments and the whitespace it needs only to be read: around braces,
+ * semicolons, commas, a selector's combinators, and a multiplication or division, and the zero
+ * before a decimal point. Quoted strings, such as a generated ", ", are kept as they are, and so
+ * are the spaces around an addition or a subtraction, which calc() needs.
  */
 export function minifyCss(css: string): string {
   return css
@@ -18,8 +20,11 @@ export function minifyCss(css: string): string {
         ? part
         : part
             .replace(/\s+/g, " ")
-            .replace(/\s*([{};,])\s*/g, "$1")
+            .replace(/\s*([{};,*/>])\s*/g, "$1")
             .replace(/:\s+/g, ":")
+            .replace(/([^\w.-])0\.(\d)/g, "$1.$2")
+            // A selector's "+", before its block; calc() needs the spaces of its own.
+            .replace(/ \+ (?=[^{};]*\{)/g, "+")
             .replace(/;}/g, "}"),
     )
     .join("")

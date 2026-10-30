@@ -75,18 +75,19 @@ export function parseChildren(value: unknown): number[] {
 }
 
 /**
- * Reads `switch_time`: "HH:MM", "HH.MM" or "HH:MM:SS", seconds ignored; or a whole number: 0 to
- * 23 an hour, 60 to 1439 minutes after midnight, as YAML 1.1 reads an unquoted 12:00 (720), and
- * 3600 to 86399 seconds, as it reads 12:00:00 (43200). Midnight turns the switch off.
+ * Reads `switch_time`: "HH:MM", "HH.MM" or "HH:MM:SS", seconds ignored, or "HH", a whole hour;
+ * or a whole number: 0 to 23 an hour, 60 to 1439 minutes after midnight, as YAML 1.1 reads an
+ * unquoted 12:00 (720), and 3600 to 86399 seconds, as it reads 12:00:00 (43200). Midnight turns
+ * the switch off.
  */
 export function parseSwitchTime(value: unknown): number | null {
   if (absent(value)) return DEFAULT_SWITCH;
   let minutes: number | undefined;
   if (typeof value === "string") {
-    const match = /^(\d{1,2})[:.](\d{2})(?::(\d{2}))?$/.exec(value.trim());
+    const match = /^(\d{1,2})(?:[:.](\d{2})(?::(\d{2}))?)?$/.exec(value.trim());
     if (match) {
       const hours = Number(match[1]);
-      const mins = Number(match[2]);
+      const mins = Number(match[2] ?? 0);
       if (hours < 24 && mins < 60 && Number(match[3] ?? 0) < 60) minutes = hours * 60 + mins;
     }
   } else if (typeof value === "number" && Number.isSafeInteger(value)) {
@@ -95,9 +96,7 @@ export function parseSwitchTime(value: unknown): number | null {
     else if (value >= 3600 && value < 86_400) minutes = Math.floor(value / 60);
   }
   if (minutes === undefined) {
-    throw new Error(
-      `switch_time: ${JSON.stringify(value)} is not a time; write it as "12:00", or a whole hour such as 12`,
-    );
+    throw new Error(`switch_time: ${JSON.stringify(value)} is not a time; write it as "12:00"`);
   }
   return minutes === 0 ? null : minutes;
 }

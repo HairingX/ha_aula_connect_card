@@ -30,6 +30,9 @@ describe("the namer", () => {
     ["Engelsk", "Engelsk"],
     ["BI", "BI"],
     ["Lejrskole", "Lejrskole"],
+    ["3.B Kristendomskundskab og filosofi", "Kristendomskundskab og filosofi"],
+    ["Valgfag 7a", "Valgfag"],
+    ["3.B", "3.B"],
   ])("names %j %j", (raw, name) => {
     expect(namer(raw).name).toBe(name);
   });

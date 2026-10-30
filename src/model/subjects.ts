@@ -83,8 +83,8 @@ const BUILT_IN = new Map<string, string>(
 );
 
 /**
- * Returns a namer: the configured names first, then the built-in Danish ones, else the text as
- * it is. Only whole titles are named.
+ * Returns a namer: the configured names first, then the built-in Danish ones, else the text
+ * without a class marker standing alone at its start or end. Only whole titles are named.
  */
 export function subjectNamer(overrides: readonly SubjectName[]): SubjectNamer {
   const configured = new Map(overrides.map((item) => [subjectKey(item.aula), item.name.trim()]));
@@ -93,7 +93,8 @@ export function subjectNamer(overrides: readonly SubjectName[]): SubjectNamer {
     let label = named.get(raw);
     if (!label) {
       const key = subjectKey(raw);
-      const name = configured.get(key) ?? BUILT_IN.get(key) ?? raw.trim();
+      // The class is the child's own, so its marker says nothing; Aula's title stays the tooltip.
+      const name = configured.get(key) ?? BUILT_IN.get(key) ?? raw.trim().replace(CLASS_MARKER, "");
       label = { name, raw, key: subjectKey(name) };
       named.set(raw, label);
     }

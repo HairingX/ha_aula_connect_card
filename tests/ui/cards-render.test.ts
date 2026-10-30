@@ -16,7 +16,10 @@ const WEEK = "aula-connect-card";
 function spokenOf(root: ParentNode, selector: string): string {
   const element = present(root.querySelector(selector)).cloneNode(true) as Element;
   for (const hidden of element.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
-  return element.textContent.replace(/\s+/g, " ").trim();
+  return element.textContent
+    .replace(/\u2060/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function spoken(card: Card, selector: string): string {
@@ -24,7 +27,12 @@ function spoken(card: Card, selector: string): string {
 }
 
 function texts(card: Card, selector: string): string[] {
-  return all(card, selector).map((element) => element.textContent.replace(/\s+/g, " ").trim());
+  return all(card, selector).map((element) =>
+    element.textContent
+      .replace(/\u2060/g, "")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
 }
 
 async function open(card: Card, selector: string): Promise<void> {
@@ -237,7 +245,7 @@ describe("the school day card", () => {
       language: "en",
     });
     expect(text(card, ".above")).toContain("Lejrskole i Thy 8:00 AM →");
-    expect(texts(card, ".hero .fact")).toEqual(["Lejrskole i Thy · Thy Lejren"]);
+    expect(texts(card, ".hero .fact")).toEqual(["Lejrskole i Thy, Thy Lejren"]);
   });
 
   it("puts the hours of each child on the wall in large type", async () => {
@@ -253,6 +261,124 @@ describe("the school day card", () => {
       "Indendørssko",
       "Håndklæde",
     ]);
+  });
+});
+
+describe("the school day card's rows above", () => {
+  it("names each child's time when school ends, never one child's as every child's", async () => {
+    const { card } = await mount(DAY, "thu-1300");
+    expect(text(card, ".above .bridge")).toBe("I dag Oskar fri kl. 14.30");
+    unmountAll();
+    const { card: both } = await mount(DAY, "fri-1240");
+    expect(text(both, ".above .bridge")).toBe("I dag Ida fri kl. 13.40, Oskar fri kl. 13.30");
+  });
+
+  it("names what is on now before the day's whole-day events and birthdays", async () => {
+    const { card } = await mount(DAY, "sat-1000-birthday", { config: { children: [1001] } });
+    expect(text(card, ".above .bridge")).toBe(
+      "I dag Loppemarked i skolegården 10.00–13.00, Spejdertur, Karl har fødselsdag",
+    );
+  });
+
+  it("names a child an event of today is for, when not every child has it", async () => {
+    const { card } = await mount(DAY, "sat-1000", {
+      ...changed("sat-1000", (data, child) =>
+        child.child_id === 1002
+          ? { ...data, events: data.events.filter((event) => event.id !== "e3") }
+          : data,
+      ),
+    });
+    expect(text(card, ".above .bridge")).toBe("I dag Loppemarked i skolegården 10.00–13.00 (Ida)");
+  });
+
+  it("gives a long holiday's dates a line of their own, by short month names", async () => {
+    const { card } = await mount(DAY, "juleferie", { config: { children: [1001] } });
+    expect(texts(card, ".bridge.alone .bridge-end")).toEqual(["19. dec. 2026–3. jan. 2027"]);
+  });
+
+  it("says a weekday passed over has every lesson cancelled", async () => {
+    const { card } = await mount(DAY, "thu-1930", {
+      config: { children: [1001] },
+      ...changed("thu-1930", (data) => ({
+        ...data,
+        lessons: data.lessons.map((lesson) =>
+          lesson.start.startsWith("2026-10-30") ? { ...lesson, status: "Aflyst" } : lesson,
+        ),
+        events: data.events.filter((event) => !event.start.startsWith("2026-10-30")),
+      })),
+    });
+    expect(texts(card, ".bridge")[0]).toBe("Fredag Alle timer aflyst");
+  });
+});
+
+describe("the school day card's blocks", () => {
+  it("says once what every child lacks, naming no one", async () => {
+    const { card } = await mount(DAY, "sun-1800-noplan");
+    expect(texts(card, '[data-block="homework"] .empty')).toEqual([
+      "Ugeplanen for uge 45 er ikke i Aula endnu.",
+    ]);
+    expect(all(card, '[data-block="homework"] .part-who')).toEqual([]);
+  });
+
+  it("names a child with nothing on one line beside a child who has something", async () => {
+    const { card } = await mount(DAY, "thu-1930");
+    const parts = all(card, '[data-block="homework"] .part');
+    expect(parts.map((part) => part.classList.contains("is-empty"))).toEqual([false, true]);
+  });
+
+  it("labels the day's subjects apart from them, in the cards' own language", async () => {
+    const { card } = await mount(DAY, "thu-1930", { config: { children: [1001] }, language: "en" });
+    expect(text(card, ".pack-label")).toBe("Subjects:");
+    expect(text(card, '.pack-subjects [lang="da"]')).toBe("Matematik, Dansk, Engelsk, Historie");
+  });
+
+  it("puts an event's place on a line under its title, with no dot", async () => {
+    const { card } = await mount(DAY, "thu-1930", {
+      config: { children: [1001] },
+      ...changed("thu-1930", (data) => ({
+        ...data,
+        events: [
+          ...data.events,
+          {
+            id: "x",
+            start: "2026-10-30T17:00:00+01:00",
+            end: "2026-10-30T18:30:00+01:00",
+            all_day: false,
+            title: "Høstfest",
+            type: "event",
+            location: "Kantinen",
+          },
+        ],
+      })),
+    });
+    expect(text(card, '[data-block="events"] .item-place')).toBe("Kantinen");
+    expect(text(card, '[data-block="events"] .item-text')).toBe("HøstfestKantinen");
+  });
+
+  it("says a child's every lesson is cancelled in its row", async () => {
+    const { card } = await mount(DAY, "thu-1930-allcancelled");
+    expect(texts(card, ".strip .kid > .quiet")).toEqual(["Alle timer aflyst"]);
+  });
+
+  it("names no day without a timetable under a holiday's header", async () => {
+    const { card } = await mount(DAY, "before-holiday");
+    expect(texts(card, ".strip .kid-name")).toEqual(["Ida", "Oskar"]);
+    expect(all(card, ".strip .kid > .quiet")).toEqual([]);
+  });
+
+  it("stands children in two rows when there are more than three", async () => {
+    const four = { ...present(scenarioNamed("thu-0715-3child").children[2]), child_id: 1004 };
+    const { card } = await mount(DAY, "thu-0715-3child", {
+      setup: (hass) => {
+        const item = scenarioNamed("thu-0715-3child");
+        hass.callWS.mockResolvedValue({ children: [...item.children, four] });
+        hass.connection.respond = (message) =>
+          item.data(
+            present([...item.children, four].find((child) => child.child_id === message.child_id)),
+          );
+      },
+    });
+    expect(present(card.shadowRoot?.querySelector(".child")).className).toContain("n-2 tworow");
   });
 });
 
@@ -274,7 +400,14 @@ describe("the homework card", () => {
     const { card } = await mount(HOMEWORK, "thu-1530", { config: { children: [1001] } });
     expect(all(card, ".hw-day:first-of-type .homework")).toHaveLength(1);
     expect(all(card, ".hw-day:first-of-type .hw")).toHaveLength(2);
-    expect(spoken(card, ".title-who")).toBe("Ida, Lektier");
+  });
+
+  it("has a title saying whose homework it is and the weeks it covers, for one child or several", async () => {
+    const { card } = await mount(HOMEWORK, "thu-1530", { config: { children: [1001] } });
+    expect(spoken(card, ".title-who")).toBe("Ida, Lektier, uge 44–45");
+    const { card: both } = await mount(HOMEWORK, "thu-1530", { language: "en" });
+    expect(spoken(both, ".title-who")).toBe("Ida and Oskar, Homework, weeks 44–45");
+    expect(all(both, ".title-who .avatar")).toHaveLength(2);
   });
 
   it("shows a child's homework while another loads, and why one cannot be shown", async () => {
@@ -308,6 +441,20 @@ describe("the homework card", () => {
     );
   });
 
+  it("says once what every child lacks on a day, naming no one", async () => {
+    const { card } = await mount(HOMEWORK, "sun-1800-noplan");
+    const [monday] = all(card, ".hw-day");
+    expect(monday?.querySelectorAll(".part-who")).toHaveLength(0);
+    expect(texts(card, ".hw-day:first-of-type .empty")).toEqual([
+      "Ugeplanen for uge 45 er ikke i Aula endnu.",
+    ]);
+  });
+
+  it("puts one child's days in a grid that becomes columns where there is room", async () => {
+    const { card } = await mount(HOMEWORK, "thu-1530", { config: { children: [1001] } });
+    expect(all(card, ".hw-days > .hw-day")).toHaveLength(4);
+  });
+
   it("says next week's plan is not in Aula yet on a line of its own", async () => {
     const { card } = await mount(HOMEWORK, "thu-1530", {
       config: { children: [1001] },
@@ -321,6 +468,41 @@ describe("the homework card", () => {
 });
 
 describe("the week card", () => {
+  it("names what is on now first in today's weekend row", async () => {
+    const { card } = await mount(WEEK, "sat-1000-birthday", { config: { children: [1001] } });
+    expect(texts(card, ".weekend-row .weekend-item")[0]).toBe(
+      "Loppemarked i skolegården 10.00–13.00",
+    );
+  });
+
+  it("shows a Saturday with a lesson as a day with its hours", async () => {
+    const { card } = await mount(WEEK, "thu-1930-satlesson", { config: { children: [1001] } });
+    const saturday = all(card, ".day-row:not(.focus-day)").find((row) =>
+      row.querySelector(".daycol")?.textContent.includes("31"),
+    );
+    expect(
+      saturday
+        ?.querySelector(".line-1")
+        ?.textContent.replace(/\u2060/g, "")
+        .trim(),
+    ).toBe("09.00–12.00");
+  });
+
+  it("says when every lesson of a closed day is cancelled", async () => {
+    const { card } = await mount(WEEK, "thu-1930-allcancelled", {
+      config: { children: [1001] },
+      clock: "2026-10-28T19:30:00+01:00",
+    });
+    expect(texts(card, ".day-row:not(.focus-day) .line-1")).toContain(
+      "Alle timer aflyst, 2 lektier",
+    );
+  });
+
+  it("says a holiday's second week is a whole week, rather than its dates again", async () => {
+    const { card } = await mount(WEEK, "before-holiday", { config: { children: [1001] } });
+    expect(texts(card, ".holiday-row .line-2")).toEqual(["10.–18. okt.", "hele ugen"]);
+  });
+
   it("marks the weekend as today while its event is on, with the event's time", async () => {
     const { card } = await mount(WEEK, "sat-1000", { config: { children: [1001] } });
     expect(text(card, ".weekend-row.today-row .relation")).toBe("I dag");
@@ -341,7 +523,7 @@ describe("the week card", () => {
       language: "en",
     });
     expect(present(card.shadowRoot?.querySelector(".weekend-row .line-2")).textContent).toContain(
-      "AM\u2009\u2013\u202f1:00",
+      "AM\u2009\u2013\u2060\u202f1:00",
     );
   });
 
@@ -359,10 +541,9 @@ describe("the week card", () => {
     const { card } = await mount(WEEK, "thu-1000", { config: { children: [1001] } });
     const days = all(card, ".weekend-item .quiet").map((item) => item.parentElement);
     expect(days.map((item) => item?.closest(".fact") !== null)).toEqual([true, true]);
-    expect(days.map((item) => item?.textContent.replace(/\s+/g, " "))).toEqual([
-      "Loppemarked i skolegården, lør.",
-      "ViggoViggo har fødselsdag, søn.",
-    ]);
+    expect(
+      days.map((item) => item?.textContent.replace(/\u2060/g, "").replace(/\s+/g, " ")),
+    ).toEqual(["Loppemarked i skolegården, lør.", "ViggoViggo har fødselsdag, søn."]);
   });
 
   it("marks a holiday as today while it lasts", async () => {

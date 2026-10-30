@@ -2,13 +2,15 @@
  * Renders the built cards with made-up data in Chromium, as Home Assistant shows them: on its own
  * design tokens (`scripts/ha-tokens.css`), in a light or dark theme, with a primary colour as a
  * theme sets it, at a fixed time. Run `npm run build` first, then
- * `node scripts/screenshot.ts [--set docs|review|round|all] [--out DIR] [--only GLOB]`.
+ * `node scripts/screenshot.ts [--set docs|review|round|extra|all] [--out DIR] [--only GLOB]`.
  * Playwright with Chromium is installed outside the repository; Roboto is used when installed.
  *
  * Each shot is a scenario of `tests/fixtures/scenarios.ts`, so that it shows a tested case. The
  * page's connection answers only the range the store is expected to ask for: a change of the
- * range policy fails the script. So does a shot whose layout is broken: text past the card's
- * edge, children side by side whose names do not share a line, or a time broken across lines.
+ * range policy fails the script. So does a shot whose layout is broken: text past the card's or
+ * its column's edge, children side by side whose names do not share a line, a time broken
+ * across lines, a line that ends with a dot or a dash, a word broken where it need not be, or a
+ * thing to bring cut short.
  *
  * @packageDocumentation
  */
@@ -78,7 +80,7 @@ interface Shot {
   readonly theme: "light" | "dark";
   readonly primary: keyof typeof PRIMARIES;
   readonly locale: "da" | "en-US";
-  readonly children: 1 | 2;
+  readonly children: 1 | 2 | 3;
   readonly large?: boolean;
   /** Configuration besides the children and the size. */
   readonly config?: Readonly<Record<string, unknown>>;
@@ -95,6 +97,9 @@ const PACKING = [
   { subject: "Idræt", items: ["Idrætstøj", "Indendørssko", "Håndklæde"] },
   { subject: "Svømning", items: ["Badetøj", "Håndklæde"] },
 ];
+
+// The README's wall screen: large, with what to bring first and then the homework.
+const WALL = { large: true, glance: true, config: { order: ["pack", "homework"] } } as const;
 
 function shot(
   card: Shot["card"],
@@ -121,7 +126,8 @@ const SETS: Record<string, () => Shot[]> = {
     shot("day", "thu-1930", 380),
     shot("day", "thu-1010", 380, { theme: "dark" }),
     shot("day", "fri-1240", 380, { primary: "orange", locale: "en-US" }),
-    shot("day", "thu-0715", 800, { large: true, children: 2 }),
+    shot("day", "thu-0715", 800, { ...WALL, children: 2 }),
+    shot("day", "thu-1930", 800, { ...WALL, children: 2 }),
     shot("homework", "thu-1930", 380),
     shot("homework", "thu-1930", 800, { children: 2 }),
     shot("week", "thu-1010", 380),
@@ -144,8 +150,9 @@ const SETS: Record<string, () => Shot[]> = {
       shot(card, "thu-1010", 304, { primary: "indigo" }),
       shot(card, "thu-1010", 380, { locale: "en-US" }),
     ]),
-    shot("day", "thu-0715", 800, { large: true, children: 2, glance: true }),
-    shot("day", "thu-0715", 800, { large: true, children: 2, theme: "dark" }),
+    shot("day", "thu-0715", 800, { ...WALL, children: 2 }),
+    shot("day", "thu-0715", 800, { ...WALL, children: 2, theme: "dark" }),
+    shot("day", "thu-0715", 800, { large: true, children: 2, tag: "default-order" }),
     shot("day", "thu-1930", 380, { config: { order: ["timetable"] }, tag: "order-timetable" }),
     shot("week", "thu-1930", 380, {
       config: {
@@ -155,7 +162,7 @@ const SETS: Record<string, () => Shot[]> = {
       tag: "config-0.0.2",
     }),
   ],
-  // The first round for the owner: each card at the moments that matter, as the brief asks.
+  // The review rounds' matrix: each card at the moments that matter, as the brief asks.
   round: () => [
     shot("day", "thu-0715", 380),
     shot("day", "thu-1530", 380),
@@ -168,42 +175,62 @@ const SETS: Record<string, () => Shot[]> = {
     shot("day", "thu-1010", 380, { locale: "en-US", primary: "orange" }),
     shot("day", "no-week-plan", 380),
     shot("day", "thu-0715", 800),
-    shot("day", "thu-0715", 800, { large: true, children: 2, glance: true }),
+    shot("day", "thu-0715", 800, { ...WALL, children: 2 }),
+    shot("day", "thu-1930", 800, { ...WALL, children: 2 }),
     shot("day", "thu-1530", 800, { theme: "dark", children: 2 }),
     shot("day", "two-schools", 800, { children: 2 }),
     shot("homework", "thu-1530", 380),
     shot("homework", "thu-1530", 380, { theme: "dark", children: 2 }),
     shot("homework", "thu-1530", 800),
     shot("homework", "thu-1530", 800, { children: 2 }),
-    shot("week", "thu-1000", 380),
-    shot("week", "thu-1000", 800),
+    shot("week", "thu-1010", 380),
+    shot("week", "thu-1010", 800),
     shot("week", "sat-1000", 380),
     shot("week", "sat-1000", 800),
-    shot("week", "thu-1000", 800, { theme: "dark", children: 2 }),
+    shot("week", "thu-1010", 800, { theme: "dark", children: 2 }),
   ],
-  // The cases the first review added: children on a phone, the wall and the kiosk, an unpublished
-  // week plan, a camp, a cancelled lesson, long names at the narrowest width, an opened weekend.
+  // The cases the reviewers added: children on a phone, the wall and the kiosk, as installed
+  // and with three children, an unpublished week plan, a camp, cancelled lessons, holidays,
+  // long names and reminders at the narrowest width, an opened weekend and an opened day.
   extra: () => [
     shot("day", "thu-1930", 380, { children: 2 }),
     shot("day", "sun-1800", 380, { children: 2 }),
     shot("day", "fri-1240", 380, { children: 2 }),
+    shot("day", "thu-1300", 380, { children: 2 }),
     shot("homework", "thu-1930", 380, { children: 2 }),
     shot("homework", "sun-1800", 380, { children: 2 }),
-    shot("day", "thu-1930", 800, { large: true, children: 2 }),
-    shot("day", "thu-0715", 800, { large: true }),
-    shot("day", "thu-0715", 1216, { large: true, children: 2, glance: true }),
+    shot("day", "thu-0715", 800, { ...WALL }),
+    shot("day", "thu-0715", 1216, { ...WALL, children: 2 }),
+    shot("day", "thu-0715", 1216, { ...WALL, locale: "en-US", children: 2 }),
+    shot("day", "thu-0715-3child", 1216, { ...WALL, children: 3 }),
+    shot("day", "thu-1930", 800, {
+      ...WALL,
+      children: 2,
+      config: { ...WALL.config, packing: [] },
+      tag: "nopacking",
+    }),
+    shot("day", "thu-1930-reminders", 800, { ...WALL, children: 2 }),
+    shot("day", "thu-1930-reminders", 304),
     shot("day", "fri-1240", 800, { children: 2 }),
     shot("day", "sun-1800-noplan", 380, { children: 2 }),
     shot("week", "fri-1400-noplan", 380),
     shot("day", "tue-1930-camp", 380, { locale: "en-US" }),
+    shot("day", "thu-1930-allcancelled", 800, { children: 2 }),
+    shot("day", "before-weekday-holiday", 380),
+    shot("day", "two-holidays", 800, { children: 2 }),
+    shot("day", "juleferie", 304),
     shot("day", "fri-1400-longholiday", 304),
     shot("week", "fri-1400-longholiday", 304),
     shot("day", "fri-1400-longholiday", 800, { children: 2 }),
     shot("day", "thu-1930-stress", 304),
     shot("day", "thu-1930-stress", 380, { large: true }),
     shot("homework", "thu-1930-stress", 304, { locale: "en-US" }),
+    shot("homework", "thu-1530", 1216),
     shot("week", "sat-1000-birthday", 380, { click: ".weekend-row > summary", tag: "open" }),
     shot("week", "sat-1000-birthday", 380, { locale: "en-US" }),
+    shot("week", "thu-1930", 380, { click: ".day-row:not(.focus-day) > summary", tag: "open" }),
+    shot("week", "thu-1930-satlesson", 380),
+    shot("week", "before-holiday", 380),
     shot("week", "sun-1800", 800),
     shot("homework", "before-holiday", 800, { children: 2 }),
   ],
@@ -344,8 +371,9 @@ const FIRST_SCREEN = 800 - 56;
 
 /**
  * Runs in the page: tells what is wrong with the first glance at a wall screen, if anything. The
- * header's title must be the largest text, at least 56 px; each child's hours and things to bring
- * must be on the first screen, at least 30 px; and the children must stand side by side.
+ * header's title must be the largest text, at least 56 px; each child's hours and things to bring,
+ * set up or quoted, must be on the first screen, at least 30 px, the day's subjects at least
+ * 24 px, and none of them cut short; and the children must stand side by side.
  */
 function glance(arg: { tag: string; screen: number }): string[] {
   const root = document.querySelector(arg.tag)?.shadowRoot;
@@ -380,25 +408,30 @@ function glance(arg: { tag: string; screen: number }): string[] {
   const husk = [...root.querySelectorAll('[data-block="pack"] .part')];
   if (husk.length === 0) problems.push("Husk is not shown");
   for (const part of husk) {
-    const things = [...part.querySelectorAll(".pack-row:not(.quote) .pack-what")];
-    const first = things[0] ?? part;
+    const things = [...part.querySelectorAll(".pack-what")];
+    const subjects = part.querySelector(".pack-subjects");
+    const first = things[0] ?? subjects ?? part;
     if (below(first) > arg.screen)
       problems.push(`a child's Husk ends ${String(below(first))} px down`);
     for (const item of things) {
       if (size(item) < 30) problems.push(`a thing to bring is ${String(size(item))} px`);
+      if (item.scrollHeight > item.clientHeight + 1) problems.push("a thing to bring is cut");
     }
+    if (subjects && size(subjects) < 24)
+      problems.push(`the subjects are ${String(size(subjects))} px`);
   }
   const kids = [...root.querySelectorAll(".strip .kid")];
-  if (kids.length < 2) problems.push("the children are not shown");
   const tops = new Set(kids.map((kid) => Math.round(kid.getBoundingClientRect().top)));
-  if (tops.size !== 1) problems.push("the children are not side by side");
+  if (tops.size > 1) problems.push("the children are not side by side");
   return problems;
 }
 
 /**
  * Runs in the page: tells what is wrong with a card's layout, if anything. No text may reach past
- * the card's content box, unless an element within clips it; children set side by side have their
- * names on one line; and no time of day is broken across lines.
+ * the card's content box or its column, unless an element within clips it; children set side by
+ * side have their names on one line; no time of day is broken across lines; no line ends with a
+ * dot or a dash; no word is broken where the line had room for it whole; and no thing to bring
+ * is cut short.
  */
 function layout(tag: string): string[] {
   const root = document.querySelector(tag)?.shadowRoot;
@@ -410,27 +443,61 @@ function layout(tag: string): string[] {
     body.getBoundingClientRect().right -
     parseFloat(style.paddingRight) -
     parseFloat(style.borderRightWidth);
+  // Every character shown, in the order read, with the box it is drawn in.
+  const chars: { char: string; at: number; rect: DOMRect; node: Text; free: boolean }[] = [];
   const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const text = (node.textContent ?? "").trim();
+  for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+    const text = node.textContent;
     const parent = node.parentElement;
-    if (text === "" || !parent || parent.closest(".sr")) continue;
+    if (text.trim() === "" || !parent || parent.closest(".sr")) continue;
     let clip = Infinity;
     for (let element: Element | null = parent; element && element !== body;) {
       if (getComputedStyle(element).overflowX !== "visible")
         clip = Math.min(clip, element.getBoundingClientRect().right);
       element = element.parentElement;
     }
+    const cell = parent.closest(".part, .kid, .children > .child");
+    const edge = Math.min(right, cell ? cell.getBoundingClientRect().right : right);
     const range = document.createRange();
     range.selectNodeContents(node);
     for (const rect of range.getClientRects()) {
       const end = Math.min(rect.right, clip);
-      if (rect.width > 0 && end > right + 1)
+      if (rect.width > 0 && end > edge + 1)
         problems.push(
-          `"${text.slice(0, 24)}" reaches ${String(Math.round(end - right))} px past the card`,
+          `"${text.trim().slice(0, 24)}" reaches ${String(Math.round(end - edge))} px past its column`,
         );
     }
+    // Aula's own long words, as a link in a note, may break anywhere; the cards' words may not.
+    const free = parent.closest(".hw-text, .plan-text") !== null;
+    for (let index = 0; index < text.length; index++) {
+      range.setStart(node, index);
+      range.setEnd(node, index + 1);
+      const [rect] = range.getClientRects();
+      if (rect && rect.height > 0)
+        chars.push({ char: text.charAt(index), at: index, rect, node, free });
+    }
   }
+  const visible = chars.filter((item) => !/[\s\u2060]/.test(item.char));
+  const sameLine = (a: DOMRect, b: DOMRect): boolean =>
+    b.left >= a.right - 1 && b.top < a.bottom - 2 && b.bottom > a.top + 2;
+  visible.forEach((item, index) => {
+    const next = visible[index + 1];
+    const ends = !next || !sameLine(item.rect, next.rect);
+    if (ends && /[·–—]/.test(item.char))
+      problems.push(
+        `a line ends with "${item.char}" in "${item.node.textContent.trim().slice(0, 40)}"`,
+      );
+    if (
+      ends &&
+      next &&
+      !item.free &&
+      next.node === item.node &&
+      next.at === item.at + 1 &&
+      /\p{L}/u.test(item.char) &&
+      /\p{L}/u.test(next.char)
+    )
+      problems.push(`a word is broken in "${item.node.textContent.trim().slice(0, 40)}"`);
+  });
   for (const strip of root.querySelectorAll(".strip")) {
     if (getComputedStyle(strip).display !== "grid") continue;
     const names = [...strip.querySelectorAll(".kid-name, .who-name")];
@@ -441,6 +508,10 @@ function layout(tag: string): string[] {
     // A box for each run of text, on one line unless the time is broken.
     const lines = new Set([...time.getClientRects()].map((rect) => Math.round(rect.bottom)));
     if (lines.size > 1) problems.push(`the time "${time.textContent}" is broken across lines`);
+  }
+  for (const thing of root.querySelectorAll(".pack-what")) {
+    if (thing.scrollHeight > thing.clientHeight + 1)
+      problems.push(`"${thing.textContent.slice(0, 24)}" is cut short`);
   }
   return problems;
 }
@@ -465,6 +536,8 @@ mkdirSync(out, { recursive: true });
 
 const browser = await chromium.launch();
 const done: { file: string; item: Shot; scenario: Scenario }[] = [];
+// Every shot is taken, so that one run shows every problem; the script fails at the end.
+const failed: string[] = [];
 for (const item of shots) {
   const scenario = scenarioNamed(item.scenario);
   const children = scenario.children.slice(0, item.children);
@@ -535,7 +608,7 @@ for (const item of shots) {
       ? ((await tab.evaluate(glance, { tag, screen: FIRST_SCREEN })) as string[])
       : []),
   ];
-  if (problems.length > 0) throw new Error(`${name(item)}: ${problems.join("; ")}`);
+  if (problems.length > 0) failed.push(`${name(item)}: ${problems.join("; ")}`);
   const file = `${name(item)}.png`;
   await tab.locator(tag).screenshot({ path: join(out, file), animations: "disabled" });
   done.push({ file, item, scenario });
@@ -567,3 +640,5 @@ ${done
 `;
 writeFileSync(join(out, "index.html"), sheet);
 console.info(`Wrote ${String(done.length)} shots and index.html to ${out}`);
+if (failed.length > 0)
+  throw new Error(`${String(failed.length)} shots failed:\n${failed.join("\n")}`);

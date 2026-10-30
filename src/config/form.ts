@@ -271,7 +271,8 @@ function assertShown(config: unknown, known: boolean): void {
   if (typeof raw.weeks === "string") {
     throw new Error("weeks: write 1 or 2 without quotes to choose here");
   }
-  if (typeof raw.switch_time === "number") {
+  // The time field shows only a time with its minutes.
+  if (typeof raw.switch_time === "number" || /^\s*\d+\s*$/.test(String(raw.switch_time))) {
     throw new Error('switch_time: write the time as "12:00" to set it here');
   }
 }

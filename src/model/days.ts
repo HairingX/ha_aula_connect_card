@@ -15,6 +15,7 @@ import type {
   Task,
   WeekData,
 } from "../core/types.ts";
+import { isCancelled } from "./lessons.ts";
 
 /** Everything on one day. */
 export interface DayView {
@@ -154,14 +155,21 @@ export function isTimetabled(days: readonly DayView[]): boolean {
   return days.some((view) => view.known && view.lessons.length > 0);
 }
 
+/** Tells whether a day has a lesson that is held, not cancelled. */
+export function heldLessons(view: DayView): boolean {
+  return view.lessons.some((lesson) => !isCancelled(lesson));
+}
+
 /**
- * Tells whether a day is a school day. Lessons decide; a holiday, a Saturday or a Sunday without
- * lessons is not one. Where the school keeps its timetable in Aula, a weekday without lessons is
- * one when it has a week-plan note or a school event, as a camp, trip or sports day has; where
- * it does not, every weekday is.
+ * Tells whether a day is a school day. Lessons held decide; a holiday, a Saturday or a Sunday
+ * without them is not one. A weekday whose every lesson is cancelled is one only with a school
+ * event, as its notes were written for the lessons. Where the school keeps its timetable in Aula,
+ * a weekday without lessons is one when it has a week-plan note or a school event, as a camp,
+ * trip or sports day has; where it does not, every weekday is.
  */
 export function isSchoolDay(view: DayView, timetabled: boolean): boolean {
-  if (view.lessons.length > 0) return true;
+  if (heldLessons(view)) return true;
   if (holidayOf(view) !== undefined || isWeekend(view.day)) return false;
-  return !timetabled || view.notes.length > 0 || view.events.some(isSchoolEvent);
+  const event = view.events.some(isSchoolEvent);
+  return view.lessons.length > 0 ? event : !timetabled || view.notes.length > 0 || event;
 }

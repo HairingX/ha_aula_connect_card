@@ -6,6 +6,7 @@
  * @packageDocumentation
  */
 
+import { glue } from "./text.ts";
 import type { Day, HassLocale, HomeAssistant } from "./types.ts";
 
 const DAY_MS = 86_400_000;
@@ -174,7 +175,7 @@ export function formatDayNumber(day: Day, language: string): string {
 
 /**
  * Formats the days from `first` to `last`, both included, such as "10.–18. oktober" or
- * "26. okt.–1. nov.".
+ * "26. okt.–1. nov.", never broken at the dash.
  */
 export function formatDayRange(
   first: Day,
@@ -183,7 +184,7 @@ export function formatDayRange(
   month: "long" | "short",
 ): string {
   const days = format(language, { timeZone: "UTC", day: "numeric", month });
-  return first === last ? days.format(utc(first)) : days.formatRange(utc(first), utc(last));
+  return glue(first === last ? days.format(utc(first)) : days.formatRange(utc(first), utc(last)));
 }
 
 const relative = new Map<string, Intl.RelativeTimeFormat>();

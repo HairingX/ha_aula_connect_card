@@ -11,7 +11,7 @@ import type { StoreSnapshot } from "../core/store.ts";
 import { childKey, type Child, type ChildKey, type Day } from "../core/types.ts";
 import { homeworkOf } from "./blocks.ts";
 import { childBases, type ChildState, type Hold, type ViewOptions } from "./child.ts";
-import { noSchoolHero, type NoSchoolHero } from "./day-view.ts";
+import { heroKey, noSchoolHero, type NoSchoolHero } from "./day-view.ts";
 import type { Focus } from "./focus.ts";
 import type { NoteView } from "./notes.ts";
 
@@ -69,6 +69,8 @@ export interface NotYet {
 
 /** The homework card's view. */
 export interface HomeworkCardView {
+  /** The numbers of the first and the last week the card covers. */
+  readonly weeks: readonly [number, number];
   /** The children shown, in order. */
   readonly children: readonly HomeworkChildView[];
   /** The headers of children with no school day ahead. */
@@ -120,7 +122,7 @@ export function homeworkCardView(
     const { child, focus, rules } = basis;
     if (focus.day === undefined) {
       const hero = noSchoolHero(basis, focus.horizon ?? ctx.today);
-      const key = hero.kind === "holiday" ? String(hero.event.id) : hero.kind;
+      const key = heroKey(hero);
       const entry = heroes.get(key) ?? { hero, children: [] };
       entry.children.push(child);
       heroes.set(key, entry);
@@ -172,6 +174,7 @@ export function homeworkCardView(
   const count = (list: readonly HomeworkDay[]): number =>
     list.reduce((sum, day) => sum + day.parts.reduce((n, part) => n + part.items.length, 0), 0);
   return {
+    weeks: [weekNumber(snapshot.range.start), weekNumber(addDays(snapshot.range.end, -1))],
     children: bases.map((basis) => ({
       child: basis.child,
       state: basis.state,

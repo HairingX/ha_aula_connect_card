@@ -19,7 +19,7 @@ import {
 } from "./blocks.ts";
 import { childBases, dayIn, type ChildBasis, type ChildState, type Hold } from "./child.ts";
 import type { DayViewOptions } from "./day-view.ts";
-import { holidayOf, holidaySpan, type DayView } from "./days.ts";
+import { heldLessons, holidayOf, holidaySpan, type DayView } from "./days.ts";
 import type { Focus } from "./focus.ts";
 import { todayRest } from "./today.ts";
 
@@ -93,12 +93,14 @@ export type WeekRow =
       readonly kind: "holiday";
       /** The holiday. */
       readonly event: CalendarEvent;
-      /** Its own first day. */
+      /** Its own first day; on the week after its first row, the first of that week's days. */
       readonly first: Day;
-      /** Its own last day. */
+      /** Its own last day; on the week after its first row, the last of that week's days. */
       readonly last: Day;
       /** Whether it covers today. */
       readonly today: boolean;
+      /** Whether it goes on from the week before and covers the whole of this one. */
+      readonly whole: boolean;
     };
 
 /** A week of a child. */
@@ -186,10 +188,14 @@ function week(
   }
   const over = (event: CalendarEvent): boolean =>
     [...holidays].filter(([, item]) => item.id === event.id).every(([day]) => day < today);
+  const events = options.blocks.includes("events");
   const todayView = dayIn(basis, today);
   const left =
-    focus.day !== today && todayView?.known && !isWeekend(today) && !holidays.has(today)
-      ? todayRest(todayView, ctx.now, ctx.zone)
+    focus.day !== today &&
+    todayView?.known &&
+    (!isWeekend(today) || heldLessons(todayView)) &&
+    !holidays.has(today)
+      ? todayRest(todayView, ctx.now, ctx.zone, [], events)
       : undefined;
   const earlier: DayRowView[] = [];
   const rows: WeekRow[] = [];
@@ -205,6 +211,7 @@ function week(
           event: holiday,
           ...holidaySpan(holiday, view.day),
           today: holidays.get(today)?.id === holiday.id,
+          whole: false,
         });
       }
       lastHoliday = holiday;
@@ -213,13 +220,13 @@ function week(
     lastHoliday = undefined;
     if (view.day === focus.day) {
       rows.push({ kind: "focus", row: row(view), focus });
-    } else if (isWeekend(view.day)) {
+    } else if (isWeekend(view.day) && !heldLessons(view)) {
       // A weekend day with nothing on it is left out; one that is over joins the fold.
       const item = row(view);
       const timed = item.plan.blocks.some((block) => block.id === "events");
       if (item.facts.length === 0 && !timed) continue;
       const current =
-        view.day === today && todayRest(view, ctx.now, ctx.zone, item.facts) !== undefined;
+        view.day === today && todayRest(view, ctx.now, ctx.zone, item.facts, events) !== undefined;
       if (view.day < today || (view.day === today && !current)) earlier.push(item);
       else {
         weekend.push(item);
@@ -244,6 +251,33 @@ function week(
   };
 }
 
+/**
+ * Returns a child's weeks with a holiday that goes on from one shown week into the next: its
+ * first row keeps its own dates, and the next week's row the days of that week it covers.
+ */
+function continued(weeks: readonly WeekSection[]): WeekSection[] {
+  const [first, ...rest] = weeks;
+  if (!first) return [];
+  const shown = new Set(
+    first.rows.flatMap((row) => (row.kind === "holiday" ? [row.event.id] : [])),
+  );
+  return [
+    first,
+    ...rest.map((section) => {
+      const end = addDays(section.start, 6);
+      return {
+        ...section,
+        rows: section.rows.map((row): WeekRow => {
+          if (row.kind !== "holiday" || !shown.has(row.event.id)) return row;
+          const from = row.first > section.start ? row.first : section.start;
+          const to = row.last < end ? row.last : end;
+          return { ...row, first: from, last: to, whole: from === section.start && to === end };
+        }),
+      };
+    }),
+  ];
+}
+
 /** Builds the week card's view. */
 export function weekCardView(
   snapshot: StoreSnapshot,
@@ -260,7 +294,9 @@ export function weekCardView(
     const starts =
       options.weeks === 2 || focusWeek === nextWeek ? [thisWeek, nextWeek] : [thisWeek];
     const weeks =
-      basis.state.kind === "ready" ? starts.map((start) => week(basis, start, options, ctx)) : [];
+      basis.state.kind === "ready"
+        ? continued(starts.map((start) => week(basis, start, options, ctx)))
+        : [];
     for (const section of weeks) {
       for (const item of section.rows) {
         rows++;

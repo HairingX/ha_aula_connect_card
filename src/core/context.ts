@@ -11,7 +11,7 @@ import type { Day, HassLocale, HomeAssistant } from "./types.ts";
 
 /** The user's settings and the time now. */
 export interface ViewContext {
-  /** The cards' texts in the user's language. */
+  /** The cards' texts in the user's language, their dashes and dots joined to the words beside them. */
   readonly t: Translate;
   /** The language of the cards' texts. */
   readonly lang: "da" | "en";
@@ -40,7 +40,7 @@ export function viewContext(hass: HomeAssistant, now: Date): ViewContext {
   const { day, minute } = localTime(now, zone);
   const settings = locale(hass);
   return {
-    t: translator(hass.language),
+    t: translator(hass.language, true),
     lang: cardLanguage(hass.language),
     language: settings.language,
     zone,

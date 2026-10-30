@@ -167,18 +167,30 @@ describe("the switch time", () => {
     [3600, 60],
     [43_200, 720],
     [86_399, 1439],
+    ["12", 720],
+    [" 7 ", 420],
+    ["0", null],
   ])("reads %j as %j", (value, minutes) => {
     expect(parseSwitchTime(value)).toBe(minutes);
   });
 
-  it.each([["12:60"], ["24:00"], ["noon"], [24], [59], [1440], [3599], [86_400], [-1], [12.5]])(
-    "refuses %j, saying how to write a time",
-    (value) => {
-      expect(() => parseSwitchTime(value)).toThrow(
-        `switch_time: ${JSON.stringify(value)} is not a time; write it as "12:00", or a whole hour such as 12`,
-      );
-    },
-  );
+  it.each([
+    ["12:60"],
+    ["24:00"],
+    ["24"],
+    ["noon"],
+    [24],
+    [59],
+    [1440],
+    [3599],
+    [86_400],
+    [-1],
+    [12.5],
+  ])("refuses %j, saying how to write a time the editor can show", (value) => {
+    expect(() => parseSwitchTime(value)).toThrow(
+      new Error(`switch_time: ${JSON.stringify(value)} is not a time; write it as "12:00"`),
+    );
+  });
 });
 
 describe("rows the editor is still filling in", () => {
@@ -284,6 +296,9 @@ describe("the editor", () => {
     }).toThrow("weeks: write 1 or 2 without quotes to choose here");
     expect(() => {
       form.assertConfig({ switch_time: 720 });
+    }).toThrow('switch_time: write the time as "12:00" to set it here');
+    expect(() => {
+      form.assertConfig({ switch_time: "12" });
     }).toThrow('switch_time: write the time as "12:00" to set it here');
     expect(form.schema[1]).toMatchObject({
       selector: { select: { options: [{ value: 1 }, { value: 2 }] } },

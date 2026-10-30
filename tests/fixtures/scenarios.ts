@@ -10,12 +10,15 @@ import { oskarData } from "./oskar.ts";
 import {
   allDay,
   CHILDREN,
+  events,
   holidayFortnight,
   local,
   plusDays,
+  timetable,
   weekData,
   without,
   ZONE,
+  type Subjects,
 } from "./week.ts";
 
 /** A moment to show. */
@@ -39,6 +42,63 @@ export interface Scenario {
 const [IDA, OSKAR] = CHILDREN as [Child, Child];
 /** Oskar at another school, for children with different holidays. */
 export const OSKAR_ELSEWHERE: Child = { ...OSKAR, institution_name: "Lindegårdens Skole" };
+/** A third child, Emma in 1st grade at Ida's school, for a family of three. */
+export const EMMA: Child = {
+  entry_id: "entry-a",
+  child_id: 1003,
+  first_name: "Emma",
+  name: "Emma Testesen",
+  institution_name: "Bakkedal Skole",
+};
+
+const EMMA_SUBJECTS: Subjects = {
+  DAN: [["Karen Lund"], "A3"],
+  MAT: [["Mette Juhl"], "A3"],
+  IDR: [["Jonas Berg Vestergaard"], "HAL - Idrætshal"],
+  MUS: [["Sofie Nørgaard"], "Musiklokalet"],
+  BIL: [["Lars Krogh"], "Billedkunstlokalet"],
+};
+
+/** Returns Emma's fortnight from Monday `monday`: short days, with sports on Thursday. */
+export function emmaData(monday: string): WeekData {
+  return {
+    week_plan: true,
+    start: monday,
+    end: plusDays(monday, 14),
+    lessons: timetable(
+      monday,
+      14,
+      [
+        ["DAN", "DAN", "MAT", "MAT"],
+        ["MAT", "MAT", "MUS", "DAN"],
+        ["DAN", "DAN", "BIL", "BIL"],
+        ["IDR", "IDR", "DAN", "MAT"],
+        ["DAN", "MAT", "MUS", "MUS"],
+      ],
+      [
+        ["08:00", "08:45"],
+        ["08:45", "09:30"],
+        ["10:00", "10:45"],
+        ["10:45", "11:30"],
+      ],
+      EMMA_SUBJECTS,
+    ),
+    events: events(monday).filter((event) => event.type !== "parental_meeting"),
+    tasks: [
+      {
+        id: 301,
+        date: plusDays(monday, 4),
+        type: "comment",
+        title: null,
+        content: "Vi synger for de andre klasser. Husk blokfløjte.",
+        subject: "Musik",
+        group: "1.A",
+        author: "Sofie Nørgaard",
+      },
+    ],
+    birthdays: [],
+  };
+}
 
 function fortnight(
   monday: string,
@@ -64,9 +124,10 @@ function scenario(
 /** The scenarios, by name. */
 export const SCENARIOS: readonly Scenario[] = [
   scenario("thu-0715", "Thursday 07:15: today", "2026-10-29", "07:15"),
-  scenario("thu-1000", "Thursday 10:00: today, Dansk going on", "2026-10-29", "10:00"),
+  scenario("thu-1000", "Thursday 10:00: today, the break before Dansk", "2026-10-29", "10:00"),
   scenario("thu-1010", "Thursday 10:10: today, Dansk going on", "2026-10-29", "10:10"),
   scenario("thu-1200", "Thursday 12:00: tomorrow, school still on", "2026-10-29", "12:00"),
+  scenario("thu-1300", "Thursday 13:00: tomorrow, Oskar still at school", "2026-10-29", "13:00"),
   scenario("thu-1530", "Thursday 15:30: tomorrow", "2026-10-29", "15:30"),
   scenario("thu-1930", "Thursday 19:30: tomorrow", "2026-10-29", "19:30"),
   scenario("fri-1240", "Friday 12:40: Monday, school still on", "2026-10-30", "12:40"),
@@ -185,21 +246,85 @@ export const SCENARIOS: readonly Scenario[] = [
     "Saturday 10:00, with a lesson that Saturday",
     "2026-10-31",
     "10:00",
+    fortnight("2026-10-26", saturdayLesson),
+  ),
+  scenario(
+    "thu-1930-satlesson",
+    "Thursday 19:30, with a lesson on Saturday",
+    "2026-10-29",
+    "19:30",
+    fortnight("2026-10-26", saturdayLesson),
+  ),
+  scenario(
+    "thu-1930-allcancelled",
+    "Thursday 19:30: every one of Ida's lessons on Friday is cancelled",
+    "2026-10-29",
+    "19:30",
     fortnight("2026-10-26", (data) => ({
       ...data,
-      lessons: [
-        ...data.lessons,
-        {
-          id: "sat",
-          start: local("2026-10-31", "09:00"),
-          end: local("2026-10-31", "12:00"),
-          title: "IDR",
-          teachers: ["Jonas Berg Vestergaard"],
-          location: "HAL - Idrætshal",
-          status: null,
-        },
-      ],
+      lessons: data.lessons.map((lesson) =>
+        lesson.start.startsWith("2026-10-30") ? { ...lesson, status: "Aflyst" } : lesson,
+      ),
     })),
+  ),
+  scenario(
+    "thu-1930-reminders",
+    "Thursday 19:30: the week plan's reminders, one of them long",
+    "2026-10-29",
+    "19:30",
+    fortnight("2026-10-26", reminders),
+  ),
+  scenario(
+    "before-weekday-holiday",
+    "Friday 9 October 14:00: a holiday entered Monday to Friday",
+    "2026-10-09",
+    "14:00",
+    (child) => holiday(child.child_id === IDA.child_id ? weekData : oskarData, "2026-10-12"),
+    "2026-10-05",
+  ),
+  scenario(
+    "two-holidays",
+    "Friday 9 October 14:00: two schools, their holidays ending on different days",
+    "2026-10-09",
+    "14:00",
+    (child) =>
+      child.child_id === IDA.child_id
+        ? holidayFortnight("2026-10-05")
+        : holiday(oskarData, "2026-10-10", "2026-10-20", "2026-10-05"),
+    "2026-10-05",
+    [IDA, OSKAR_ELSEWHERE],
+  ),
+  scenario(
+    "juleferie",
+    "Wednesday 30 December: the Christmas holiday, over New Year",
+    "2026-12-30",
+    "10:00",
+    (child) => {
+      const away = without(
+        child.child_id === IDA.child_id ? weekData("2026-12-28") : oskarData("2026-12-28"),
+        "2026-12-28",
+        "2027-01-03",
+      );
+      return {
+        ...away,
+        events: [...away.events, allDay("jul", "Juleferie", "holiday", "2026-12-19", "2027-01-03")],
+      };
+    },
+    "2026-12-28",
+  ),
+  scenario(
+    "thu-0715-3child",
+    "Thursday 07:15: today, three children",
+    "2026-10-29",
+    "07:15",
+    (child) =>
+      child.child_id === EMMA.child_id
+        ? emmaData("2026-10-26")
+        : child.child_id === IDA.child_id
+          ? weekData("2026-10-26")
+          : oskarData("2026-10-26"),
+    "2026-10-26",
+    [IDA, OSKAR, EMMA],
   ),
   scenario(
     "sat-1000-birthday",
@@ -238,6 +363,65 @@ export const SCENARIOS: readonly Scenario[] = [
     "2026-11-02",
   ),
 ];
+
+function saturdayLesson(data: WeekData): WeekData {
+  return {
+    ...data,
+    lessons: [
+      ...data.lessons,
+      {
+        id: "sat",
+        start: local("2026-10-31", "09:00"),
+        end: local("2026-10-31", "12:00"),
+        title: "IDR",
+        teachers: ["Jonas Berg Vestergaard"],
+        location: "HAL - Idrætshal",
+        status: null,
+      },
+    ],
+  };
+}
+
+/** Returns a fortnight with the autumn holiday from `first` to `last`, and no school then. */
+function holiday(
+  data: (monday: string) => WeekData,
+  first: string,
+  last = "2026-10-16",
+  monday = "2026-10-05",
+): WeekData {
+  const away = without(data(monday), first, last);
+  return {
+    ...away,
+    events: [...away.events, allDay(`h-${last}`, "Efterårsferie", "holiday", first, last)],
+  };
+}
+
+// Friday's notes with reminders in the plural, a number of things, and a long sentence.
+function reminders(data: WeekData): WeekData {
+  const fri = "2026-10-30";
+  return {
+    ...data,
+    tasks: data.tasks
+      .filter((task) => task.date !== fri)
+      .concat([
+        note(
+          fri,
+          211,
+          "task",
+          "Matematik",
+          "Side 32–33, opgave 1–6. Husk lommeregner og to blyanter.",
+        ),
+        note(
+          fri,
+          212,
+          "comment",
+          "Historie",
+          "Vi tager i skoven. Husk, at eleverne skal have gummistøvler, regntøj og en ekstra trøje med, og at de selv skal kunne bære deres rygsæk hele dagen.",
+        ),
+        note(fri, 213, "comment", "Engelsk", "Vi læser højt. Husk briller."),
+      ]),
+  };
+}
 
 function note(date: string, id: number, type: string, subject: string, content: string): Task {
   return { id, date, type, title: null, content, subject, group: "3.B", author: "Karen Lund" };
@@ -309,6 +493,13 @@ function stress(data: WeekData): WeekData {
           "Opgave 1–4 s. 12. Medbring lommeregner kl. 8.15 til prøven.",
         ),
         note(fri, 204, "task", "Engelsk", "Learn the words for the test. Remember your PE kit."),
+        note(
+          fri,
+          207,
+          "task",
+          "Understøttende undervisning og lektiecafé for 3.B",
+          "Læs i din frilæsningsbog.",
+        ),
         note(
           fri,
           205,

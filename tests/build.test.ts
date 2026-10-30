@@ -9,9 +9,23 @@ describe("the styles' minifier", () => {
     );
   });
 
+  it("drops the spaces around combinators, multiplication and division, and a leading zero", () => {
+    expect(
+      minifyCss(
+        ".a > .b + .c { width: calc(24px * var(--s)); inset: calc(var(--g) / -2); opacity: 0.3; margin: 10.5px }",
+      ),
+    ).toBe(".a>.b+.c{width:calc(24px*var(--s));inset:calc(var(--g)/-2);opacity:.3;margin:10.5px}");
+  });
+
+  it("keeps the spaces calc() needs around an addition and a subtraction", () => {
+    expect(minifyCss(".a { padding: calc(var(--i) + var(--g)) calc(var(--g) - 2px) }")).toBe(
+      ".a{padding:calc(var(--i) + var(--g)) calc(var(--g) - 2px)}",
+    );
+  });
+
   it("keeps a quoted string as it is", () => {
     expect(minifyCss('.who + .who::before {\n  content: ", ";\n}')).toBe(
-      '.who + .who::before{content:", "}',
+      '.who+.who::before{content:", "}',
     );
   });
 });

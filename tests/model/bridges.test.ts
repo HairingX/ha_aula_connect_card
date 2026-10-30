@@ -53,7 +53,7 @@ describe("the bridge rows", () => {
   });
 
   it("make room for the rest of today, counting the days of the rows left out", () => {
-    const row = (days: string[]): BridgeRow => ({ kind: "empty", days });
+    const row = (days: string[]): BridgeRow => ({ kind: "empty", days, cancelled: false });
     const rows = [row(["a"]), row(["b", "c"]), row(["d"]), row(["e"])];
     expect(fitRows(rows, false)).toEqual({ rows: rows.slice(0, 2), moreDays: 2 });
     expect(fitRows(rows, true)).toEqual({ rows: rows.slice(0, 1), moreDays: 4 });

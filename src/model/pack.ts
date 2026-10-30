@@ -78,15 +78,26 @@ const END = "(?=[^\\p{L}\\p{N}]|$)";
 const word = (pattern: string): string => `${START}(?:${pattern})${END}`;
 // "med" closing the phrase, as in "tag blade med i en pose", not "med hele klassen".
 const CLOSING_MED = `${START}med(?=\\s*(?:[.,;:!?)–-]|$)|\\s+(?:i|til|hjem|hjemmefra|tilbage)${END})`;
-// Things a class brings, as the last part of a word: "idrætstøj", "madpakken", "blokfløjte".
-const THINGS =
-  "\\p{L}*(?:madpakke|tøj|sko|støvle|håndklæde|taske|pose|bog|bøger|penalhus|blyant|lommeregner|computer|ipad|oplader|fløjte|instrument|dunk|flaske|frugt|seddel|sedl|kostume|hjelm|cykel|cykl|brille|kit|towel|lunch|book|clothes|shoes)(?:e|en|et|er|erne|ene|ne|s)?";
+// Things a class brings, as the last part of a word, in the singular, the plural or the definite
+// form: "idrætstøj", "gummistøvler", "madpakken", "poserne". Each language's own words, so that
+// the English "book" is no thing in "book en tid".
+const things = (words: string, endings: string): string =>
+  word(`\\p{L}*(?:${words})(?:${endings})?`);
+const DANISH_THINGS = things(
+  "madpakke|tøj|sko|støvle|håndklæde|taske|pose|bog|bøger|penalhus|blyant|lommeregner|computer|ipad|oplader|fløjte|instrument|dunk|flaske|frugt|seddel|sedl|kostume|hjelm|cykel|cykl|brille|trøje|jakke|hue|vante|handske|hætte|penge",
+  "e|en|et|er|erne|ene|ne|n|t|r|rne|s",
+);
+const ENGLISH_THINGS = things("kit|towel|lunch|book|clothes|shoe|bag|bottle|coat|jacket", "s");
+// A number of something: "husk to poser", "husk tre blade", but not "husk to gange om ugen".
+const COUNTED =
+  "\\s+(?:to|tre|fire|fem|seks|syv|otte|ni|ti)\\s+(?!(?:gange|dage|uger|timer|minutter|sider)\\b)\\p{L}";
 const REMINDERS = [
   word("medbring(?:e|es)?|bring"),
   `${word("tag|tage")}.*${CLOSING_MED}`,
   `${word("skal\\s+have")}.*${CLOSING_MED}`,
   // "Husk madpakke", but not "husk at læse": that is homework, not something to bring.
-  `${word("husk|remember")}(?!\\s*,?\\s*(?:at|to)${END}).*${word(THINGS)}`,
+  `${word("husk")}(?!\\s*,?\\s*at${END})(?:.*${DANISH_THINGS}|${COUNTED})`,
+  `${word("remember")}(?!\\s+to${END}).*${ENGLISH_THINGS}`,
 ].map((pattern) => new RegExp(pattern, "iu"));
 
 // Words a full stop shortens, after which a sentence goes on.
@@ -126,7 +137,7 @@ const MONTH = /^(?:jan|feb|mar|apr|maj|may|jun|jul|aug|sep|okt|oct|nov|dec)/iu;
 function ends(mark: string, before: string, after: string): boolean {
   if (!/^[\p{Lu}"“»(•]/u.test(after)) return false;
   if (mark !== ".") return true;
-  const last = (/\S+$/u.exec(before)?.[0] ?? "").toLocaleLowerCase("da");
+  const last = (/[\p{L}\p{N}.]+$/u.exec(before)?.[0] ?? "").toLocaleLowerCase("da");
   return !ABBREVIATIONS.has(last) && !(/^\d+$/.test(last) && MONTH.test(after));
 }
 

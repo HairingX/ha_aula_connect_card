@@ -48,6 +48,21 @@ function tidy(text: string): string {
     .trim();
 }
 
+const NO_BREAK: Readonly<Record<string, string>> = { " ": "\u00a0", "\u2009": "\u202f" };
+
+/**
+ * Returns a text whose dashes and dots between words never begin or end a line: each is joined
+ * to the words on both sides, its spaces made no-break ones and a word joiner after it, as a
+ * line may break after a dash even before a no-break space.
+ */
+export function glue(text: string): string {
+  return text.replace(
+    /([ \u2009]?)([–—·])([ \u2009]?)/g,
+    (_match, before: string, mark: string, after: string) =>
+      `${NO_BREAK[before] ?? ""}${mark}\u2060${NO_BREAK[after] ?? ""}`,
+  );
+}
+
 /** Returns the initials of a full name, as schools refer to teachers by them. */
 export function initials(name: string): string {
   return name

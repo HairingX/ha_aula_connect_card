@@ -62,6 +62,22 @@ describe("the week plan's reminders", () => {
     "Husk underskrift på sedlen (ca. 2 min).",
     "Remember your PE kit.",
     "Please bring a towel.",
+    "Husk gummistøvler.",
+    "Husk briller.",
+    "Husk svømmebriller og badehætte.",
+    "Husk tasker til turen.",
+    "Husk madpakker til hele dagen.",
+    "Husk flasker med vand.",
+    "Husk poserne.",
+    "Husk madpakken.",
+    "Husk bøgerne til biblioteket.",
+    "Husk to poser til vådt tøj.",
+    "Husk tre blade til herbariet.",
+    "Husk en varm trøje.",
+    "Husk hue og vanter.",
+    "Husk penge til bussen.",
+    "(f.eks. Matematik) Husk lommeregner.",
+    "Remember your books.",
   ])("quotes %j", (sentence) => {
     expect(isReminder(sentence)).toBe(true);
   });
@@ -78,6 +94,10 @@ describe("the week plan's reminders", () => {
     "Vi husker at øve.",
     "Remember to read chapter 4.",
     "Madpakke, regntøj, gummistøvler",
+    "Husk forældresamtaler i uge 46 – book en tid i Aula.",
+    "Husk to gange om ugen at læse højt.",
+    "Husk, at vi holder fri på fredag.",
+    "Husk tre sider hver dag.",
   ])("does not quote %j", (sentence) => {
     expect(isReminder(sentence)).toBe(false);
   });
@@ -99,6 +119,7 @@ describe("the week plan's reminders", () => {
     "Husk underskrift på sedlen (ca. 2 min).",
     "Medbring lommeregner kl. 10.",
     "Vi ses d. 3. November, bl.a. med kage.",
+    "(f.eks. Matematik) Husk lommeregner.",
   ])("keeps %j one sentence", (sentence) => {
     expect(sentences(sentence)).toEqual([sentence]);
   });

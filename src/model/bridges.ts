@@ -56,17 +56,28 @@ export type BridgeRow =
       readonly kind: "empty";
       /** The days. */
       readonly days: readonly Day[];
+      /** Whether their lessons are all cancelled, rather than none in Aula. */
+      readonly cancelled: boolean;
     };
+
+/** Which of a weekend's things are shown: its events, its birthdays. */
+export interface BridgeShow {
+  /** Whether events are shown. */
+  readonly events: boolean;
+  /** Whether birthdays are shown. */
+  readonly birthdays: boolean;
+}
 
 /**
  * Returns the bridge rows for the days the focus passed over, in date order. Today counts only
  * when a holiday covers it: the rest of today has its own row, and an event `named` there gets
- * no later row. A weekend with nothing on it gets no row; everyone knows what a weekend is.
+ * no later row. A weekend with nothing shown on it gets no row; everyone knows what a weekend is.
  */
 export function bridgeRows(
   days: readonly DayView[],
   focus: Focus,
   named: ReadonlySet<CalendarEvent["id"]> = new Set(),
+  show: BridgeShow = { events: true, birthdays: true },
 ): BridgeRow[] {
   const byDay = new Map(days.map((view) => [view.day, view]));
   const rows: BridgeRow[] = [];
@@ -87,13 +98,18 @@ export function bridgeRows(
       const joined = last?.kind === "weekend" && follows ? last : undefined;
       // An event over both days of a weekend is one item.
       const seen = new Set(joined?.items.map((item) => item.kind === "event" && item.event.id));
+      const events = show.events ? view.events : [];
       const items: BridgeItem[] = [
-        ...view.events
+        ...events
           .filter((event) => !named.has(event.id) && !seen.has(event.id))
           .map((event) => ({ kind: "event" as const, event, day })),
-        ...view.birthdays.map((birthday) => ({ kind: "birthday" as const, birthday, day })),
+        ...(show.birthdays ? view.birthdays : []).map((birthday) => ({
+          kind: "birthday" as const,
+          birthday,
+          day,
+        })),
       ];
-      const continues = view.events.some((event) => seen.has(event.id));
+      const continues = events.some((event) => seen.has(event.id));
       if (items.length === 0 && !continues) continue;
       if (joined) {
         rows[rows.length - 1] = {
@@ -102,9 +118,13 @@ export function bridgeRows(
           items: [...joined.items, ...items],
         };
       } else rows.push({ kind: "weekend", days: [day], items });
-    } else if (last?.kind === "empty" && follows) {
-      rows[rows.length - 1] = { ...last, days: [...last.days, day] };
-    } else rows.push({ kind: "empty", days: [day] });
+    } else {
+      // A weekday passed over with lessons has them all cancelled.
+      const cancelled = view.lessons.length > 0;
+      if (last?.kind === "empty" && follows && last.cancelled === cancelled) {
+        rows[rows.length - 1] = { ...last, days: [...last.days, day] };
+      } else rows.push({ kind: "empty", days: [day], cancelled });
+    }
   }
   return rows;
 }
