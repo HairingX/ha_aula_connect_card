@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import "../../src/index.ts";
 import { forget } from "../../src/core/memory.ts";
-import type { WeekData } from "../../src/core/types.ts";
+import type { Child, WeekData } from "../../src/core/types.ts";
 import { IDLE_RESET_MS } from "../../src/model/focus.ts";
-import { present } from "../fake-hass.ts";
+import { present, wsError, type FakeHass } from "../fake-hass.ts";
 import { all, mount, text, unmountAll, type Card } from "../fixtures/mount.ts";
 import { SCENARIOS, scenarioNamed } from "../fixtures/scenarios.ts";
 
@@ -34,15 +34,42 @@ async function open(card: Card, selector: string): Promise<void> {
   await card.updateComplete;
 }
 
-/** Answers a scenario's subscriptions with its data changed. */
-function changed(scenario: string, change: (data: WeekData) => WeekData) {
+/** Answers a scenario's subscriptions with each child's data changed. */
+function changed(scenario: string, change: (data: WeekData, child: Child) => WeekData) {
   const item = scenarioNamed(scenario);
   return {
-    setup: (hass: { connection: { respond: unknown } }) => {
-      hass.connection.respond = (message: Record<string, unknown>) =>
-        change(item.data(present(item.children.find((c) => c.child_id === message.child_id))));
+    setup: (hass: FakeHass) => {
+      hass.connection.respond = (message: Record<string, unknown>) => {
+        const child = present(item.children.find((c) => c.child_id === message.child_id));
+        return change(item.data(child), child);
+      };
     },
   };
+}
+
+/** Leaves Oskar's subscription unanswered, or refuses it with `error`. */
+function oskar(error?: Error) {
+  return {
+    setup: (hass: FakeHass) => {
+      const connection = hass.connection;
+      const subscribe = connection.subscribeMessage.bind(connection);
+      connection.subscribeMessage = (callback, message, options) => {
+        if (message.child_id !== 1002) return subscribe(callback, message, options);
+        return error ? Promise.reject(error) : Promise.resolve(() => Promise.resolve());
+      };
+    },
+  };
+}
+
+/** Removes everything of some days: lessons, notes and events. */
+function withoutDays(...days: string[]) {
+  const on = (start: string): boolean => days.some((day) => start.startsWith(day));
+  return (data: WeekData): WeekData => ({
+    ...data,
+    lessons: data.lessons.filter((lesson) => !on(lesson.start)),
+    tasks: data.tasks.filter((task) => !on(task.date)),
+    events: data.events.filter((event) => !on(event.start)),
+  });
 }
 
 beforeEach(() => {
@@ -112,6 +139,62 @@ describe("the school day card", () => {
       "Ingen lektier i ugeplanen.",
       "Intet skema i Aula.",
     ]);
+  });
+
+  it("names the weekdays passed over in one row, and counts the days that do not fit", async () => {
+    const days = changed("thu-1930", withoutDays("2026-10-30", "2026-11-02", "2026-11-03"));
+    const { card } = await mount(DAY, "thu-1930", { config: { children: [1001] }, ...days });
+    expect(texts(card, ".bridge .bridge-label")).toEqual(["Fredag", "Lørdag", "Mandag–tirsdag"]);
+    unmountAll();
+    const { card: noon } = await mount(DAY, "thu-1200", {
+      config: { children: [1001] },
+      ...changed("thu-1200", withoutDays("2026-10-30", "2026-11-02", "2026-11-03")),
+    });
+    expect(texts(noon, ".bridge .bridge-label")).toEqual(["I dag", "Fredag"]);
+    expect(texts(noon, ".bridge-more")).toEqual(["+ 3 dage uden skole"]);
+  });
+
+  it("names the child a row above is for, and a weekend's birthday by its icon", async () => {
+    const { card } = await mount(DAY, "fri-1400", {
+      ...changed("fri-1400", (data, child) =>
+        child.child_id === 1002
+          ? data
+          : {
+              ...data,
+              events: data.events.filter((event) => !event.title.startsWith("Loppemarked")),
+              birthdays: [...data.birthdays, { date: "2026-11-01", name: "Karl" }],
+            },
+      ),
+    });
+    expect(texts(card, ".bridge")).toEqual([
+      "Lørdag Loppemarked i skolegården (Oskar) 10.00",
+      "Søndag Karl har fødselsdag (Ida)",
+    ]);
+    expect(all(card, ".bridge ha-icon").map((item) => item.getAttribute("icon"))).toEqual([
+      "mdi:calendar-star-outline",
+      "mdi:cake-variant-outline",
+    ]);
+  });
+
+  it("says what it knows when no school day and no holiday are in Aula", async () => {
+    const { card } = await mount(DAY, "before-holiday", {
+      config: { children: [1001] },
+      ...changed("before-holiday", (data) => ({
+        ...data,
+        events: data.events.filter((event) => event.type !== "holiday"),
+      })),
+    });
+    expect(spoken(card, "h2")).toBe("Ingen skoledage, i Aula til og med søndag 18. oktober");
+  });
+
+  it("shows the other children while one is loading, and why one cannot be shown", async () => {
+    const { card } = await mount(DAY, "thu-1930", oskar());
+    expect(all(card, ".child")).toHaveLength(2);
+    expect(all(card, '.child [aria-busy="true"]')).toHaveLength(1);
+    unmountAll();
+    const { card: refused } = await mount(DAY, "thu-1930", oskar(wsError("not_found", "gone")));
+    expect(all(refused, '.child [role="alert"]')).toHaveLength(1);
+    expect(texts(refused, ".who-name")).toEqual(["Ida", "Oskar"]);
   });
 
   it("names the holiday ahead and the day school starts again", async () => {
@@ -194,6 +277,29 @@ describe("the homework card", () => {
     expect(spoken(card, ".title-who")).toBe("Ida, Lektier");
   });
 
+  it("shows a child's homework while another loads, and why one cannot be shown", async () => {
+    const { card } = await mount(HOMEWORK, "thu-1930", oskar());
+    expect(all(card, '.pending [aria-busy="true"]')).toHaveLength(1);
+    unmountAll();
+    const { card: refused } = await mount(
+      HOMEWORK,
+      "thu-1930",
+      oskar(wsError("not_found", "gone")),
+    );
+    expect(all(refused, '.pending [role="alert"]')).toHaveLength(1);
+  });
+
+  it("says what it knows for each child without a school day ahead", async () => {
+    const { card } = await mount(HOMEWORK, "before-holiday", {
+      ...changed("before-holiday", (data, child) =>
+        child.child_id === 1002
+          ? data
+          : { ...data, events: data.events.filter((event) => event.type !== "holiday") },
+      ),
+    });
+    expect(texts(card, ".day-title")).toEqual(["Ingen skoledage (Ida)", "Efterårsferie (Oskar)"]);
+  });
+
   it("names the holiday ahead above the earlier homework", async () => {
     const { card } = await mount(HOMEWORK, "before-holiday", { config: { children: [1001] } });
     expect(text(card, ".hw-day.focus .day-title")).toBe("Efterårsferie");
@@ -271,6 +377,44 @@ describe("the week card", () => {
     expect(all(card, `${row} .day-body`)).toEqual([]);
     await open(card, row);
     expect(all(card, `${row} .day-body .block`).length).toBeGreaterThan(0);
+  });
+
+  it("folds the days that are over, and shows them as rows once the fold is opened", async () => {
+    const { card } = await mount(WEEK, "thu-1000", { config: { children: [1001] } });
+    expect(texts(card, ".fold > summary")).toEqual(["Tidligere dage (3)"]);
+    await open(card, ".fold");
+    expect(all(card, ".fold .day-row.past")).toHaveLength(3);
+  });
+
+  it("folds a whole week that is over as one", async () => {
+    const { card } = await mount(WEEK, "sun-1800", {
+      config: { children: [1001] },
+      ...changed("sun-1800", (data) => ({
+        ...data,
+        events: [
+          ...data.events,
+          {
+            id: "s1",
+            start: "2026-11-01T10:00:00+01:00",
+            end: "2026-11-01T12:00:00+01:00",
+            all_day: false,
+            title: "Svømmestævne",
+            type: "event",
+            location: null,
+          },
+        ],
+      })),
+    });
+    expect(texts(card, ".fold > summary")).toEqual(["Hele ugen (7)"]);
+  });
+
+  it("shows a child's weeks while another loads, and why one cannot be shown", async () => {
+    const { card } = await mount(WEEK, "thu-1000", oskar());
+    expect(all(card, '[aria-busy="true"]')).toHaveLength(1);
+    unmountAll();
+    const { card: refused } = await mount(WEEK, "thu-1000", oskar(wsError("not_found", "gone")));
+    expect(all(refused, '[role="alert"]')).toHaveLength(1);
+    expect(all(refused, ".week-section").length).toBeGreaterThan(0);
   });
 
   it("loads a week it has no data for yet, rather than call its days empty", async () => {

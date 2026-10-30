@@ -291,7 +291,7 @@ describe("the editor", () => {
   });
 
   it("offers the subjects seen, written out, for the things to bring and the names", () => {
-    rememberSubjects(["IDR", "DAN", "Lejrskole"], ["Dansk", "Musik"]);
+    rememberSubjects(["IDR", "DAN", "Lejrskole", " "], ["Dansk", "Musik", ""]);
     const form = dayConfigForm();
     const packing = form.schema.find((item) => item.name === "packing_group");
     expect(JSON.stringify(packing)).toContain('"options":["Dansk","Idræt","Lejrskole","Musik"]');

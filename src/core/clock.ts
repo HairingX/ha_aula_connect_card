@@ -14,12 +14,10 @@ export const TICK_DELAY_MS = 50;
 const listeners = new Set<(now: Date) => void>();
 let timer: ReturnType<typeof setTimeout> | undefined;
 
+// Runs only while there are listeners: the last to leave stops the timer and the catching up.
 function schedule(): void {
   clearTimeout(timer);
-  timer =
-    listeners.size === 0
-      ? undefined
-      : setTimeout(tick, MINUTE_MS - (Date.now() % MINUTE_MS) + TICK_DELAY_MS);
+  timer = setTimeout(tick, MINUTE_MS - (Date.now() % MINUTE_MS) + TICK_DELAY_MS);
 }
 
 function tick(): void {

@@ -11,7 +11,7 @@ import type { StoreSnapshot } from "../core/store.ts";
 import { childKey, type Child, type ChildKey, type Day } from "../core/types.ts";
 import { homeworkOf } from "./blocks.ts";
 import { childBases, type ChildState, type Hold, type ViewOptions } from "./child.ts";
-import { noSchoolHero, type Hero } from "./day-view.ts";
+import { noSchoolHero, type NoSchoolHero } from "./day-view.ts";
 import type { Focus } from "./focus.ts";
 import type { NoteView } from "./notes.ts";
 
@@ -54,7 +54,7 @@ export interface HomeworkChildView {
 /** A header for children with no school day ahead. */
 export interface HomeworkHero {
   /** What it says. */
-  readonly hero: Hero;
+  readonly hero: NoSchoolHero;
   /** The children it is for; empty when it is for every child. */
   readonly only: readonly Child[];
 }
@@ -114,7 +114,7 @@ export function homeworkCardView(
   const before: Parts = new Map();
   const focusDays = new Set<Day>();
   const notYet = new Map<Day, Child[]>();
-  const heroes = new Map<string, { hero: Hero; children: Child[] }>();
+  const heroes = new Map<string, { hero: NoSchoolHero; children: Child[] }>();
   const ready = bases.filter((basis) => basis.state.kind === "ready");
   for (const basis of ready) {
     const { child, focus, rules } = basis;

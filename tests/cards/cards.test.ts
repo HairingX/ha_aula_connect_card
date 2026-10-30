@@ -236,6 +236,7 @@ describe("the cards", () => {
       min_rows: 3,
     });
     const week = new AulaConnectCard();
+    expect(week.getCardSize()).toBe(17);
     week.setConfig({ weeks: 1 });
     expect(week.getCardSize()).toBe(10);
     expect(week.getGridOptions()).toEqual({
@@ -262,6 +263,12 @@ describe("the cards", () => {
     expect(await AulaConnectHomeworkCard.getStubConfig()).toEqual({
       type: "custom:aula-connect-homework-card",
     });
+  });
+
+  it("give the visual editor a form for each card, its children first", () => {
+    for (const card of [AulaConnectDayCard, AulaConnectHomeworkCard, AulaConnectCard]) {
+      expect(card.getConfigForm().schema[0]).toMatchObject({ name: "children" });
+    }
   });
 
   it("give a stub without waiting long for a listing that does not come", async () => {

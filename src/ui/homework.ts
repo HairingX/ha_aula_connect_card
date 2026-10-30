@@ -17,7 +17,6 @@ import {
   weekNumber,
 } from "../core/dates.ts";
 import { childKey, type Child } from "../core/types.ts";
-import type { Hero } from "../model/day-view.ts";
 import type {
   HomeworkCardView,
   HomeworkDay,
@@ -95,7 +94,7 @@ function day(
 }
 
 function heroLine(item: HomeworkHero, ctx: ViewContext): TemplateResult {
-  const hero: Hero = item.hero;
+  const { hero } = item;
   const whose = item.only.length > 0 ? ` (${names(item.only, ctx)})` : "";
   const title =
     hero.kind === "holiday"
@@ -109,9 +108,7 @@ function heroLine(item: HomeworkHero, ctx: ViewContext): TemplateResult {
             ? []
             : [ctx.t("schoolStarts", { day: formatDay(hero.resumes, ctx.language) })]),
         ]
-      : hero.kind === "none"
-        ? [ctx.t("noSchoolDaysUntil", { day: formatDay(hero.horizon, ctx.language) })]
-        : [];
+      : [ctx.t("noSchoolDaysUntil", { day: formatDay(hero.horizon, ctx.language) })];
   return html`<section class="hw-day focus">
     <h3 class="day-head">
       ${icon(hero.kind === "holiday" ? "mdi:beach" : "mdi:calendar-remove-outline")}<span

@@ -100,6 +100,9 @@ export type Hero =
       readonly horizon: Day;
     };
 
+/** A header for a child without a school day ahead. */
+export type NoSchoolHero = Exclude<Hero, { kind: "day" }>;
+
 /** A child's school day. */
 export interface DayChildView {
   /** The child. */
@@ -249,7 +252,7 @@ function above(
  * Returns the header of a child with no school day ahead: the holiday that covers the last day
  * the data has, and the weekday after it when that is beyond the data; else that last day.
  */
-export function noSchoolHero(basis: ChildBasis, horizon: Day): Hero {
+export function noSchoolHero(basis: ChildBasis, horizon: Day): NoSchoolHero {
   const view = dayIn(basis, horizon);
   const holiday = view && holidayOf(view);
   if (!holiday) return { kind: "none", horizon };

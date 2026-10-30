@@ -243,11 +243,9 @@ export function hours(span: { start: string; end: string }, ctx: ViewContext): T
   >`;
 }
 
-/** Shows a heading of a level from 2 to 5; lit cannot bind a tag's name. */
+/** Shows a heading of a level from 3 to 5; lit cannot bind a tag's name. */
 export function headingOf(level: number, content: unknown, cls = ""): TemplateResult {
   switch (level) {
-    case 2:
-      return html`<h2 class=${cls}>${content}</h2>`;
     case 3:
       return html`<h3 class=${cls}>${content}</h3>`;
     case 4:

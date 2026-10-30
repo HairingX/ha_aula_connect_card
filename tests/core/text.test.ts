@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { htmlToText, initials } from "../../src/core/text.ts";
+import { htmlToText, initials, TEXT_CACHE_SIZE } from "../../src/core/text.ts";
 
 describe("htmlToText", () => {
   it("keeps plain text as it is, trimmed", () => {
     expect(htmlToText("  Side 32 \t opgave 1  ")).toBe("Side 32 opgave 1");
+  });
+
+  it("keeps converting once it has seen more notes than it keeps", () => {
+    for (let i = 0; i <= TEXT_CACHE_SIZE; i++) htmlToText(`<p>Side ${String(i)}</p>`);
+    expect(htmlToText("<p>Side 1</p>")).toBe("Side 1");
   });
 
   it("gives the text of HTML with a line per paragraph and bullets for list items", () => {
