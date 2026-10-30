@@ -884,7 +884,7 @@ describe("rarer days", () => {
         ],
       })),
     });
-    expect(all(card, ".pack-row.quote")).toHaveLength(0);
+    expect(texts(card, '[data-block="pack"]').join(" ")).not.toContain("regntøj");
     expect(texts(card, ".hw-head").at(-1)).toBe("Projekt");
     expect(all(card, ".plan-note").length - all(card, ".plan-subject").length).toBe(1);
   });

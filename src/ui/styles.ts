@@ -752,15 +752,11 @@ export const blocks = css`
   .pack-item + .pack-item::before {
     content: ", ";
   }
-  /* A quote is word for word, never cut: the things to bring are often at its end. */
-  .pack-row.quote .pack-what {
-    font-weight: var(--aula-normal);
-  }
   .pack-source {
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
   }
-  /* On the wall what to bring is read from across the kitchen, whether set up or quoted. */
+  /* On the wall what to bring is read from across the kitchen. */
   .large .pack-what {
     font-size: calc(var(--ha-font-size-xl, 20px) * 1.5);
     line-height: var(--aula-condensed);
