@@ -135,7 +135,7 @@ describe("registration", () => {
     delete window.customCards;
     await import("../../src/index.ts");
     expect(info).toHaveBeenCalledOnce();
-    expect(info.mock.calls[0]?.[0]).toContain("AULA-CONNECT-CARD %c 0.0.0");
+    expect(info.mock.calls[0]?.[0]).toBe("AULA-CONNECT-CARD 0.0.0");
     window.customCards = saved;
   });
 });

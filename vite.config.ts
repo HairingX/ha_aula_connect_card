@@ -64,18 +64,23 @@ function minifyStyles(): Plugin {
 }
 
 /**
- * Collapses the indentation of lit's templates in the minified bundle: a run of white space
- * renders as one space. Only a line break followed by indentation is a template's: the minifier
- * writes "\n" as a template literal holding a line break, which must stay.
+ * Returns lit's templates in a minified bundle with their indentation collapsed, as a run of white
+ * space renders as one space, and without the space before a tag's ">". Only a line break followed
+ * by indentation is a template's: the minifier writes "\n" as a template literal holding a line
+ * break, which must stay; and minified code has no space before a ">" of its own.
  */
-function collapseTemplates(): Plugin {
+export function collapseTemplates(code: string): string {
+  return code.replace(/\n(?:[ \t]*\n)*[ \t]{2,}/g, " ").replace(/([\w"}]) +>/g, "$1>");
+}
+
+/** Collapses the white space of lit's templates in the bundle. */
+function collapse(): Plugin {
   return {
     name: "aula:collapse-templates",
     apply: "build",
     generateBundle(_options, bundle) {
       for (const output of Object.values(bundle)) {
-        if (output.type === "chunk")
-          output.code = output.code.replace(/\n(?:[ \t]*\n)*[ \t]{2,}/g, " ");
+        if (output.type === "chunk") output.code = collapseTemplates(output.code);
       }
     },
   };
@@ -123,7 +128,7 @@ export default defineConfig({
   define: {
     __CARD_VERSION__: JSON.stringify(version),
   },
-  plugins: [minifyStyles(), collapseTemplates(), budget(BUDGET)],
+  plugins: [minifyStyles(), collapse(), budget(BUDGET)],
   build: {
     lib: {
       entry: "src/index.ts",

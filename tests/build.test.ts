@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { BUDGET, minifyCss, overBudget, shortenTokens } from "../vite.config.ts";
+import { BUDGET, collapseTemplates, minifyCss, overBudget, shortenTokens } from "../vite.config.ts";
 
 describe("the styles' minifier", () => {
   it("drops comments and the white space only a reader needs", () => {
@@ -37,6 +37,18 @@ describe("the tokens' short names", () => {
         ".a{--aula-gap:1px;--aula-ink:red;color:var(--aula-ink);background:var(--aula-ink)}",
       ),
     ).toBe(".a{--_1:1px;--_0:red;color:var(--_0);background:var(--_0)}");
+  });
+});
+
+describe("the templates' white space", () => {
+  it("collapses a template's indentation and the space before a tag's end", () => {
+    expect(collapseTemplates('html`<span class="a"\n      >${x}</span\n    >`')).toBe(
+      'html`<span class="a">${x}</span>`',
+    );
+  });
+
+  it("keeps a line break the minifier writes as a template literal", () => {
+    expect(collapseTemplates("a.split(`\n`)")).toBe("a.split(`\n`)");
   });
 });
 

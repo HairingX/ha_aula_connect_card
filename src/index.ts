@@ -38,10 +38,4 @@ const defined = [
   }),
 ];
 
-if (defined.some(Boolean)) {
-  console.info(
-    `%c AULA-CONNECT-CARD %c ${CARD_VERSION} `,
-    "color: #fff; background: #1f6fb2; font-weight: 700;",
-    "color: #1f6fb2; background: #fff; font-weight: 700;",
-  );
-}
+if (defined.some(Boolean)) console.info(`AULA-CONNECT-CARD ${CARD_VERSION}`);
