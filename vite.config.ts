@@ -24,7 +24,22 @@ export function minifyCss(css: string): string {
     .trim();
 }
 
-/** Minifies the styles' `css` literals, which hold no expressions. */
+/**
+ * Returns CSS with the cards' own tokens, `--aula-*`, renamed to short names: the most used
+ * first. They are set and read only in the cards' styles, so a name never has to be read.
+ */
+export function shortenTokens(css: string): string {
+  const uses = new Map<string, number>();
+  for (const [name] of css.matchAll(/--aula-[\w-]+/g)) uses.set(name, (uses.get(name) ?? 0) + 1);
+  const names = new Map(
+    [...uses.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([name], index) => [name, `--_${index.toString(36)}`]),
+  );
+  return css.replace(/--aula-[\w-]+/g, (name) => names.get(name) ?? name);
+}
+
+/** Minifies the styles' `css` literals, which hold no expressions, and shortens their tokens. */
 function minifyStyles(): Plugin {
   return {
     name: "aula:minify-styles",
@@ -32,7 +47,9 @@ function minifyStyles(): Plugin {
     transform(code, id) {
       if (!id.endsWith("/src/ui/styles.ts")) return null;
       return {
-        code: code.replace(/css`([^`]*)`/g, (_match, body: string) => `css\`${minifyCss(body)}\``),
+        code: shortenTokens(
+          code.replace(/css`([^`]*)`/g, (_match, body: string) => `css\`${minifyCss(body)}\``),
+        ),
         map: null,
       };
     },
@@ -71,7 +88,7 @@ export default defineConfig({
     target: "es2022",
     // Vite keeps whitespace in a library's ES module for the bundlers that consume it; this one
     // is loaded by the browser as it is.
-    rolldownOptions: { output: { minify: true } },
+    rolldownOptions: { output: { minify: true, comments: false } },
     sourcemap: false,
     emptyOutDir: true,
   },

@@ -25,6 +25,7 @@ import {
   eventIcon,
   eventWhen,
   fact,
+  facts as factList,
   heading,
   hours,
   icon,
@@ -160,7 +161,7 @@ function aboveRows(above: AboveRows, ctx: ViewContext): TemplateResult | typeof 
 
 function hero(
   item: Hero,
-  facts: readonly Fact[],
+  shown: readonly Fact[],
   span: { start: string; end: string } | undefined,
   ctx: ViewContext,
   named: Child | undefined,
@@ -191,12 +192,11 @@ function hero(
         ctx.t("noSchoolDaysUntil", { day: formatDay(item.horizon, ctx.language) }),
       ]);
   }
-  const shown = [...(span ? [hours(span, ctx)] : []), ...facts.map((entry) => fact(entry, ctx))];
   return html`<div class="hero">
     ${mark}
     <div class="hero-text">
       <h2>${named ? html`<span class="sr">${named.first_name}: </span>` : nothing}${title}</h2>
-      ${shown.length > 0 ? html`<div class="facts">${shown}</div>` : nothing}
+      ${factList([...(span ? [hours(span, ctx)] : []), ...shown.map((entry) => fact(entry, ctx))])}
     </div>
   </div>`;
 }
@@ -223,11 +223,10 @@ function strip(group: DayGroup, view: DayCardView, ctx: ViewContext): TemplateRe
               ? hours(child.content.hours, ctx)
               : html`<span class="quiet">${ctx.t("noTimetable")}</span>`
           }
-          ${
-            child.facts.length > 0
-              ? html`<span class="facts">${child.facts.map((item) => fact(item, ctx))}</span>`
-              : nothing
-          }
+          ${factList(
+            child.facts.map((item) => fact(item, ctx)),
+            "span",
+          )}
           ${childError(child, ctx)}
         </li>`,
     )}

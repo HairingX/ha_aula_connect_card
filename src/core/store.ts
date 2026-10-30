@@ -116,68 +116,68 @@ function sameRange(a: DayRange, b: DayRange): boolean {
 
 /** The data of one websocket connection, shared by every card on the page. */
 export class AulaStore {
-  private readonly connection: HassConnection;
-  private callWS: CallWS;
-  private zone: string;
-  private range: DayRange;
-  private readonly watchers = new Set<Watcher>();
-  private readonly subscriptions = new Map<ChildKey, Subscription>();
-  private readonly data = new Map<ChildKey, ChildData>();
-  private list: Child[] | undefined;
-  private listError: unknown;
-  private refreshing = false;
+  readonly #connection: HassConnection;
+  #callWS: CallWS;
+  #zone: string;
+  #range: DayRange;
+  readonly #watchers = new Set<Watcher>();
+  readonly #subscriptions = new Map<ChildKey, Subscription>();
+  readonly #data = new Map<ChildKey, ChildData>();
+  #list: Child[] | undefined;
+  #listError: unknown;
+  #refreshing = false;
   /** Whether the list was confirmed since the connection or a subscription was last lost. */
-  private listed = true;
+  #listed = true;
   /** Whether the last listing failed. */
-  private listFailed = false;
+  #listFailed = false;
   /** Children an earlier listing had and the last lacks: kept for the window, awaited after it. */
-  private readonly missing = new Map<ChildKey, Child>();
+  readonly #missing = new Map<ChildKey, Child>();
   /** Children whose subscription was refused, until data comes for them. */
-  private readonly refused = new Set<ChildKey>();
+  readonly #refused = new Set<ChildKey>();
   /** Counts listings, so that the answer of one replaced by a newer is ignored. */
-  private listing = 0;
+  #listing = 0;
   /** When the listings began to retry, for the window. */
-  private retryStart: number | undefined;
-  private retries = 0;
-  private retryTimer: ReturnType<typeof setTimeout> | undefined;
-  private reloadTimer: ReturnType<typeof setTimeout> | undefined;
-  private attached = false;
-  private snapshotCache: StoreSnapshot | undefined;
-  private notifying = false;
+  #retryStart: number | undefined;
+  #retries = 0;
+  #retryTimer: ReturnType<typeof setTimeout> | undefined;
+  #reloadTimer: ReturnType<typeof setTimeout> | undefined;
+  #attached = false;
+  #snapshotCache: StoreSnapshot | undefined;
+  #notifying = false;
 
   /** Makes the store of `connection`, sending commands with `callWS` and keeping days in `zone`. */
   constructor(connection: HassConnection, callWS: CallWS, zone: string) {
-    this.connection = connection;
-    this.callWS = callWS;
-    this.zone = zone;
-    this.range = rangeFor(localTime(new Date(), zone).day);
+    this.#connection = connection;
+    this.#callWS = callWS;
+    this.#zone = zone;
+    this.#range = rangeFor(localTime(new Date(), zone).day);
   }
 
   /** What the store holds now; the same object until something changes. */
   get snapshot(): StoreSnapshot {
-    this.snapshotCache ??= {
-      range: this.range,
-      children: { list: this.list, error: this.listError, refreshing: this.refreshing },
-      data: new Map(this.data),
+    this.#snapshotCache ??= {
+      range: this.#range,
+      children: { list: this.#list, error: this.#listError, refreshing: this.#refreshing },
+      data: new Map(this.#data),
     };
-    return this.snapshotCache;
+    return this.#snapshotCache;
   }
 
   /** Takes the newest `callWS` and the time zone days are kept in. */
   configure(callWS: CallWS, zone: string): void {
-    this.callWS = callWS;
-    if (zone === this.zone) return;
-    this.zone = zone;
+    this.#callWS = callWS;
+    if (zone === this.#zone) return;
+    this.#zone = zone;
     this.touch(new Date());
   }
 
   /** Moves the range to this week and next as of `now`, subscribing anew when it changed. */
   touch(now: Date): void {
-    const range = rangeFor(localTime(now, this.zone).day);
-    if (sameRange(range, this.range)) return;
-    this.range = range;
-    this.changed();
-    this.reconcile();
+    const range = rangeFor(localTime(now, this.#zone).day);
+    if (sameRange(range, this.#range)) return;
+    this.#range = range;
+    this.#changed();
+    this.#reconcile();
   }
 
   /**
@@ -186,7 +186,7 @@ export class AulaStore {
    * `LINGER_MS`, so a card made again at once finds its data.
    */
   watch(options: WatchOptions): () => void {
-    return this.add({ children: [...options.children], onChange: options.onChange });
+    return this.#add({ children: [...options.children], onChange: options.onChange });
   }
 
   /**
@@ -194,7 +194,7 @@ export class AulaStore {
    * child's data: for the editor, which lists the children the cards have seen.
    */
   whenListed(timeout: number): Promise<void> {
-    if (this.list !== undefined) return Promise.resolve();
+    if (this.#list !== undefined) return Promise.resolve();
     return new Promise((resolve) => {
       const done = (): void => {
         clearTimeout(timer);
@@ -202,98 +202,98 @@ export class AulaStore {
         resolve();
       };
       const timer = setTimeout(done, timeout);
-      const release = this.add({
+      const release = this.#add({
         children: null,
         onChange: () => {
-          if (this.list !== undefined || this.listError !== undefined) done();
+          if (this.#list !== undefined || this.#listError !== undefined) done();
         },
       });
     });
   }
 
-  private add(watcher: Watcher): () => void {
-    const idle = this.idle();
-    this.watchers.add(watcher);
+  #add(watcher: Watcher): () => void {
+    const idle = this.#idle();
+    this.#watchers.add(watcher);
     if (idle) {
-      this.attach();
+      this.#attach();
       this.touch(new Date());
       // Listed again on waking: the integration may have been reloaded while nothing watched.
-      this.listChildren();
-    } else this.retry();
-    this.reconcile();
+      this.#listChildren();
+    } else this.#retry();
+    this.#reconcile();
     let watching = true;
     return () => {
       if (!watching) return;
       watching = false;
-      this.watchers.delete(watcher);
-      this.reconcile();
+      this.#watchers.delete(watcher);
+      this.#reconcile();
     };
   }
 
-  private idle(): boolean {
-    return this.watchers.size === 0 && this.subscriptions.size === 0;
+  #idle(): boolean {
+    return this.#watchers.size === 0 && this.#subscriptions.size === 0;
   }
 
-  private changed(): void {
-    this.snapshotCache = undefined;
-    if (this.notifying) return;
-    this.notifying = true;
+  #changed(): void {
+    this.#snapshotCache = undefined;
+    if (this.#notifying) return;
+    this.#notifying = true;
     queueMicrotask(() => {
-      this.notifying = false;
-      for (const watcher of [...this.watchers]) watcher.onChange();
+      this.#notifying = false;
+      for (const watcher of [...this.#watchers]) watcher.onChange();
     });
   }
 
-  private attach(): void {
-    if (this.attached) return;
-    this.attached = true;
-    this.connection.addEventListener("ready", this.onReady);
-    this.connection.addEventListener("disconnected", this.onDisconnected);
+  #attach(): void {
+    if (this.#attached) return;
+    this.#attached = true;
+    this.#connection.addEventListener("ready", this.#onReady);
+    this.#connection.addEventListener("disconnected", this.#onDisconnected);
   }
 
-  private detach(): void {
-    if (!this.attached) return;
-    this.attached = false;
-    this.connection.removeEventListener("ready", this.onReady);
-    this.connection.removeEventListener("disconnected", this.onDisconnected);
-    clearTimeout(this.retryTimer);
-    clearTimeout(this.reloadTimer);
-    this.retryTimer = undefined;
-    this.reloadTimer = undefined;
-    this.stopRetrying();
-    this.listing++;
+  #detach(): void {
+    if (!this.#attached) return;
+    this.#attached = false;
+    this.#connection.removeEventListener("ready", this.#onReady);
+    this.#connection.removeEventListener("disconnected", this.#onDisconnected);
+    clearTimeout(this.#retryTimer);
+    clearTimeout(this.#reloadTimer);
+    this.#retryTimer = undefined;
+    this.#reloadTimer = undefined;
+    this.#stopRetrying();
+    this.#listing++;
   }
 
   // Home Assistant drops every subscription of a lost connection; they are made again once the
   // children are listed again, as the integration may have been reloaded meanwhile.
-  private readonly onReady = (): void => {
-    this.listChildren();
+  readonly #onReady = (): void => {
+    this.#listChildren();
   };
 
-  private readonly onDisconnected = (): void => {
-    for (const [key, subscription] of this.subscriptions) {
+  readonly #onDisconnected = (): void => {
+    for (const [key, subscription] of this.#subscriptions) {
       subscription.alive = false;
       clearTimeout(subscription.linger);
-      this.markStale(key);
+      this.#markStale(key);
     }
-    this.subscriptions.clear();
-    this.listed = false;
-    if (this.idle()) this.detach();
+    this.#subscriptions.clear();
+    this.#listed = false;
+    if (this.#idle()) this.#detach();
   };
 
-  private markStale(key: ChildKey): void {
-    const current = this.data.get(key);
+  #markStale(key: ChildKey): void {
+    const current = this.#data.get(key);
     if (!current || current.stale) return;
-    this.data.set(key, { ...current, stale: true });
-    this.changed();
+    this.#data.set(key, { ...current, stale: true });
+    this.#changed();
   }
 
-  private wanted(): Map<ChildKey, Child> {
+  #wanted(): Map<ChildKey, Child> {
     const result = new Map<ChildKey, Child>();
-    if (!this.list) return result;
-    for (const watcher of this.watchers) {
+    if (!this.#list) return result;
+    for (const watcher of this.#watchers) {
       if (!watcher.children) continue;
-      for (const child of selectChildren(this.list, watcher.children).shown) {
+      for (const child of selectChildren(this.#list, watcher.children).shown) {
         result.set(childKey(child), child);
       }
     }
@@ -301,32 +301,32 @@ export class AulaStore {
   }
 
   /** Brings the subscriptions in line with what the watchers want and the range. */
-  private reconcile(): void {
-    const wanted = this.wanted();
+  #reconcile(): void {
+    const wanted = this.#wanted();
     for (const [key, child] of wanted) {
-      const current = this.subscriptions.get(key);
-      if (current && sameRange(current.range, this.range)) {
+      const current = this.#subscriptions.get(key);
+      if (current && sameRange(current.range, this.#range)) {
         clearTimeout(current.linger);
         current.linger = undefined;
         continue;
       }
-      if (current) this.end(key, current);
-      if (this.listed && !this.missing.has(key)) this.subscribe(key, child);
+      if (current) this.#end(key, current);
+      if (this.#listed && !this.#missing.has(key)) this.#subscribe(key, child);
     }
-    for (const [key, subscription] of this.subscriptions) {
+    for (const [key, subscription] of this.#subscriptions) {
       if (wanted.has(key)) continue;
-      if (!sameRange(subscription.range, this.range)) this.end(key, subscription);
+      if (!sameRange(subscription.range, this.#range)) this.#end(key, subscription);
       else
         subscription.linger ??= setTimeout(() => {
-          this.end(key, subscription);
-          if (this.idle()) this.detach();
+          this.#end(key, subscription);
+          if (this.#idle()) this.#detach();
         }, LINGER_MS);
     }
-    if (this.idle()) this.detach();
+    if (this.#idle()) this.#detach();
   }
 
-  private subscribe(key: ChildKey, child: Child): void {
-    const range = this.range;
+  #subscribe(key: ChildKey, child: Child): void {
+    const range = this.#range;
     const subscription: Subscription = {
       range,
       alive: true,
@@ -334,10 +334,10 @@ export class AulaStore {
       unsubscribe: Promise.resolve(undefined),
       linger: undefined,
     };
-    this.subscriptions.set(key, subscription);
-    this.markStale(key);
+    this.#subscriptions.set(key, subscription);
+    this.#markStale(key);
     subscription.unsubscribe = subscribeWeek(
-      this.connection,
+      this.#connection,
       child,
       range,
       (data) => {
@@ -346,69 +346,69 @@ export class AulaStore {
           data.lessons.map((lesson) => lesson.title),
           data.tasks.map((task) => task.subject),
         );
-        this.data.set(key, { range, data, error: undefined, stale: false });
-        this.changed();
-        if (this.refused.delete(key)) this.retry();
+        this.#data.set(key, { range, data, error: undefined, stale: false });
+        this.#changed();
+        if (this.#refused.delete(key)) this.#retry();
       },
       () => {
-        this.ended(key, subscription);
+        this.#ended(key, subscription);
       },
     ).catch((error: unknown) => {
       if (subscription.alive) {
         subscription.alive = false;
         subscription.failed = true;
-        const current = this.data.get(key);
-        this.data.set(key, {
+        const current = this.#data.get(key);
+        this.#data.set(key, {
           range,
           data: current?.data,
           error,
           stale: current?.data !== undefined,
         });
-        this.refused.add(key);
-        this.changed();
+        this.#refused.add(key);
+        this.#changed();
         // A refused subscription is made again after the next listing.
-        this.retry();
+        this.#retry();
       }
       return undefined;
     });
   }
 
-  private end(key: ChildKey, subscription: Subscription): void {
+  #end(key: ChildKey, subscription: Subscription): void {
     subscription.alive = false;
     clearTimeout(subscription.linger);
     subscription.linger = undefined;
-    if (this.subscriptions.get(key) === subscription) this.subscriptions.delete(key);
+    if (this.#subscriptions.get(key) === subscription) this.#subscriptions.delete(key);
     // An unsubscribe that fails, or of a subscription that was never made, changes nothing.
     void subscription.unsubscribe.then((unsubscribe) => unsubscribe?.()).catch(() => undefined);
-    this.markStale(key);
+    this.#markStale(key);
   }
 
   // The integration ends a subscription when its entry is unloaded, as for a reload, or when Aula
   // no longer lists the child. The children are listed once the last of an entry's children has
   // ended and the entry has had a moment to come back.
-  private ended(key: ChildKey, subscription: Subscription): void {
+  #ended(key: ChildKey, subscription: Subscription): void {
     if (!subscription.alive) return;
-    this.end(key, subscription);
-    this.refreshing = true;
-    this.listed = false;
-    this.changed();
-    clearTimeout(this.reloadTimer);
-    this.reloadTimer = setTimeout(() => {
-      this.reloadTimer = undefined;
-      this.listChildren();
+    this.#end(key, subscription);
+    this.#refreshing = true;
+    this.#listed = false;
+    this.#changed();
+    clearTimeout(this.#reloadTimer);
+    this.#reloadTimer = setTimeout(() => {
+      this.#reloadTimer = undefined;
+      this.#listChildren();
     }, RELOAD_DELAY_MS);
   }
 
-  private listChildren(): void {
-    const listing = ++this.listing;
-    clearTimeout(this.retryTimer);
-    this.retryTimer = undefined;
-    fetchChildren(this.callWS).then(
+  #listChildren(): void {
+    const listing = ++this.#listing;
+    clearTimeout(this.#retryTimer);
+    this.#retryTimer = undefined;
+    fetchChildren(this.#callWS).then(
       (children) => {
-        if (listing === this.listing) this.onListed(children);
+        if (listing === this.#listing) this.#onListed(children);
       },
       (error: unknown) => {
-        if (listing === this.listing) this.onListFailed(error);
+        if (listing === this.#listing) this.#onListFailed(error);
       },
     );
   }
@@ -417,96 +417,97 @@ export class AulaStore {
    * Tells whether something a card waits for is missing: the last listing failed, lacked a child
    * listed before or listed none, or a wanted child's subscription was refused.
    */
-  private unresolved(): boolean {
-    if (this.listFailed || this.missing.size > 0 || this.list?.length === 0) return true;
-    const wanted = this.wanted();
-    return [...this.refused].some((key) => wanted.has(key));
+  #unresolved(): boolean {
+    if (this.#listFailed || this.#missing.size > 0 || this.#list?.length === 0) return true;
+    const wanted = this.#wanted();
+    return [...this.#refused].some((key) => wanted.has(key));
   }
 
   /** Tells whether the window is open; it opens when listings begin to retry. */
-  private inWindow(): boolean {
+  #inWindow(): boolean {
     const now = Date.now();
-    this.retryStart ??= now;
-    return now - this.retryStart < RETRY_WINDOW_MS;
+    this.#retryStart ??= now;
+    return now - this.#retryStart < RETRY_WINDOW_MS;
   }
 
   // While a card watches, a listing follows until nothing is missing: quickly for the window,
   // then every few minutes, as an entry can load long after Home Assistant has started.
-  private retry(): void {
-    if (this.watchers.size === 0 || !this.unresolved()) {
-      clearTimeout(this.retryTimer);
-      this.retryTimer = undefined;
-      this.stopRetrying();
+  #retry(): void {
+    if (this.#watchers.size === 0 || !this.#unresolved()) {
+      clearTimeout(this.#retryTimer);
+      this.#retryTimer = undefined;
+      this.#stopRetrying();
       return;
     }
-    if (this.retryTimer !== undefined) return;
-    const delay = this.inWindow()
-      ? RETRY_DELAYS_MS[Math.min(this.retries, RETRY_DELAYS_MS.length - 1)]
+    if (this.#retryTimer !== undefined) return;
+    const delay = this.#inWindow()
+      ? RETRY_DELAYS_MS[Math.min(this.#retries, RETRY_DELAYS_MS.length - 1)]
       : RETRY_SLOW_MS;
-    this.retries++;
-    this.retryTimer = setTimeout(() => {
-      this.retryTimer = undefined;
-      this.listChildren();
+    this.#retries++;
+    this.#retryTimer = setTimeout(() => {
+      this.#retryTimer = undefined;
+      this.#listChildren();
     }, delay);
   }
 
-  private stopRetrying(): void {
-    this.retryStart = undefined;
-    this.retries = 0;
+  #stopRetrying(): void {
+    this.#retryStart = undefined;
+    this.#retries = 0;
   }
 
   // While Home Assistant starts, the integration answers with an empty list until its entry has
   // loaded, and an entry being reloaded lacks its children until it is back: a listing that
   // lacks a child listed before, or that lists none, is retried, keeping what was shown.
-  private onListed(children: Child[]): void {
+  #onListed(children: Child[]): void {
     rememberChildren(children);
     const keys = new Set(children.map(childKey));
-    const before = [...(this.list ?? []), ...this.missing.values()];
-    this.listed = true;
-    this.listFailed = false;
-    this.listError = undefined;
-    for (const [key, subscription] of this.subscriptions) {
-      if (subscription.failed) this.subscriptions.delete(key);
+    const before = [...(this.#list ?? []), ...this.#missing.values()];
+    this.#listed = true;
+    this.#listFailed = false;
+    this.#listError = undefined;
+    for (const [key, subscription] of this.#subscriptions) {
+      if (subscription.failed) this.#subscriptions.delete(key);
     }
-    this.missing.clear();
+    this.#missing.clear();
     for (const child of before) {
-      if (!keys.has(childKey(child))) this.missing.set(childKey(child), child);
+      if (!keys.has(childKey(child))) this.#missing.set(childKey(child), child);
     }
-    if ((this.missing.size > 0 || children.length === 0) && this.inWindow()) {
-      const kept = (this.list ?? []).filter(
-        (child) => keys.has(childKey(child)) || this.missing.has(childKey(child)),
+    if ((this.#missing.size > 0 || children.length === 0) && this.#inWindow()) {
+      const kept = (this.#list ?? []).filter(
+        (child) => keys.has(childKey(child)) || this.#missing.has(childKey(child)),
       );
       const known = new Set(kept.map(childKey));
-      this.list = [...kept, ...children.filter((child) => !known.has(childKey(child)))];
-      this.refreshing = true;
+      this.#list = [...kept, ...children.filter((child) => !known.has(childKey(child)))];
+      this.#refreshing = true;
     } else {
-      this.list = children;
-      this.refreshing = false;
-      for (const key of [...this.data.keys()]) if (!keys.has(key)) this.data.delete(key);
+      this.#list = children;
+      this.#refreshing = false;
+      for (const key of [...this.#data.keys()]) if (!keys.has(key)) this.#data.delete(key);
     }
-    this.changed();
-    this.reconcile();
-    this.retry();
+    this.#changed();
+    this.#reconcile();
+    this.#retry();
   }
 
-  private onListFailed(error: unknown): void {
-    this.listFailed = true;
-    const inWindow = this.inWindow();
-    if (this.list === undefined) {
+  #onListFailed(error: unknown): void {
+    this.#listFailed = true;
+    const inWindow = this.#inWindow();
+    if (this.#list === undefined) {
       const starting =
-        errorCode(error) === "unknown_command" && Date.now() - (this.retryStart ?? 0) < STARTING_MS;
-      this.listError = starting ? undefined : error;
-      this.refreshing = false;
+        errorCode(error) === "unknown_command" &&
+        Date.now() - (this.#retryStart ?? 0) < STARTING_MS;
+      this.#listError = starting ? undefined : error;
+      this.#refreshing = false;
     } else if (inWindow) {
-      this.listError = undefined;
-      this.refreshing = true;
+      this.#listError = undefined;
+      this.#refreshing = true;
     } else {
-      this.listError = error;
-      this.refreshing = false;
-      this.list = this.list.filter((child) => !this.missing.has(childKey(child)));
+      this.#listError = error;
+      this.#refreshing = false;
+      this.#list = this.#list.filter((child) => !this.#missing.has(childKey(child)));
     }
-    this.changed();
-    this.retry();
+    this.#changed();
+    this.#retry();
   }
 }
 

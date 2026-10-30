@@ -39,6 +39,7 @@ import {
   eventIcon,
   eventWhen,
   fact,
+  facts,
   heading,
   hours,
   icon,
@@ -62,7 +63,7 @@ function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardStat
   const { content, plan } = row;
   if (plan.nothing) {
     return row.facts.length > 0
-      ? html`<div class="facts">${row.facts.map((item) => fact(item, ctx))}</div>`
+      ? facts(row.facts.map((item) => fact(item, ctx)))
       : html`<p class="empty">${ctx.t("nothingThisDay")}</p>`;
   }
   return html`<div class="blocks">
@@ -292,10 +293,6 @@ function weekRow(item: WeekRow, child: Child, ctx: ViewContext, state: CardState
       const key = `${childKey(child)}|day|${row.day}`;
       const open = state.isOpen(key, true);
       const span = row.content.hours;
-      const facts = [
-        ...(span ? [hours(span, ctx)] : []),
-        ...row.facts.map((entry) => fact(entry, ctx)),
-      ];
       return html`<details
         class="day-row focus-day ${row.relation === "today" && item.focus.reason === "today" ? "today" : ""}"
         ?open=${open}
@@ -305,7 +302,10 @@ function weekRow(item: WeekRow, child: Child, ctx: ViewContext, state: CardState
           ${dayColumn(row.day, ctx)}
           <span class="hero-text">
             <h4>${openHeading(row, item.focus, ctx)}</h4>
-            ${facts.length > 0 ? html`<span class="facts">${facts}</span>` : nothing}
+            ${facts(
+              [...(span ? [hours(span, ctx)] : []), ...row.facts.map((entry) => fact(entry, ctx))],
+              "span",
+            )}
           </span>
           ${icon("mdi:chevron-down", "chevron")}
         </summary>

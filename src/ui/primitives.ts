@@ -148,6 +148,17 @@ export function fact(item: Fact, ctx: ViewContext): TemplateResult {
   >`;
 }
 
+/** Shows facts side by side, heard with a pause between them. */
+export function facts(items: readonly unknown[], tag: "div" | "span" = "div"): unknown {
+  if (items.length === 0) return nothing;
+  const shown = items.map(
+    (item, index) => html`${index > 0 ? html`<span class="sr">, </span>` : nothing}${item}`,
+  );
+  return tag === "div"
+    ? html`<div class="facts">${shown}</div>`
+    : html`<span class="facts">${shown}</span>`;
+}
+
 /**
  * Shows parts of a line with a dot between them. Each dot belongs to the part after it, and one
  * that would begin a line is cut off, so that no line ends or begins with a dot.

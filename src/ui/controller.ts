@@ -22,25 +22,25 @@ export interface ControllerHooks {
 
 /** Watches the store and the clock for a card. */
 export class AulaController implements ReactiveController {
-  private readonly host: ReactiveControllerHost;
-  private readonly hooks: ControllerHooks;
-  private hass: HomeAssistant | undefined;
-  private settings = "";
-  private store: AulaStore | undefined;
-  private release: (() => void) | undefined;
-  private stopClock: (() => void) | undefined;
-  private connected = false;
+  readonly #host: ReactiveControllerHost;
+  readonly #hooks: ControllerHooks;
+  #hass: HomeAssistant | undefined;
+  #settings = "";
+  #store: AulaStore | undefined;
+  #release: (() => void) | undefined;
+  #stopClock: (() => void) | undefined;
+  #connected = false;
 
   /** Makes the controller of `host`. */
   constructor(host: ReactiveControllerHost, hooks: ControllerHooks) {
-    this.host = host;
-    this.hooks = hooks;
+    this.#host = host;
+    this.#hooks = hooks;
     host.addController(this);
   }
 
   /** What the store holds now; undefined until the card watches it. */
   get snapshot(): StoreSnapshot | undefined {
-    return this.store?.snapshot;
+    return this.#store?.snapshot;
   }
 
   /**
@@ -50,59 +50,59 @@ export class AulaController implements ReactiveController {
    */
   setHass(hass: HomeAssistant): boolean {
     const settings = settingsKey(hass);
-    const changed = this.hass?.connection !== hass.connection || settings !== this.settings;
-    this.hass = hass;
-    this.settings = settings;
-    if (changed) this.sync();
+    const changed = this.#hass?.connection !== hass.connection || settings !== this.#settings;
+    this.#hass = hass;
+    this.#settings = settings;
+    if (changed) this.#sync();
     return changed;
   }
 
   /** Watches again with the children the configuration now names. */
   configChanged(): void {
-    this.sync();
+    this.#sync();
   }
 
   /** Starts watching, when the card has what it needs. */
   hostConnected(): void {
-    this.connected = true;
-    this.sync();
+    this.#connected = true;
+    this.#sync();
   }
 
   /** Stops watching; the store keeps the data a minute, should the card come back. */
   hostDisconnected(): void {
-    this.connected = false;
-    this.unwatch();
+    this.#connected = false;
+    this.#unwatch();
   }
 
-  private sync(): void {
-    const children = this.hooks.wanted();
-    if (!this.connected || !this.hass || children === undefined) {
-      this.unwatch();
+  #sync(): void {
+    const children = this.#hooks.wanted();
+    if (!this.#connected || !this.#hass || children === undefined) {
+      this.#unwatch();
       return;
     }
-    const store = storeFor(this.hass);
-    if (store !== this.store) this.unwatch();
-    this.store = store;
-    const previous = this.release;
+    const store = storeFor(this.#hass);
+    if (store !== this.#store) this.#unwatch();
+    this.#store = store;
+    const previous = this.#release;
     // Watching before letting go keeps a child both want from lingering or resubscribing.
-    this.release = store.watch({
+    this.#release = store.watch({
       children,
       onChange: () => {
-        this.host.requestUpdate();
+        this.#host.requestUpdate();
       },
     });
     previous?.();
-    this.stopClock ??= onMinute((now) => {
-      this.store?.touch(now);
-      this.hooks.tick(now);
-      this.host.requestUpdate();
+    this.#stopClock ??= onMinute((now) => {
+      this.#store?.touch(now);
+      this.#hooks.tick(now);
+      this.#host.requestUpdate();
     });
   }
 
-  private unwatch(): void {
-    this.release?.();
-    this.release = undefined;
-    this.stopClock?.();
-    this.stopClock = undefined;
+  #unwatch(): void {
+    this.#release?.();
+    this.#release = undefined;
+    this.#stopClock?.();
+    this.#stopClock = undefined;
   }
 }
