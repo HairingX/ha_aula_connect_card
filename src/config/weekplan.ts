@@ -41,16 +41,7 @@ export function resolveWeekplanConfig(config: unknown, lenient = false): Weekpla
 /** Returns the week plan card's form. */
 export function weekplanConfigForm(): ConfigForm {
   return configForm(
-    [
-      "children",
-      "notes",
-      "task_label",
-      "comment_label",
-      "info_lines",
-      "switch_time",
-      "size",
-      "subject_names_group",
-    ],
+    ["children", "notes", "info_lines", "switch_time", "size", "subject_names_group"],
     resolveWeekplanConfig,
   );
 }

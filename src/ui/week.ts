@@ -8,10 +8,8 @@
 
 import { html, nothing, type TemplateResult } from "lit/html.js";
 
-import { taskCount } from "../core/labels.ts";
 import type { ViewContext } from "../core/context.ts";
 import {
-  addDays,
   capitalize,
   daysBetween,
   formatDay,
@@ -32,7 +30,7 @@ import type {
   WeekRow,
   WeekSection,
 } from "../model/week-view.ts";
-import { renderBlock } from "./blocks.ts";
+import { BLOCK_ICONS, renderBlock } from "./blocks.ts";
 import type { CardState } from "./card.ts";
 import {
   aula,
@@ -135,7 +133,12 @@ function summary(
   if (extra.length === 0) {
     if (shown("timetable"))
       facts.push(content.hours ? hours(content.hours, ctx) : ctx.t("allCancelled"));
-    if (shown("task")) facts.push(taskCount(ctx, content.homework.length));
+    if (shown("task"))
+      facts.push(
+        html`<span class="count" aria-label=${ctx.t("blockTask")}
+          >${icon(BLOCK_ICONS.task)}${content.homework.length}</span
+        >`,
+      );
     if (facts.length === 0 && content.view.lessons.length === 0)
       facts.push(ctx.t("noTimetableInAula"));
   }
@@ -367,9 +370,6 @@ function week(
         >${t("weekNumber", { n: section.number })} ·
         ${section.relation === "this" ? t("thisWeek") : t("nextWeek")}</span
       >
-      <span class="week-dates"
-        >${formatDayRange(section.start, addDays(section.start, 6), ctx.language, "short")}</span
-      >
     </h3>
     ${
       section.notYet === undefined
@@ -395,7 +395,7 @@ function childWeeks(
   const { t } = ctx;
   const school = view.differentSchools ? [child.child.institution_name] : [];
   return html`<div class="child">
-    <h2>${who(child.child, school)}</h2>
+    ${view.children.length > 1 ? html`<h2>${who(child.child, school)}</h2>` : nothing}
     ${childState(child.state, t)}
     ${
       child.state.kind === "ready"

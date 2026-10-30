@@ -291,7 +291,7 @@ function group(
   const school = (child: Child): string[] =>
     view.differentSchools ? [child.institution_name] : [];
   return html`<div class="child ${columns(count)} ${one ? "single" : ""}">
-    ${one ? who(one.child, school(one.child)) : nothing}
+    ${one && several ? who(one.child, school(one.child)) : nothing}
     ${one ? childState(one.state, ctx.t) : nothing}
     ${
       item.hero

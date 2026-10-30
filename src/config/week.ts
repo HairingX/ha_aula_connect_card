@@ -49,8 +49,6 @@ export function weekConfigForm(): ConfigForm {
       "show",
       "timetable",
       "info_lines",
-      "task_label",
-      "comment_label",
       "switch_time",
       "size",
       "packing_group",

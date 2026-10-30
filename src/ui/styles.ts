@@ -638,11 +638,27 @@ export const blocks = css`
       --aula-grid: grid;
       --aula-n: 2;
     }
+    .normal .n-2:not(.tworow) .part-who {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
   @container child (min-width: 712px) {
     .large .n-2 .cols {
       --aula-grid: grid;
       --aula-n: 2;
+    }
+    .large .n-2:not(.tworow) .part-who {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
   }
   @container child (min-width: 904px) {
@@ -650,11 +666,27 @@ export const blocks = css`
       --aula-grid: grid;
       --aula-n: 3;
     }
+    .normal .n-3:not(.tworow) .part-who {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
   @container child (min-width: 1100px) {
     .large .n-3 .cols {
       --aula-grid: grid;
       --aula-n: 3;
+    }
+    .large .n-3:not(.tworow) .part-who {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
   }
   /* Children in two rows fill them in order. */
@@ -1106,6 +1138,14 @@ export const homeworkStyles = css`
 
 /** The week card. */
 export const weekStyles = css`
+  .count {
+    white-space: nowrap;
+    --mdc-icon-size: 1.1em;
+  }
+  .count ha-icon {
+    vertical-align: -0.2em;
+    margin-inline-end: 2px;
+  }
   .weeks {
     display: flex;
     flex-direction: column;
@@ -1119,10 +1159,6 @@ export const weekStyles = css`
     margin-bottom: var(--aula-space-2);
     color: var(--aula-text-2);
     font-weight: var(--aula-medium);
-  }
-  .week-dates {
-    font-size: var(--aula-font-s);
-    font-weight: var(--aula-normal);
   }
   .not-yet {
     padding-bottom: var(--aula-space-2);

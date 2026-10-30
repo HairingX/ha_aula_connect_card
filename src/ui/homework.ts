@@ -10,7 +10,6 @@
 import { html, nothing, type TemplateResult } from "lit/html.js";
 
 import type { ViewContext } from "../core/context.ts";
-import { commentIcon, commentName, taskIcon, taskName } from "../core/labels.ts";
 import {
   formatDay,
   formatDayRange,
@@ -20,7 +19,6 @@ import {
 } from "../core/dates.ts";
 import { childKey, type Child } from "../core/types.ts";
 import type {
-  NotesShown,
   HomeworkCardView,
   HomeworkDay,
   HomeworkHero,
@@ -144,24 +142,14 @@ function heroLine(item: HomeworkHero, ctx: ViewContext): TemplateResult {
   </section>`;
 }
 
-/** Returns the card's name, with its icon when it shows one kind of note. */
-function cardName(shown: NotesShown, ctx: ViewContext): { name: string; icon: string | undefined } {
-  if (shown === "tasks") return { name: taskName(ctx), icon: taskIcon(ctx) };
-  if (shown === "comments") return { name: commentName(ctx), icon: commentIcon(ctx) };
-  return { name: ctx.t("weekPlanTitle"), icon: undefined };
-}
-
-/** Renders the week plan card, of the notes `shown` chooses. */
+/** Renders the week plan card. */
 export function renderHomework(
   view: HomeworkCardView,
   ctx: ViewContext,
   state: CardState,
-  shown: NotesShown,
 ): TemplateResult {
   const { t } = ctx;
-  const named = cardName(shown, ctx);
   const label = t("regionHomework", {
-    name: named.name,
     names: names(
       view.children.map((child) => child.child),
       ctx,
@@ -170,31 +158,18 @@ export function renderHomework(
   const children = view.children.map((child) => child.child);
   const count = children.length;
   const several = count > 1;
-  const [from, to] = view.weeks;
-  // The card's title: whose homework it is, and the weeks it covers.
-  const title = html`<h2 class="title-who">
-    <span class="who"
-      ><span class="avatars">${children.map(avatar)}</span>${segments([
-        html`<span class="who-name">${names(children, ctx)}</span>`,
-        html`<span class="who-meta"
-          >${named.icon === undefined ? nothing : icon(named.icon, "meta-icon")}${named.name}</span
-        >`,
-        html`<span class="who-meta">${t("weeksShort", { from, to })}</span>`,
-      ])}</span
-    >
-  </h2>`;
   // Kept by the children, the first one first, so that it closes when its focus day moves on.
   const key = `${children.map(childKey).join("|")}|earlier`;
   return html`<section class="homework-card stack ${columns(count)}" aria-label=${label}>
-    ${title}
     ${
-      // Every day's part names its child; a strip above the columns adds only the schools.
-      several && view.differentSchools
+      // Side by side, the children are named once above their columns; stacked, each part
+      // names its child, and this strip is hidden.
+      several
         ? html`<div class="strip cols" aria-hidden="true">
             ${children.map(
               (child, index) =>
                 html`<div class="kid" style="--col: ${index + 1}">
-                  ${who(child, [child.institution_name])}
+                  ${who(child, view.differentSchools ? [child.institution_name] : [])}
                 </div>`,
             )}
           </div>`

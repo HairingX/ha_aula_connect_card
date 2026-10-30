@@ -58,10 +58,10 @@ export class AulaConnectWeekplanCard extends AulaCard<WeekplanCardConfig, Homewo
 
   protected override content(
     view: HomeworkCardView,
-    config: WeekplanCardConfig,
+    _config: WeekplanCardConfig,
     ctx: ViewContext,
   ): TemplateResult {
-    return renderHomework(view, ctx, this, config.notes);
+    return renderHomework(view, ctx, this);
   }
 
   protected override emptySize(): number {

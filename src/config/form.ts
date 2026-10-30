@@ -13,7 +13,6 @@ import {
   rememberedLanguage,
 } from "../core/memory.ts";
 import { translator, type TextKey, type Translate } from "../core/i18n.ts";
-import { COMMENT_NAMES, TASK_NAMES } from "../core/labels.ts";
 import { BLOCKS, type BlockId } from "../model/blocks.ts";
 import { subjectNamer } from "../model/subjects.ts";
 import { configRecord } from "./common.ts";
@@ -85,8 +84,6 @@ const LABELS: Readonly<Record<string, TextKey>> = {
   switch_time: "editorSwitch",
   size: "editorSize",
   notes: "editorNotes",
-  task_label: "editorTaskLabel",
-  comment_label: "editorCommentLabel",
   packing: "editorPackingList",
   subject_names: "editorSubjectNamesList",
 };
@@ -100,8 +97,6 @@ const HELPERS: Readonly<Record<string, TextKey>> = {
   switch_time: "editorSwitchHelper",
   size: "editorSizeHelper",
   notes: "editorNotesHelper",
-  task_label: "editorTaskLabelHelper",
-  comment_label: "editorCommentLabelHelper",
   packing_group: "editorPackingHelper",
   subject_names_group: "editorSubjectNamesHelper",
 };
@@ -122,8 +117,6 @@ export type FieldName =
   | "switch_time"
   | "size"
   | "notes"
-  | "task_label"
-  | "comment_label"
   | "packing_group"
   | "subject_names_group";
 
@@ -220,24 +213,6 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
             { value: "comments", label: t("notesComments") },
             { value: "all", label: t("notesAll") },
           ],
-        },
-      },
-    },
-    task_label: {
-      name: "task_label",
-      selector: {
-        select: {
-          mode: "list",
-          options: Object.entries(TASK_NAMES).map(([value, key]) => ({ value, label: t(key) })),
-        },
-      },
-    },
-    comment_label: {
-      name: "comment_label",
-      selector: {
-        select: {
-          mode: "list",
-          options: Object.entries(COMMENT_NAMES).map(([value, key]) => ({ value, label: t(key) })),
         },
       },
     },

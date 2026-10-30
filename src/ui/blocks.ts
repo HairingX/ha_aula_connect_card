@@ -9,8 +9,6 @@
 import { html, nothing, type TemplateResult } from "lit/html.js";
 
 import type { ViewContext } from "../core/context.ts";
-import { daysBetween, formatWeekday } from "../core/dates.ts";
-import { commentIcon, commentName, taskIcon, taskName } from "../core/labels.ts";
 import { initials } from "../core/text.ts";
 import type { Child, Day } from "../core/types.ts";
 import {
@@ -38,6 +36,7 @@ import {
   nowLabel,
   segments,
   time,
+  timeSpan,
 } from "./primitives.ts";
 
 /** A child's part of a block. */
@@ -70,37 +69,26 @@ export interface BlockOptions {
   readonly state: CardState;
 }
 
-const ICONS: Readonly<Record<Exclude<BlockId, "task" | "comment">, string>> = {
+/** The blocks' icons; Vigtigt has a flag, as the teacher marked it. */
+export const BLOCK_ICONS: Readonly<Record<BlockId, string>> = {
+  task: "mdi:flag-outline",
   pack: "mdi:bag-personal-outline",
   timetable: "mdi:timetable",
+  comment: "mdi:clipboard-text-outline",
   events: "mdi:calendar-outline",
   birthdays: "mdi:cake-variant-outline",
 };
 
-/** Returns a block's icon; the week plan's follow the names chosen for them. */
-export function blockIcon(id: BlockId, ctx: ViewContext): string {
-  return id === "task" ? taskIcon(ctx) : id === "comment" ? commentIcon(ctx) : ICONS[id];
-}
-
-/** Returns the marked notes' title: "Vigtigt til i morgen", naming the day they are for. */
-export function homeworkTitle(day: string, ctx: ViewContext): string {
-  const ahead = daysBetween(ctx.today, day);
-  const name = taskName(ctx);
-  if (ahead === 0) return ctx.t("homeworkToday", { name });
-  if (ahead === 1) return ctx.t("homeworkTomorrow", { name });
-  return ctx.t("homeworkDay", { name, day: formatWeekday(day, ctx.language) });
-}
-
-function title(id: BlockId, day: string, ctx: ViewContext): string {
+function title(id: BlockId, ctx: ViewContext): string {
   switch (id) {
     case "task":
-      return homeworkTitle(day, ctx);
+      return ctx.t("blockTask");
     case "pack":
       return ctx.t("blockPack");
     case "timetable":
       return ctx.t("blockTimetable");
     case "comment":
-      return commentName(ctx);
+      return ctx.t("blockComment");
     default:
       return ctx.t("blockEvents");
   }
@@ -213,7 +201,7 @@ function subjectName(row: LessonRow, ctx: ViewContext): TemplateResult {
 function foldedRow(row: LessonRow, ctx: ViewContext): TemplateResult {
   return html`<li class="lesson ${row.cancelled ? "cancelled" : ""}">
     <span class="lesson-head">${subjectName(row, ctx)} ${statusLabel(row.status, ctx)}</span>
-    ${time(row.block.start, ctx, "start")}
+    ${timeSpan(row.block.start, row.block.end, ctx)}
   </li>`;
 }
 
@@ -368,31 +356,32 @@ export function renderBlock(
   const { full } = options.state.folding;
   const unfolded = options.state.isOpen(key, full);
   return html`<section class="block" data-block=${id}>
-    ${headingOf(options.level, html`${icon(blockIcon(id, ctx))}<span>${title(id, options.day, ctx)}</span>`, "block-head")}
+    ${headingOf(options.level, html`${icon(BLOCK_ICONS[id])}<span>${title(id, ctx)}</span>`, "block-head")}
     ${
       once === undefined
         ? html`<div class="cols">
-              ${parts.map(
-                (part, index) =>
-                  html`<div
-                    class="part ${texts[index] === undefined ? "" : "is-empty"}"
-                    style="--col: ${part.col}"
-                  >
-                    ${
-                      part.child
-                        ? headingOf(
-                            options.level + 1,
-                            html`${avatar(part.child)}<span>${part.child.first_name}</span>`,
-                            "part-who",
-                          )
-                        : nothing
-                    }
-                    ${
-                      texts[index] === undefined
-                        ? body(id, part, ctx, options, unfolded)
-                        : html`<p class="empty">${texts[index]}</p>`
-                    }
-                  </div>`,
+              ${parts.map((part, index) =>
+                id === "pack" && texts[index] !== undefined
+                  ? nothing
+                  : html`<div
+                      class="part ${texts[index] === undefined ? "" : "is-empty"}"
+                      style="--col: ${part.col}"
+                    >
+                      ${
+                        part.child
+                          ? headingOf(
+                              options.level + 1,
+                              html`${avatar(part.child)}<span>${part.child.first_name}</span>`,
+                              "part-who",
+                            )
+                          : nothing
+                      }
+                      ${
+                        texts[index] === undefined
+                          ? body(id, part, ctx, options, unfolded)
+                          : html`<p class="empty">${texts[index]}</p>`
+                      }
+                    </div>`,
               )}
             </div>
             ${

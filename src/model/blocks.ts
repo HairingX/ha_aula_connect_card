@@ -312,20 +312,30 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
 }
 
 /**
- * Returns the folded timetable: a line for each subject in the order it comes, its lessons in a
- * row taken as one from the start of the first, across a break; the breaks are left out. A
- * lesson whose status differs from the one before it has a line of its own, as it is news.
+ * Returns the folded timetable: a line for each subject as it comes, from the start of its first
+ * lesson to the end of its last, joining only lessons with no break between them, so that the
+ * breaks show as gaps between the times. A lesson whose status differs from the one before it
+ * has a line of its own, as it is news.
  */
 export function foldTimetable(rows: readonly TimetableRow[]): LessonRow[] {
-  const lessons = rows.filter((row) => row.kind === "lesson");
-  return lessons.filter((row, index) => {
-    const before = lessons[index - 1];
-    return (
-      before?.subject.key !== row.subject.key ||
-      before.cancelled !== row.cancelled ||
-      JSON.stringify(before.status) !== JSON.stringify(row.status)
-    );
-  });
+  const lines: LessonRow[] = [];
+  let before: TimetableRow | undefined;
+  for (const row of rows) {
+    const last = lines[lines.length - 1];
+    if (row.kind === "lesson") {
+      const joins =
+        before?.kind === "lesson" &&
+        last !== undefined &&
+        last.subject.key === row.subject.key &&
+        last.cancelled === row.cancelled &&
+        JSON.stringify(last.status) === JSON.stringify(row.status);
+      if (joins)
+        lines[lines.length - 1] = { ...last, block: { ...last.block, end: row.block.end } };
+      else lines.push(row);
+    }
+    before = row;
+  }
+  return lines;
 }
 
 /** Returns a day's facts, without those of a hidden block. */

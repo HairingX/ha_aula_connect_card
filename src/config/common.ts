@@ -6,7 +6,6 @@
  * @packageDocumentation
  */
 
-import { DEFAULT_LABELS, type CommentLabel, type Labels, type TaskLabel } from "../core/context.ts";
 import { BLOCKS, orderBlocks, type BlockId, type ShowConfig } from "../model/blocks.ts";
 import type { PackRule } from "../model/pack.ts";
 import type { SubjectName } from "../model/subjects.ts";
@@ -30,8 +29,6 @@ export interface CommonConfig {
   readonly timetable: "compact" | "full";
   /** The lines of a note of the plan shown before "Vis mere"; 0 shows every note whole. */
   readonly infoLines: number;
-  /** The names chosen for the week plan's two kinds of notes. */
-  readonly labels: Labels;
 }
 
 /** The keys of a card that shows a day's blocks. */
@@ -125,25 +122,6 @@ export function parseTimetable(value: unknown): "compact" | "full" {
   if (value !== "compact" && value !== "full")
     throw new Error("timetable: must be compact or full");
   return value;
-}
-
-const TASK_LABELS: readonly TaskLabel[] = ["important", "tasks", "homework"];
-const COMMENT_LABELS: readonly CommentLabel[] = ["plan", "comments", "info", "notes"];
-
-/** Reads `task_label`: the name of what the week plan marks. */
-export function parseTaskLabel(value: unknown): TaskLabel {
-  if (absent(value)) return DEFAULT_LABELS.task;
-  const label = TASK_LABELS.find((item) => item === value);
-  if (label === undefined) throw new Error(`task_label: must be ${TASK_LABELS.join(", ")}`);
-  return label;
-}
-
-/** Reads `comment_label`: the name of the week plan's other notes. */
-export function parseCommentLabel(value: unknown): CommentLabel {
-  if (absent(value)) return DEFAULT_LABELS.comment;
-  const label = COMMENT_LABELS.find((item) => item === value);
-  if (label === undefined) throw new Error(`comment_label: must be ${COMMENT_LABELS.join(", ")}`);
-  return label;
 }
 
 /** Reads `info_lines`: a whole number from 0 to 50, as a number or text. */
@@ -280,10 +258,6 @@ export function resolveCommon(config: Record<string, unknown>, lenient = false):
     packing: parsePacking(config.packing, lenient),
     timetable: parseTimetable(config.timetable),
     infoLines: parseInfoLines(config.info_lines),
-    labels: {
-      task: parseTaskLabel(config.task_label),
-      comment: parseCommentLabel(config.comment_label),
-    },
   };
 }
 
