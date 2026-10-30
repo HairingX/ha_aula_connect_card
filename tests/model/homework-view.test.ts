@@ -3,13 +3,25 @@ import { describe, expect, it } from "vitest";
 import type { StoreSnapshot } from "../../src/core/store.ts";
 import { homeworkCardView, type HomeworkDay } from "../../src/model/homework-view.ts";
 import type { ViewOptions } from "../../src/model/child.ts";
+import type { NotesShown } from "../../src/model/homework-view.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
 import { contextOf, noHold, snapshotOf } from "../fixtures/snapshot.ts";
 
-const OPTIONS: ViewOptions = { children: [], switchAt: 720, packing: [], subjectNames: [] };
+const OPTIONS: ViewOptions & { notes: NotesShown } = {
+  children: [],
+  switchAt: 720,
+  packing: [],
+  subjectNames: [],
+  expandAbbreviations: true,
+  notes: "tasks",
+};
 const IDA = { ...OPTIONS, children: [1001] };
 
-function view(id: string, options: ViewOptions = OPTIONS, snapshot?: StoreSnapshot) {
+function view(
+  id: string,
+  options: ViewOptions & { notes: NotesShown } = OPTIONS,
+  snapshot?: StoreSnapshot,
+) {
   const item = scenarioNamed(id);
   return homeworkCardView(snapshot ?? snapshotOf(item), options, contextOf(item), noHold);
 }

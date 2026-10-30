@@ -33,6 +33,8 @@ export interface ViewOptions {
   readonly packing: readonly PackRule[];
   /** The configured subject names. */
   readonly subjectNames: readonly SubjectName[];
+  /** Whether the built-in names write the common abbreviations out. */
+  readonly expandAbbreviations: boolean;
 }
 
 /** Returns the focus to show for a child, given the one chosen now: the card holds it a while. */
@@ -75,13 +77,17 @@ export interface ChildBasis {
   readonly rules: ContentRules;
 }
 
-const namers = new WeakMap<readonly SubjectName[], SubjectNamer>();
+const namers = {
+  expanded: new WeakMap<readonly SubjectName[], SubjectNamer>(),
+  kept: new WeakMap<readonly SubjectName[], SubjectNamer>(),
+};
 
-function namerOf(names: readonly SubjectName[]): SubjectNamer {
-  let namer = namers.get(names);
+function namerOf(names: readonly SubjectName[], expand: boolean): SubjectNamer {
+  const cache = expand ? namers.expanded : namers.kept;
+  let namer = cache.get(names);
   if (!namer) {
-    namer = subjectNamer(names);
-    namers.set(names, namer);
+    namer = subjectNamer(names, expand);
+    cache.set(names, namer);
   }
   return namer;
 }
@@ -131,7 +137,7 @@ export function childBases(
   hold: Hold,
 ): { bases: ChildBasis[]; missing: number[] } {
   const { shown, missing } = selectChildren(snapshot.children.list ?? [], options.children);
-  const namer = namerOf(options.subjectNames);
+  const namer = namerOf(options.subjectNames, options.expandAbbreviations);
   const bases = shown.map((child): ChildBasis => {
     const key = childKey(child);
     const entry = snapshot.data.get(key);

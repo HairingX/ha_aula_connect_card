@@ -2,11 +2,11 @@
 
 Three Home Assistant dashboard cards in one bundle, installed through HACS, from the Aula Connect
 integration (`HairingX/ha_aula_connect`): the school day that matters now (`aula-connect-day-card`),
-the homework for the days ahead (`aula-connect-homework-card`), and the week day by day
-(`aula-connect-week-card`). They show the timetable, homework, the plan for the day and things to
-bring from the school's week plan, other calendar events, and birthdays, and are read on a phone and
-on a shared wall screen, in Danish or English. What each card shows and how it is set up: the
-README.
+the week plan for the days ahead (`aula-connect-weekplan-card`), and the week day by day
+(`aula-connect-week-card`). They show the timetable with the calendar's events in it, the week
+plan's tasks and notes, the things to bring by the owner's own packing rules, and birthdays, and
+are read on a phone and on a shared wall screen, in Danish or English. What each card shows and
+how it is set up: the README.
 
 ## These cards
 

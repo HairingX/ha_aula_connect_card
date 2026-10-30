@@ -10,7 +10,6 @@ import { errorText } from "../core/api.ts";
 import type { ViewContext } from "../core/context.ts";
 import {
   capitalize,
-  formatDay,
   formatDayMonth,
   formatDayNumber,
   formatDaysAhead,
@@ -188,36 +187,14 @@ export function counted(name: string, text: string): TemplateResult {
   return html`<span class="fact">${icon(name)}<span>${text}</span></span>`;
 }
 
-/** The whole-day events a day shows before the rest is a tap away. */
-const SHOWN_EVENTS = 3;
-
-/**
- * Shows a day's whole-day events a line each, and its birthdays as one line. Of four or more
- * events, three show and a button unfolds the rest, kept by `key`.
- */
-export function factStack(
-  items: readonly Fact[],
-  key: string,
-  ctx: ViewContext,
-  state: CardState,
-): unknown {
+/** Shows a day's whole-day events a line each, and its birthdays as one line. */
+export function factStack(items: readonly Fact[], ctx: ViewContext): unknown {
   const events = items.filter((item) => item.kind === "event");
   const people = items.flatMap((item) => (item.kind === "birthday" ? [item.birthday.name] : []));
-  const open = state.isOpen(key, false);
-  const folded = events.length > SHOWN_EVENTS;
   return items.length === 0
     ? nothing
     : html`<ul class="facts">
-        ${(folded && !open ? events.slice(0, SHOWN_EVENTS) : events).map(
-          (item) => html`<li>${fact(item, ctx)}</li>`,
-        )}
-        ${
-          folded
-            ? html`<li>
-                ${more(key, open, false, ctx.t("moreFacts", { n: events.length - SHOWN_EVENTS }), state, ctx)}
-              </li>`
-            : nothing
-        }
+        ${events.map((item) => html`<li>${fact(item, ctx)}</li>`)}
         ${
           people.length > 0
             ? html`<li>${counted("mdi:cake-variant-outline", birthdays(people, ctx))}</li>`
@@ -291,12 +268,12 @@ export function dayTitle(day: Day, ctx: ViewContext): string {
 }
 
 /**
- * Returns a day's date line, in parts: "torsdag 29. oktober" for today and tomorrow, else
- * "2. november" and its distance, "om 3 dage". A relative word never stands without its date.
+ * Returns a day's date line, in parts: "29. oktober" for today and tomorrow, else "2. november"
+ * and its distance, "om 3 dage". A relative word never stands without its date.
  */
 export function dateLine(day: Day, ctx: ViewContext): string[] {
   const ahead = daysBetween(ctx.today, day);
-  if (ahead <= 1) return [formatDay(day, ctx.language)];
+  if (ahead <= 1) return [formatDayMonth(day, ctx.language)];
   return [formatDayMonth(day, ctx.language), formatDaysAhead(ahead, ctx.language)];
 }
 
@@ -318,7 +295,9 @@ export function heading(
   ctx: ViewContext,
   titleClass = "title",
 ): TemplateResult {
-  const next = reason === "tomorrow" || reason === "next_school_day";
+  // "I dag" and "I morgen" say it already.
+  const next =
+    (reason === "tomorrow" || reason === "next_school_day") && daysBetween(ctx.today, day) > 1;
   return titled(
     dayTitle(day, ctx),
     [...dateLine(day, ctx), ...(next ? [ctx.t("nextSchoolDay")] : [])],

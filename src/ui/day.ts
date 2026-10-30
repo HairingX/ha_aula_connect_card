@@ -185,8 +185,6 @@ function hero(
   span: { start: string; end: string } | undefined,
   ctx: ViewContext,
   named: Child | undefined,
-  state: CardState,
-  key: string,
 ): TemplateResult {
   let mark: TemplateResult;
   let title: TemplateResult;
@@ -218,17 +216,12 @@ function hero(
     ${mark}
     <div class="hero-text">
       <h2>${named ? html`<span class="sr">${named.first_name}: </span>` : nothing}${title}</h2>
-      ${span ? hours(span, ctx) : nothing} ${factStack(shown, key, ctx, state)}
+      ${span ? hours(span, ctx) : nothing} ${factStack(shown, ctx)}
     </div>
   </div>`;
 }
 
-function strip(
-  group: DayGroup,
-  view: DayCardView,
-  ctx: ViewContext,
-  state: CardState,
-): TemplateResult {
+function strip(group: DayGroup, view: DayCardView, ctx: ViewContext): TemplateResult {
   return html`<ul class="strip cols">
     ${group.children.map(
       (child, index) =>
@@ -248,8 +241,7 @@ function strip(
                   >`
                 : nothing
           }
-          ${factStack(child.facts, `${childKey(child.child)}|facts`, ctx, state)}
-          ${childState(child.state, ctx.t)}
+          ${factStack(child.facts, ctx)} ${childState(child.state, ctx.t)}
         </li>`,
     )}
   </ul>`;
@@ -264,8 +256,9 @@ function blocks(group: DayGroup, day: Day, ctx: ViewContext, state: CardState): 
         block.id,
         block.parts.map((part, index) => ({
           content: part.content,
-          quotes: part.plan.quotes,
           subjects: part.plan.subjects,
+          allDay: part.plan.allDay,
+          timed: part.plan.timed,
           empty: part.empty,
           child: several ? part.child.child : undefined,
           key: childKey(part.child.child),
@@ -291,22 +284,13 @@ function group(
   const school = (child: Child): string[] =>
     view.differentSchools ? [child.institution_name] : [];
   return html`<div class="child ${columns(count)} ${one ? "single" : ""}">
-    ${one ? who(one.child, school(one.child)) : nothing}
+    ${one && several ? who(one.child, school(one.child)) : nothing}
     ${one ? childState(one.state, ctx.t) : nothing}
     ${
       item.hero
         ? html`${aboveRows(item.above, ctx, count > 1)}
-          ${hero(
-            item.hero,
-            item.facts,
-            one?.content?.hours,
-            ctx,
-            several ? one?.child : undefined,
-            state,
-            // The header's facts fold again when the first child's day moves on.
-            `${item.children.map((child) => childKey(child.child)).join("|")}|facts`,
-          )}
-          ${count > 1 ? strip(item, view, ctx, state) : nothing}
+          ${hero(item.hero, item.facts, one?.content?.hours, ctx, several ? one?.child : undefined)}
+          ${count > 1 ? strip(item, view, ctx) : nothing}
           ${item.hero.kind === "day" ? blocks(item, item.hero.day, ctx, state) : nothing}`
         : nothing
     }

@@ -12,7 +12,7 @@ import { allDay, CHILDREN, local, without } from "../fixtures/week.ts";
 const [IDA] = CHILDREN as [Child, Child];
 
 const DAY = "aula-connect-day-card";
-const HOMEWORK = "aula-connect-homework-card";
+const HOMEWORK = "aula-connect-weekplan-card";
 const WEEK = "aula-connect-week-card";
 
 /** Returns what a screen reader reads of an element: without what is hidden from it. */
@@ -116,20 +116,18 @@ describe("the school day card", () => {
   it("answers each block for every child, naming the child, and says when one has nothing", async () => {
     const { card } = await mount(DAY, "thu-1930");
     expect(texts(card, ".strip .kid-name")).toEqual(["Ida", "Oskar"]);
-    expect(texts(card, '[data-block="homework"] .part-who span:last-child')).toEqual([
-      "Ida",
-      "Oskar",
-    ]);
-    expect(texts(card, '[data-block="homework"] .empty')).toEqual(["Ingen lektier i ugeplanen."]);
+    expect(texts(card, '[data-block="task"] .part-who span:last-child')).toEqual(["Ida", "Oskar"]);
+    expect(texts(card, '[data-block="task"] .empty')).toEqual(["Intet i ugeplanen."]);
     expect(texts(card, ".lesson.cancelled .subject")).toEqual(["Klassens tid"]);
   });
 
-  it("says the header's facts as words with icons, never as chips", async () => {
+  it("says birthdays in the header as words with icons, and events in the timetable", async () => {
     const { card } = await mount(DAY, "thu-1930", { config: { children: [1001] } });
     expect(all(card, ".chip")).toEqual([]);
-    expect(all(card, ".hero .fact")).toHaveLength(2);
+    expect(all(card, ".hero .fact")).toHaveLength(1);
     expect(text(card, ".hero-text > .hours")).toBe("08.00–13.40");
-    expect(texts(card, ".hero .facts > li")).toEqual(["Skolefoto", "Alma har fødselsdag"]);
+    expect(texts(card, ".hero .facts > li")).toEqual(["Alma har fødselsdag"]);
+    expect(texts(card, '[data-block="timetable"] .event-text')).toEqual(["Skolefoto"]);
     expect(all(card, '[data-block="events"], [data-block="birthdays"]')).toEqual([]);
   });
 
@@ -145,12 +143,10 @@ describe("the school day card", () => {
     );
   });
 
-  it("ends the timetable's empty text with a full stop, as every block's", async () => {
+  it("puts a day's events in the timetable when it has no lessons, as a calendar does", async () => {
     const { card } = await mount(DAY, "motionsdag", { config: { children: [1001] } });
-    expect(texts(card, ".block .empty")).toEqual([
-      "Ingen lektier i ugeplanen.",
-      "Intet skema i Aula.",
-    ]);
+    expect(texts(card, ".block .empty")).toEqual(["Intet i ugeplanen."]);
+    expect(texts(card, '[data-block="timetable"] .event-text')).toEqual(["Motionsdag"]);
   });
 
   it("names the weekdays passed over in one row, and counts the days that do not fit", async () => {
@@ -219,9 +215,7 @@ describe("the school day card", () => {
 
   it("names each child's header for screen readers when the children's days differ", async () => {
     const { card } = await mount(DAY, "two-schools");
-    expect(spoken(card, ".child:first-child h2")).toBe(
-      "Ida: I morgen, mandag 2. november, næste skoledag",
-    );
+    expect(spoken(card, ".child:first-child h2")).toBe("Ida: I morgen, 2. november");
     expect(spoken(card, ".child:last-child h2")).toBe(
       "Oskar: Tirsdag, 3. november, i overmorgen, næste skoledag",
     );
@@ -229,7 +223,7 @@ describe("the school day card", () => {
 
   it("says a week plan is not in Aula yet, not that there is no homework", async () => {
     const { card } = await mount(DAY, "sun-1800-noplan", { config: { children: [1001] } });
-    expect(text(card, '[data-block="homework"] .empty')).toBe(
+    expect(text(card, '[data-block="task"] .empty')).toBe(
       "Ugeplanen for uge 45 er ikke i Aula endnu.",
     );
   });
@@ -253,7 +247,10 @@ describe("the school day card", () => {
       language: "en",
     });
     expect(text(card, ".above")).toContain("Lejrskole i Thy 8:00 AM →");
-    expect(texts(card, ".hero .fact")).toEqual(["Lejrskole i Thy, Thy Lejren"]);
+    expect(all(card, ".hero .fact")).toEqual([]);
+    expect(texts(card, '[data-block="timetable"] .event-text')).toEqual([
+      "Lejrskole i ThyThy Lejren",
+    ]);
   });
 
   it("puts the hours of each child on the wall in large type", async () => {
@@ -269,6 +266,21 @@ describe("the school day card", () => {
       "Indendørssko",
       "Håndklæde",
     ]);
+  });
+});
+
+describe("abbreviations", () => {
+  it("are shown as Aula has them while writing out is off, and still match the things to bring", async () => {
+    const { card } = await mount(DAY, "thu-1010", {
+      config: {
+        children: [1001],
+        expand_abbreviations: false,
+        packing: [{ subject: "Idræt", items: ["Idrætstøj"] }],
+      },
+    });
+    expect(texts(card, ".lessons.folded .subject")).toEqual(["IDR", "DAN", "ENG"]);
+    expect(texts(card, ".pack-item")).toEqual(["Idrætstøj"]);
+    expect(texts(card, ".pack-source")).toEqual(["IDR"]);
   });
 });
 
@@ -322,15 +334,15 @@ describe("the school day card's rows above", () => {
 describe("the school day card's blocks", () => {
   it("says once what every child lacks, naming no one", async () => {
     const { card } = await mount(DAY, "sun-1800-noplan");
-    expect(texts(card, '[data-block="homework"] .empty')).toEqual([
+    expect(texts(card, '[data-block="task"] .empty')).toEqual([
       "Ugeplanen for uge 45 er ikke i Aula endnu.",
     ]);
-    expect(all(card, '[data-block="homework"] .part-who')).toEqual([]);
+    expect(all(card, '[data-block="task"] .part-who')).toEqual([]);
   });
 
   it("names a child with nothing on one line beside a child who has something", async () => {
     const { card } = await mount(DAY, "thu-1930");
-    const parts = all(card, '[data-block="homework"] .part');
+    const parts = all(card, '[data-block="task"] .part');
     expect(parts.map((part) => part.classList.contains("is-empty"))).toEqual([false, true]);
   });
 
@@ -362,8 +374,8 @@ describe("the school day card's blocks", () => {
         ],
       })),
     });
-    expect(text(card, '[data-block="events"] .item-place')).toBe("Kantinen");
-    expect(text(card, '[data-block="events"] .item-text')).toBe("HøstfestKantinen");
+    expect(text(card, '[data-block="timetable"] .event-place')).toBe("Kantinen");
+    expect(texts(card, '[data-block="timetable"] .event-text')).toContain("HøstfestKantinen");
   });
 
   it("says a child's every lesson is cancelled in its row", async () => {
@@ -401,7 +413,7 @@ describe("the homework card", () => {
     expect(texts(card, ".hw-day:first-of-type .day-title")).toEqual(["I morgen"]);
     expect(texts(card, ".hw-day:first-of-type .day-date")).toEqual(["fredag 30. okt."]);
     expect(tomorrow?.querySelectorAll(".part")).toHaveLength(2);
-    expect(text(card, ".fold > summary")).toBe("Tidligere lektier (4)");
+    expect(text(card, ".fold > summary")).toBe("Tidligere (4)");
     expect(all(card, ".earlier-days")).toEqual([]);
     expect(all(card, ".fold, .hw-day").map((element) => element.className)).toEqual([
       "fold earlier",
@@ -417,9 +429,9 @@ describe("the homework card", () => {
     expect(all(card, ".hw-day:first-of-type .hw")).toHaveLength(2);
   });
 
-  it("names each child once a day, with no names above the columns, when the children share a school", async () => {
+  it("names the children above their columns, and each day's part for when they are stacked", async () => {
     const { card } = await mount(HOMEWORK, "thu-1530");
-    expect(all(card, ".strip")).toEqual([]);
+    expect(texts(card, ".strip .who-name")).toEqual(["Ida", "Oskar"]);
     expect(texts(card, ".hw-day:first-of-type .part-who")).toEqual(["IIda", "OOskar"]);
   });
 
@@ -433,12 +445,22 @@ describe("the homework card", () => {
     expect(texts(card, ".strip .who-meta")).toEqual([IDA.institution_name, "Lindegårdens Skole"]);
   });
 
-  it("has a title saying whose homework it is and the weeks it covers, for one child or several", async () => {
+  it("has no title of its own, as its section names it, nor a name for one child", async () => {
     const { card } = await mount(HOMEWORK, "thu-1530", { config: { children: [1001] } });
-    expect(spoken(card, ".title-who")).toBe("Ida, Lektier, uge 44–45");
-    const { card: both } = await mount(HOMEWORK, "thu-1530", { language: "en" });
-    expect(spoken(both, ".title-who")).toBe("Ida and Oskar, Homework, weeks 44–45");
-    expect(all(both, ".title-who .avatar")).toHaveLength(2);
+    expect(all(card, "h2, .strip, .part-who")).toEqual([]);
+    expect(card.shadowRoot?.querySelector(".homework-card")?.getAttribute("aria-label")).toMatch(
+      /^Ugeplan\P{L}+Ida$/u,
+    );
+  });
+
+  it("shows what is marked, the other notes, or both, the marked on a surface first", async () => {
+    const day = async (notes: string): Promise<string[]> => {
+      const { card } = await mount(HOMEWORK, "thu-1930", { config: { children: [1001], notes } });
+      return all(card, ".hw-day:first-of-type .part > *").map((element) => element.className);
+    };
+    expect(await day("tasks")).toEqual(["homework"]);
+    expect(await day("comments")).toEqual(["plan"]);
+    expect(await day("all")).toEqual(["homework", "plan"]);
   });
 
   it("shows a child's homework while another loads, and why one cannot be shown", async () => {
@@ -524,9 +546,10 @@ describe("the week card", () => {
       config: { children: [1001] },
       clock: "2026-10-28T19:30:00+01:00",
     });
-    expect(texts(card, ".day-row:not(.focus-day) .line-1")).toContain(
-      "Alle timer aflyst, 2 lektier",
-    );
+    expect(texts(card, ".day-row:not(.focus-day) .line-1")).toContain("Alle timer aflyst, 2");
+    expect(
+      all(card, '.day-row:not(.focus-day) .count ha-icon[icon="mdi:flag-outline"]').length,
+    ).toBeGreaterThan(0);
   });
 
   it("says a holiday's second week is a whole week, rather than its dates again", async () => {
@@ -562,10 +585,12 @@ describe("the week card", () => {
     const { card } = await mount(WEEK, "sat-1000-birthday", { config: { children: [1001] } });
     await open(card, ".weekend-row");
     expect(texts(card, ".weekend-title")).toEqual(["Lørdag 31. okt.", "Søndag 1. nov."]);
-    expect(all(card, ".weekend-day").map((day) => spokenOf(day, ".facts"))).toEqual([
-      "Spejdertur Karl har fødselsdag",
-      "Spejdertur",
-    ]);
+    const days = all(card, ".weekend-day");
+    expect(
+      days.map((day) => day.querySelector('[data-block="timetable"] .event-text')?.textContent),
+    ).toEqual(["Spejdertur", "Spejdertur"]);
+    expect(spokenOf(present(days[0]), ".facts")).toBe("Karl har fødselsdag");
+    expect(days[1]?.querySelector(".facts")).toBeNull();
   });
 
   it("sets the days of a weekend's item in the run of its title's text", async () => {
@@ -657,12 +682,12 @@ describe("the folded day", () => {
   const button = (card: Card): HTMLButtonElement =>
     present(card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'));
 
-  it("folds the timetable to each subject and when it begins, keeping what is news", async () => {
+  it("folds the timetable to each subject's start and end, keeping what is news", async () => {
     const { card } = await mount(DAY, "thu-0715", { config: { children: [1001] } });
     expect(texts(card, ".lessons.folded .lesson")).toEqual([
-      "Idræt 08.00",
-      "Dansk 10.05",
-      "Engelsk Vikar 12.10",
+      "Idræt 08.00–09.30",
+      "Dansk 10.05–11.35",
+      "Engelsk Vikar 12.10–12.55",
     ]);
     expect(all(card, '[data-block="timetable"] .break, [data-block="timetable"] .end')).toEqual([]);
     expect(text(card, '[data-block="timetable"] .more')).toBe("Vis hele skemaet");
@@ -670,7 +695,9 @@ describe("the folded day", () => {
 
   it("strikes a cancelled lesson through when folded, with its label", async () => {
     const { card } = await mount(DAY, "thu-1930", { config: { children: [1002] } });
-    expect(texts(card, ".lessons.folded .lesson.cancelled")).toEqual(["Klassens tid Aflyst 13.45"]);
+    expect(texts(card, ".lessons.folded .lesson.cancelled")).toEqual([
+      "Klassens tid Aflyst 13.45–14.30",
+    ]);
   });
 
   it("sets a folded lesson's label beside its subject, where a long one has the room to wrap", async () => {
@@ -679,7 +706,7 @@ describe("the folded day", () => {
       "Vikar",
       "Flyttet til lokale 117 pga. vandskade",
     ]);
-    expect(all(card, ".lessons.folded .lesson > time")).toHaveLength(3);
+    expect(all(card, ".lessons.folded .lesson > .span")).toHaveLength(3);
   });
 
   it("unfolds the whole timetable on a tap, and folds it again", async () => {
@@ -743,9 +770,9 @@ describe("the folded day", () => {
   it("folds the week card's open day as the day card's", async () => {
     const { card } = await mount(WEEK, "thu-0715", { config: { children: [1001] } });
     expect(texts(card, ".focus-day .lessons.folded .lesson")).toEqual([
-      "Idræt 08.00",
-      "Dansk 10.05",
-      "Engelsk Vikar 12.10",
+      "Idræt 08.00–09.30",
+      "Dansk 10.05–11.35",
+      "Engelsk Vikar 12.10–12.55",
     ]);
   });
 
@@ -850,7 +877,7 @@ describe("rarer days", () => {
     ]);
   });
 
-  it("shows notes without a subject: homework by its title, the plan and a quote as the week plan's", async () => {
+  it("shows notes without a subject: homework by its title and the comment among the notes", async () => {
     const note = (id: number, type: string, title: string | null, content: string) => ({
       id,
       date: "2026-10-30",
@@ -872,7 +899,7 @@ describe("rarer days", () => {
         ],
       })),
     });
-    expect(texts(card, ".pack-row.quote")).toContain("Husk regntøj til turen. ugeplan");
+    expect(texts(card, '[data-block="pack"]').join(" ")).not.toContain("regntøj");
     expect(texts(card, ".hw-head").at(-1)).toBe("Projekt");
     expect(all(card, ".plan-note").length - all(card, ".plan-subject").length).toBe(1);
   });
@@ -939,7 +966,7 @@ describe("rarer days", () => {
     const { card } = await mount(DAY, "thu-1930", {
       config: {
         children: [1001],
-        show: { homework: false, pack: false, timetable: false, plan: false, events: false },
+        show: { task: false, pack: false, timetable: false, comment: false, events: false },
       },
     });
     expect(text(card, ".child > .empty")).toBe("Intet i Aula for denne dag.");
@@ -1002,44 +1029,39 @@ describe("rarer days", () => {
 
 describe("several events and birthdays", () => {
   const facts = (card: Card, selector = ".hero .facts > li"): string[] => texts(card, selector);
+  const events = (card: Card, scope = ""): string[] =>
+    texts(card, `${scope} [data-block="timetable"] .event-row .event-text`);
 
-  it("give the hours a line of their own, each whole-day event one, and the birthdays one", async () => {
+  it("give the hours a line of their own and the birthdays one, and the events the timetable", async () => {
     const { card } = await mount(DAY, "thu-1930-events3", { config: { children: [1001] } });
     expect(text(card, ".hero-text > .hours")).toBe("08.00–13.40");
-    expect(facts(card)).toEqual([
-      "Skolefoto",
-      "Motionsdag",
-      "Tur til Naturcenter Vestskoven",
-      "Alma, Bo og Carl har fødselsdag",
-    ]);
+    expect(facts(card)).toEqual(["Alma, Bo og Carl har fødselsdag"]);
+    expect(events(card)).toEqual(["Skolefoto", "Motionsdag", "Tur til Naturcenter Vestskoven"]);
   });
 
-  it("show three of four or more events, and the rest on a tap", async () => {
+  it("list every event in the timetable, never folded", async () => {
     const { card } = await mount(DAY, "thu-1930-events5", { config: { children: [1001] } });
-    expect(facts(card)).toEqual([
+    expect(events(card)).toEqual([
       "Skolefoto",
       "Motionsdag",
       "Tur til Naturcenter Vestskoven",
-      "+2 mere",
-      "Alma, Bo og Carl har fødselsdag",
-    ]);
-    present(card.shadowRoot?.querySelector<HTMLButtonElement>(".hero .facts .more")).click();
-    await card.updateComplete;
-    expect(facts(card)).toHaveLength(7);
-    expect(facts(card).slice(3)).toEqual([
       "Halloween-fest",
       "Trafikdag med cykelprøve",
-      "Vis mindre",
-      "Alma, Bo og Carl har fødselsdag",
     ]);
+    expect(texts(card, '[data-block="timetable"] .more')).toEqual(["Vis hele skemaet"]);
   });
 
-  it("keep each child's own birthdays in its part, and the events every child has in the header", async () => {
+  it("keep each child's own birthdays in its part, and its events in its timetable", async () => {
     const { card } = await mount(DAY, "thu-1930-events3");
-    expect(facts(card)).toEqual(["Skolefoto", "Motionsdag", "Tur til Naturcenter Vestskoven"]);
+    expect(facts(card)).toEqual([]);
     expect(texts(card, ".strip .facts > li")).toEqual([
       "Alma, Bo og Carl har fødselsdag",
       "Freja, Malte og Sigrid har fødselsdag",
+    ]);
+    expect(events(card).slice(0, 3)).toEqual([
+      "Skolefoto",
+      "Motionsdag",
+      "Tur til Naturcenter Vestskoven",
     ]);
   });
 
@@ -1058,11 +1080,8 @@ describe("several events and birthdays", () => {
       "2 fødselsdage",
     ]);
     await open(card, friday);
-    expect(texts(card, `${friday} .day-body .facts > li`)).toEqual([
-      "Skolefoto",
-      "Motionsdag",
-      "Alma og Bo har fødselsdag",
-    ]);
+    expect(texts(card, `${friday} .day-body .facts > li`)).toEqual(["Alma og Bo har fødselsdag"]);
+    expect(events(card, friday)).toEqual(["Skolefoto", "Motionsdag"]);
   });
 
   it("are counted in the rest of today on a day without school", async () => {
@@ -1089,7 +1108,8 @@ describe("several events and birthdays", () => {
   it("show a closed open day's facts in its summary", async () => {
     const { card } = await mount(WEEK, "thu-1930-events3", { config: { children: [1001] } });
     const focus = present(card.shadowRoot?.querySelector<HTMLDetailsElement>(".focus-day"));
-    expect(texts(card, ".focus-day .day-body .facts > li")).toHaveLength(4);
+    expect(texts(card, ".focus-day .day-body .facts > li")).toHaveLength(1);
+    expect(events(card, ".focus-day")).toHaveLength(3);
     focus.open = false;
     focus.dispatchEvent(new Event("toggle"));
     await card.updateComplete;
@@ -1099,8 +1119,123 @@ describe("several events and birthdays", () => {
     ]);
   });
 
-  it("keep timed events in the events block, a line each", async () => {
+  it("give an event lasting past the whole day a line with the events of the whole day", async () => {
+    const { card } = await mount(DAY, "thu-1930", {
+      config: { children: [1001] },
+      ...changed("thu-1930", (data) => ({
+        ...data,
+        events: [
+          ...data.events,
+          {
+            id: "lejr",
+            start: local("2026-10-29", "10:00"),
+            end: local("2026-10-31", "10:00"),
+            all_day: false,
+            title: "Lejrskole",
+            type: "excursion",
+            location: null,
+          },
+        ],
+      })),
+    });
+    expect(texts(card, '[data-block="timetable"] .event-row.all-day .event-text')).toContain(
+      "Lejrskole",
+    );
+  });
+
+  it("say there is no timetable on a weekday with something else on it", async () => {
+    const { card } = await mount(DAY, "thu-1930", {
+      config: { children: [1001] },
+      ...changed("thu-1930", (data) => ({
+        ...data,
+        lessons: data.lessons.filter((lesson) => !lesson.start.startsWith("2026-10-30")),
+        events: data.events.filter((event) => !event.start.startsWith("2026-10-30")),
+      })),
+    });
+    expect(text(card, '[data-block="timetable"]')).toContain("Intet skema i Aula.");
+  });
+
+  it("name a holiday at the top of a day opened in the week", async () => {
+    const { card } = await mount(WEEK, "thu-1930", {
+      config: { children: [1001] },
+      ...changed("thu-1930", (data) => ({
+        ...data,
+        events: [...data.events, allDay("f1", "Fridag", "holiday", "2026-10-30", "2026-10-30")],
+        birthdays: data.birthdays.filter((birthday) => birthday.date !== "2026-10-30"),
+      })),
+    });
+    expect(texts(card, ".focus-day .day-body .facts > li")).toEqual(["Fridag"]);
+    expect(events(card, ".focus-day")).not.toContain("Fridag");
+  });
+
+  it("name the place of a closed row's only event", async () => {
+    const { card } = await mount(WEEK, "thu-1010", {
+      config: { children: [1001] },
+      ...changed("thu-1010", (data) => ({
+        ...data,
+        events: [
+          ...data.events.filter((event) => !event.start.startsWith("2026-10-30")),
+          {
+            ...allDay("w1", "Motionsdag", "event", "2026-10-30", "2026-10-30"),
+            location: "Skolegården",
+          },
+        ],
+      })),
+    });
+    expect(text(card, ".day-row:not(.focus-day) .line-2 .fact")).toContain("Skolegården");
+  });
+
+  it("show only the birthdays of a day without blocks to show", async () => {
+    const { card } = await mount(WEEK, "thu-1930", {
+      config: { children: [1001], show: { timetable: false } },
+      ...changed("thu-1930", (data) => ({
+        ...data,
+        lessons: data.lessons.filter((lesson) => !lesson.start.startsWith("2026-10-30")),
+        events: data.events.filter((event) => !event.start.startsWith("2026-10-30")),
+        tasks: data.tasks.filter((task) => task.date !== "2026-10-30"),
+      })),
+    });
+    const friday = ".day-row:not(.focus-day)";
+    await open(card, friday);
+    expect(texts(card, `${friday} .day-body .facts > li`)).toEqual(["Alma har fødselsdag"]);
+    expect(all(card, `${friday} .day-body .blocks`)).toHaveLength(0);
+  });
+
+  it("put an event that began the day before first, before the lessons", async () => {
+    const { card } = await mount(DAY, "thu-1930", {
+      config: { children: [1001] },
+      ...changed("thu-1930", (data) => ({
+        ...data,
+        events: [
+          ...data.events.filter((event) => !event.start.startsWith("2026-10-30")),
+          {
+            id: "nat",
+            start: local("2026-10-29", "20:00"),
+            end: local("2026-10-30", "08:30"),
+            all_day: false,
+            title: "Overnatning",
+            type: "event",
+            location: null,
+          },
+        ],
+      })),
+    });
+    expect(texts(card, '[data-block="timetable"] li').at(0)).toContain("Overnatning");
+  });
+
+  it("give an event its time in a column of its own in the whole timetable", async () => {
     const { card } = await mount(DAY, "thu-1930-timed4", { config: { children: [1001] } });
-    expect(all(card, '[data-block="events"] .item')).toHaveLength(4);
+    present(
+      card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'),
+    ).click();
+    await card.updateComplete;
+    expect(
+      texts(card, '[data-block="timetable"] .event-row:not(.all-day) .lesson-time'),
+    ).toHaveLength(4);
+  });
+
+  it("put timed events in the timetable among the lessons, by when they begin", async () => {
+    const { card } = await mount(DAY, "thu-1930-timed4", { config: { children: [1001] } });
+    expect(all(card, '[data-block="timetable"] .event-row:not(.all-day)')).toHaveLength(4);
   });
 });

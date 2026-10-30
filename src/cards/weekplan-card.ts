@@ -1,5 +1,5 @@
 /**
- * The homework card, `custom:aula-connect-homework-card`: the homework of the days ahead, by the
+ * The week plan card, `custom:aula-connect-weekplan-card`: the week plan of the days ahead, by the
  * day it is for.
  *
  * @packageDocumentation
@@ -12,30 +12,30 @@ import type { StoreSnapshot } from "../core/store.ts";
 import type { HomeAssistant } from "../core/types.ts";
 import type { ConfigForm } from "../config/form.ts";
 import {
-  HOMEWORK_CARD,
-  homeworkConfigForm,
-  resolveHomeworkConfig,
-  type HomeworkCardConfig,
-} from "../config/homework.ts";
+  WEEKPLAN_CARD,
+  weekplanConfigForm,
+  resolveWeekplanConfig,
+  type WeekplanCardConfig,
+} from "../config/weekplan.ts";
 import type { Hold } from "../model/child.ts";
 import { homeworkCardView, type HomeworkCardView } from "../model/homework-view.ts";
 import { AulaCard, stub } from "../ui/card.ts";
 import { renderHomework } from "../ui/homework.ts";
 import { base, blocks, homeworkStyles } from "../ui/styles.ts";
 
-/** The homework card. */
-export class AulaConnectHomeworkCard extends AulaCard<HomeworkCardConfig, HomeworkCardView> {
+/** The week plan card. */
+export class AulaConnectWeekplanCard extends AulaCard<WeekplanCardConfig, HomeworkCardView> {
   /** The card's styles. */
   static override styles = base + blocks + homeworkStyles;
 
   /** Returns the form of the visual editor. */
   static getConfigForm(): ConfigForm {
-    return homeworkConfigForm();
+    return weekplanConfigForm();
   }
 
   /** Returns a configuration that works as it is: the defaults follow later versions. */
   static getStubConfig(hass?: HomeAssistant): Promise<{ type: string }> {
-    return stub(HOMEWORK_CARD, hass);
+    return stub(WEEKPLAN_CARD, hass);
   }
 
   /** Returns the card's size in a sections view: the section's whole width, for its columns. */
@@ -43,13 +43,13 @@ export class AulaConnectHomeworkCard extends AulaCard<HomeworkCardConfig, Homewo
     return { columns: "full", rows: "auto", min_columns: 12, min_rows: 3 };
   }
 
-  protected override resolve(raw: unknown): HomeworkCardConfig {
-    return resolveHomeworkConfig(raw);
+  protected override resolve(raw: unknown): WeekplanCardConfig {
+    return resolveWeekplanConfig(raw);
   }
 
   protected override view(
     snapshot: StoreSnapshot,
-    config: HomeworkCardConfig,
+    config: WeekplanCardConfig,
     ctx: ViewContext,
     hold: Hold,
   ): HomeworkCardView {
@@ -58,7 +58,7 @@ export class AulaConnectHomeworkCard extends AulaCard<HomeworkCardConfig, Homewo
 
   protected override content(
     view: HomeworkCardView,
-    _config: HomeworkCardConfig,
+    _config: WeekplanCardConfig,
     ctx: ViewContext,
   ): TemplateResult {
     return renderHomework(view, ctx, this);

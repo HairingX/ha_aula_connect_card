@@ -9,7 +9,6 @@
 import { html, nothing, type TemplateResult } from "lit/html.js";
 
 import type { ViewContext } from "../core/context.ts";
-import { daysBetween, formatWeekday } from "../core/dates.ts";
 import { initials } from "../core/text.ts";
 import type { Child, Day } from "../core/types.ts";
 import {
@@ -19,10 +18,11 @@ import {
   type EmptyKind,
   type LessonRow,
   type LessonStatus,
+  type TimedEvent,
   type TimetableRow,
 } from "../model/blocks.ts";
+import type { CalendarEvent } from "../core/types.ts";
 import type { NoteView } from "../model/notes.ts";
-import type { Quote } from "../model/pack.ts";
 import type { SubjectLabel } from "../model/subjects.ts";
 import type { CardState } from "./card.ts";
 import {
@@ -37,16 +37,19 @@ import {
   nowLabel,
   segments,
   time,
+  timeSpan,
 } from "./primitives.ts";
 
 /** A child's part of a block. */
 export interface Part {
   /** What the child's day holds. */
   readonly content: DayContent;
-  /** The child's quotes for Husk. */
-  readonly quotes: readonly Quote[];
   /** The subjects Husk names: none beside the timetable. */
   readonly subjects: readonly SubjectLabel[];
+  /** The events lasting the whole day, first in the timetable. */
+  readonly allDay: readonly CalendarEvent[];
+  /** The events with a time, among the timetable's lessons. */
+  readonly timed: readonly TimedEvent[];
   /** Why the part says it has nothing; "none" for the block's own sentence. */
   readonly empty: EmptyKind | "none" | undefined;
   /** The child, named above the part when the block is for several. */
@@ -69,35 +72,26 @@ export interface BlockOptions {
   readonly state: CardState;
 }
 
-const ICONS: Readonly<Record<BlockId, string>> = {
-  homework: "mdi:book-open-page-variant-outline",
+/** The blocks' icons; Vigtigt has a flag, as the teacher marked it. */
+export const BLOCK_ICONS: Readonly<Record<BlockId, string>> = {
+  task: "mdi:flag-outline",
   pack: "mdi:bag-personal-outline",
   timetable: "mdi:timetable",
-  plan: "mdi:clipboard-text-outline",
+  comment: "mdi:note-text-outline",
   events: "mdi:calendar-outline",
   birthdays: "mdi:cake-variant-outline",
 };
 
-/** Returns the homework block's title: "Lektier til i morgen", naming the day it is for. */
-export function homeworkTitle(day: string, ctx: ViewContext): string {
-  const ahead = daysBetween(ctx.today, day);
-  if (ahead === 0) return ctx.t("homeworkToday");
-  if (ahead === 1) return ctx.t("homeworkTomorrow");
-  return ctx.t("homeworkDay", { day: formatWeekday(day, ctx.language) });
-}
-
-function title(id: BlockId, day: string, ctx: ViewContext): string {
+function title(id: BlockId, ctx: ViewContext): string {
   switch (id) {
-    case "homework":
-      return homeworkTitle(day, ctx);
+    case "task":
+      return ctx.t("blockTask");
     case "pack":
       return ctx.t("blockPack");
     case "timetable":
       return ctx.t("blockTimetable");
-    case "plan":
-      return ctx.t("blockPlan");
     default:
-      return ctx.t("blockEvents");
+      return ctx.t("blockComment");
   }
 }
 
@@ -139,21 +133,19 @@ export function emptyText(
       return ctx.t("noHomework");
     default:
       return ctx.t(
-        id === "homework"
+        id === "task"
           ? "noHomework"
           : id === "pack"
             ? "noPack"
             : id === "timetable"
               ? "noLessons"
-              : id === "plan"
-                ? "noPlan"
-                : "noEvents",
+              : "noPlan",
       );
   }
 }
 
 function pack(part: Part, ctx: ViewContext): TemplateResult {
-  const { content, quotes, subjects } = part;
+  const { content, subjects } = part;
   return html`<ul class="pack">
     ${
       subjects.length > 0
@@ -170,19 +162,6 @@ function pack(part: Part, ctx: ViewContext): TemplateResult {
             >${row.items.map((item) => html`<span class="pack-item">${aula(item, ctx)}</span>`)}</span
           >
           <span class="pack-source">${aula(row.subject.name, ctx)}</span>
-        </li>`,
-    )}
-    ${quotes.map(
-      (quote) =>
-        html`<li class="pack-row quote">
-          <q class="pack-what">${aula(quote.text, ctx)}</q>
-          <span class="pack-source"
-            >${
-              quote.subject
-                ? ctx.t("weekPlanSource", { subject: quote.subject.name })
-                : ctx.t("weekPlan")
-            }</span
-          >
         </li>`,
     )}
   </ul>`;
@@ -208,7 +187,7 @@ function subjectName(row: LessonRow, ctx: ViewContext): TemplateResult {
 function foldedRow(row: LessonRow, ctx: ViewContext): TemplateResult {
   return html`<li class="lesson ${row.cancelled ? "cancelled" : ""}">
     <span class="lesson-head">${subjectName(row, ctx)} ${statusLabel(row.status, ctx)}</span>
-    ${time(row.block.start, ctx, "start")}
+    ${timeSpan(row.block.start, row.block.end, ctx)}
   </li>`;
 }
 
@@ -247,14 +226,89 @@ function lessonRow(row: TimetableRow, ctx: ViewContext, detailed: boolean): Temp
   </li>`;
 }
 
-// A note is folded after a few lines, as a teacher may write fifty; each unfolds by itself.
-function plan(part: Part, ctx: ViewContext, options: BlockOptions): TemplateResult {
-  const { state } = options;
+// An event that began on an earlier day comes first.
+function startOf(item: TimedEvent): string {
+  return item.span === "until" ? "" : item.event.start;
+}
+
+/**
+ * Shows a day as a calendar does: the events lasting the whole day first, then the lessons and
+ * the events with a time in the order they begin, an event before a lesson beginning with it.
+ */
+function timeline<Row extends TimetableRow>(
+  part: Part,
+  rows: readonly Row[],
+  row: (item: Row) => TemplateResult,
+  full: boolean,
+  ctx: ViewContext,
+): unknown[] {
+  const event = (item: TimedEvent): TemplateResult => eventRow(item, ctx, full);
+  const timed = [...part.timed].sort((a, b) => startOf(a).localeCompare(startOf(b)));
+  const lines: unknown[] = part.allDay.map((item) => allDayRow(item, ctx, full));
+  const before = (start: string): void => {
+    for (let first = timed[0]; first !== undefined && startOf(first) <= start; first = timed[0]) {
+      lines.push(event(first));
+      timed.shift();
+    }
+  };
+  for (const item of rows) {
+    before(item.kind === "lesson" ? item.block.start : item.start);
+    lines.push(row(item));
+  }
+  lines.push(...timed.map(event));
+  return lines;
+}
+
+// An event's title, with its place on a line under it.
+function eventText(event: CalendarEvent, ctx: ViewContext): TemplateResult {
+  const place = event.location?.trim();
+  return html`<span class="lesson-head"
+    >${icon(eventIcon(event.type))}<span class="event-text"
+      >${aula(event.title, ctx)}${
+        place ? html`<span class="event-place">${aula(place, ctx)}</span>` : nothing
+      }</span
+    ></span
+  >`;
+}
+
+function allDayRow(item: CalendarEvent, ctx: ViewContext, full: boolean): TemplateResult {
+  return full
+    ? html`<li class="lesson event-row all-day">
+        <span class="lesson-time">${ctx.t("allDay")}</span>
+        <span class="lesson-main">${eventText(item, ctx)}</span>
+      </li>`
+    : html`<li class="lesson event-row all-day">
+        ${eventText(item, ctx)}<span class="event-when">${ctx.t("allDay")}</span>
+      </li>`;
+}
+
+function eventRow(item: TimedEvent, ctx: ViewContext, full: boolean): TemplateResult {
+  return full
+    ? html`<li class="lesson event-row">
+        <span class="lesson-time">${eventWhen(item, ctx)}</span>
+        <span class="lesson-main">${eventText(item.event, ctx)}</span>
+      </li>`
+    : html`<li class="lesson event-row">
+        ${eventText(item.event, ctx)}<span class="event-when">${eventWhen(item, ctx)}</span>
+      </li>`;
+}
+
+/**
+ * Shows the week plan's other notes in a quiet column, each folded after the configured lines and
+ * opened by itself; `key` keeps their state.
+ */
+export function planNotes(
+  notes: readonly NoteView[],
+  key: string,
+  ctx: ViewContext,
+  state: CardState,
+): TemplateResult {
   const { lines } = state.folding;
+  // A teacher may write fifty lines.
   return html`<ul class="plan">
-    ${part.content.plan.map((note) => {
-      const key = `${part.key}|plan|${options.day}|${String(note.note.id)}`;
-      const open = state.isOpen(key, false);
+    ${notes.map((note) => {
+      const noteKey = `${key}|${String(note.note.id)}`;
+      const open = state.isOpen(noteKey, false);
       return html`<li class="plan-note">
         ${
           note.subject || note.title
@@ -266,33 +320,18 @@ function plan(part: Part, ctx: ViewContext, options: BlockOptions): TemplateResu
         <p
           class="plan-text ${lines > 0 && !open ? "clamp" : ""}"
           style="--lines: ${lines}"
-          data-cut=${key}
+          data-cut=${noteKey}
         >
           ${aula(note.text, ctx)}
         </p>
-        ${open || state.cut(key) ? more(key, open, false, ctx.t("showMore"), state, ctx) : nothing}
+        ${open || state.cut(noteKey) ? more(noteKey, open, false, ctx.t("showMore"), state, ctx) : nothing}
       </li>`;
     })}
   </ul>`;
 }
 
-function events(part: Part, ctx: ViewContext): TemplateResult {
-  return html`<ul class="items">
-    ${part.content.timed.map(
-      (item) =>
-        html`<li class="item">
-          ${icon(eventIcon(item.event.type))}
-          <span class="item-text"
-            >${aula(item.event.title, ctx)}${
-              item.event.location
-                ? html`<span class="item-place">${aula(item.event.location, ctx)}</span>`
-                : nothing
-            }</span
-          >
-          <span class="item-time">${eventWhen(item, ctx)}</span>
-        </li>`,
-    )}
-  </ul>`;
+function plan(part: Part, ctx: ViewContext, options: BlockOptions): TemplateResult {
+  return planNotes(part.content.plan, `${part.key}|plan|${options.day}`, ctx, options.state);
 }
 
 function body(
@@ -303,22 +342,32 @@ function body(
   unfolded: boolean,
 ): unknown {
   switch (id) {
-    case "homework":
+    case "task":
       return homeworkList(part.content.homework, ctx);
     case "pack":
       return pack(part, ctx);
     case "timetable":
       return unfolded
         ? html`<ol class="lessons">
-            ${part.content.timetable.map((row) => lessonRow(row, ctx, options.detailed))}
+            ${timeline(
+              part,
+              part.content.timetable,
+              (row) => lessonRow(row, ctx, options.detailed),
+              true,
+              ctx,
+            )}
           </ol>`
         : html`<ol class="lessons folded">
-            ${foldTimetable(part.content.timetable).map((row) => foldedRow(row, ctx))}
+            ${timeline(
+              part,
+              foldTimetable(part.content.timetable),
+              (row) => foldedRow(row, ctx),
+              false,
+              ctx,
+            )}
           </ol>`;
-    case "plan":
-      return plan(part, ctx, options);
     default:
-      return events(part, ctx);
+      return plan(part, ctx, options);
   }
 }
 
@@ -351,31 +400,32 @@ export function renderBlock(
   const { full } = options.state.folding;
   const unfolded = options.state.isOpen(key, full);
   return html`<section class="block" data-block=${id}>
-    ${headingOf(options.level, html`${icon(ICONS[id])}<span>${title(id, options.day, ctx)}</span>`, "block-head")}
+    ${headingOf(options.level, html`${icon(BLOCK_ICONS[id])}<span>${title(id, ctx)}</span>`, "block-head")}
     ${
       once === undefined
         ? html`<div class="cols">
-              ${parts.map(
-                (part, index) =>
-                  html`<div
-                    class="part ${texts[index] === undefined ? "" : "is-empty"}"
-                    style="--col: ${part.col}"
-                  >
-                    ${
-                      part.child
-                        ? headingOf(
-                            options.level + 1,
-                            html`${avatar(part.child)}<span>${part.child.first_name}</span>`,
-                            "part-who",
-                          )
-                        : nothing
-                    }
-                    ${
-                      texts[index] === undefined
-                        ? body(id, part, ctx, options, unfolded)
-                        : html`<p class="empty">${texts[index]}</p>`
-                    }
-                  </div>`,
+              ${parts.map((part, index) =>
+                id === "pack" && texts[index] !== undefined
+                  ? nothing
+                  : html`<div
+                      class="part ${texts[index] === undefined ? "" : "is-empty"}"
+                      style="--col: ${part.col}"
+                    >
+                      ${
+                        part.child
+                          ? headingOf(
+                              options.level + 1,
+                              html`${avatar(part.child)}<span>${part.child.first_name}</span>`,
+                              "part-who",
+                            )
+                          : nothing
+                      }
+                      ${
+                        texts[index] === undefined
+                          ? body(id, part, ctx, options, unfolded)
+                          : html`<p class="empty">${texts[index]}</p>`
+                      }
+                    </div>`,
               )}
             </div>
             ${

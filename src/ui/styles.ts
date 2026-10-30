@@ -638,11 +638,27 @@ export const blocks = css`
       --aula-grid: grid;
       --aula-n: 2;
     }
+    .normal .n-2:not(.tworow) .part-who {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
   @container child (min-width: 712px) {
     .large .n-2 .cols {
       --aula-grid: grid;
       --aula-n: 2;
+    }
+    .large .n-2:not(.tworow) .part-who {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
   }
   @container child (min-width: 904px) {
@@ -650,11 +666,27 @@ export const blocks = css`
       --aula-grid: grid;
       --aula-n: 3;
     }
+    .normal .n-3:not(.tworow) .part-who {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
   @container child (min-width: 1100px) {
     .large .n-3 .cols {
       --aula-grid: grid;
       --aula-n: 3;
+    }
+    .large .n-3:not(.tworow) .part-who {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
   }
   /* Children in two rows fill them in order. */
@@ -720,15 +752,11 @@ export const blocks = css`
   .pack-item + .pack-item::before {
     content: ", ";
   }
-  /* A quote is word for word, never cut: the things to bring are often at its end. */
-  .pack-row.quote .pack-what {
-    font-weight: var(--aula-normal);
-  }
   .pack-source {
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
   }
-  /* On the wall what to bring is read from across the kitchen, whether set up or quoted. */
+  /* On the wall what to bring is read from across the kitchen. */
   .large .pack-what {
     font-size: calc(var(--ha-font-size-xl, 20px) * 1.5);
     line-height: var(--aula-condensed);
@@ -879,42 +907,29 @@ export const blocks = css`
     -webkit-tap-highlight-color: transparent;
   }
 
-  .items {
+  /* An event in the timetable: its icon before its title, its time where a lesson's is. */
+  .event-row .lesson-head {
     display: flex;
-    flex-direction: column;
+    align-items: baseline;
     gap: var(--aula-space-2);
+    --mdc-icon-size: calc(18px * var(--aula-scale));
   }
-  .item {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--aula-space-2);
+  .event-row ha-icon {
+    flex: none;
+    align-self: center;
   }
-  .item-text {
-    flex: 1;
+  .event-text {
     min-width: 0;
-    padding-top: 1px;
     overflow-wrap: anywhere;
   }
-  .item-place {
+  .event-place {
     display: block;
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
   }
-  .item-time {
-    flex: none;
+  .event-when {
     color: var(--aula-text-2);
-    font-size: var(--aula-font-s);
     white-space: nowrap;
-    padding-top: 2px;
-  }
-  /* On a wide card the time follows its event rather than sitting far from it. */
-  @container aula (min-width: 600px) {
-    .item-text {
-      flex: 0 1 auto;
-    }
-    .item-time::before {
-      content: "· ";
-    }
   }
 `;
 
@@ -985,6 +1000,15 @@ export const homeworkStyles = css`
   .homework-card {
     container: child / inline-size;
     gap: var(--aula-space-6);
+  }
+  .meta-icon {
+    --mdc-icon-size: calc(18px * var(--aula-scale));
+    margin-inline-end: var(--aula-space-1);
+    vertical-align: -3px;
+  }
+  /* What the week plan marks stands on a surface; its other notes follow quietly below. */
+  .part > .homework + .plan {
+    margin-top: var(--aula-space-4);
   }
   .avatars {
     display: flex;
@@ -1097,6 +1121,14 @@ export const homeworkStyles = css`
 
 /** The week card. */
 export const weekStyles = css`
+  .count {
+    white-space: nowrap;
+    --mdc-icon-size: 1.1em;
+  }
+  .count ha-icon {
+    vertical-align: -0.2em;
+    margin-inline-end: 2px;
+  }
   .weeks {
     display: flex;
     flex-direction: column;

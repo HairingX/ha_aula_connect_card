@@ -23,6 +23,8 @@ export interface CommonConfig {
   readonly size: "normal" | "large";
   /** Names for subjects, over the built-in ones. */
   readonly subjectNames: readonly SubjectName[];
+  /** Whether the built-in names write the common abbreviations out. */
+  readonly expandAbbreviations: boolean;
   /** The things to bring when a subject is on the timetable. */
   readonly packing: readonly PackRule[];
   /** Whether the timetable opens folded to its subjects and their start times, or in full. */
@@ -113,6 +115,13 @@ export function parseSwitchTime(value: unknown): number | null {
 export function parseSize(value: unknown): "normal" | "large" {
   if (absent(value)) return "normal";
   if (value !== "normal" && value !== "large") throw new Error("size: must be normal or large");
+  return value;
+}
+
+/** Reads `expand_abbreviations`: true unless set to false. */
+export function parseExpand(value: unknown): boolean {
+  if (absent(value)) return true;
+  if (typeof value !== "boolean") throw new Error("expand_abbreviations: must be true or false");
   return value;
 }
 
@@ -255,6 +264,7 @@ export function resolveCommon(config: Record<string, unknown>, lenient = false):
     switchAt: parseSwitchTime(config.switch_time),
     size: parseSize(config.size),
     subjectNames: parseSubjectNames(config.subject_names, lenient),
+    expandAbbreviations: parseExpand(config.expand_abbreviations),
     packing: parsePacking(config.packing, lenient),
     timetable: parseTimetable(config.timetable),
     infoLines: parseInfoLines(config.info_lines),

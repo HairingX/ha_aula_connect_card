@@ -223,8 +223,7 @@ function week(
     } else if (isWeekend(view.day) && !heldLessons(view)) {
       // A weekend day with nothing on it is left out; one that is over joins the fold.
       const item = row(view);
-      const timed = item.plan.blocks.some((block) => block.id === "events");
-      if (item.facts.length === 0 && !timed) continue;
+      if (item.facts.length === 0 && item.plan.timed.length === 0) continue;
       const current =
         view.day === today && todayRest(view, ctx.now, ctx.zone, item.facts, events) !== undefined;
       if (view.day < today || (view.day === today && !current)) earlier.push(item);

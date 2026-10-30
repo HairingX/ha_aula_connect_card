@@ -20,7 +20,7 @@ export interface SubjectName {
  * Billedkunst), SA, KL and SV, which are ambiguous or read as a teacher's initials.
  */
 export const DANISH_SUBJECTS =
-  "Dansk,DAN,DA,DSK;Matematik,MAT,MA;Engelsk,ENG,EN;Tysk,TYS,TY;Fransk,FRA,FR;Spansk,SPA;Idræt,IDR,ID;Svømning,SVØ;Natur/teknologi,N/T,NT,NAT,Natur og teknologi;Historie,HIS,HI;Kristendomskundskab,KRI,KR,Kristendom;Samfundsfag,SAM;Geografi,GEO,GE;Biologi,BIO;Fysik/kemi,FYS,FK,Fysik-kemi;Musik,MUS,MU;Billedkunst,BIL,BK;Madkundskab,MAD,MK,Hjemkundskab;Håndværk og design,HÅN,HD,H&D,HDÅ;Klassens tid,KLT,KT,KLA;Understøttende undervisning,UUV,UU;Valgfag,VAL;Lektiecafé,LEK;Teknologiforståelse,TEK";
+  "Dansk,DAN,DA,DSK;Matematik,MAT,MA;Engelsk,ENG,EN;Tysk,TYS,TY;Fransk,FRA,FR;Spansk,SPA;Idræt,IDR,ID;Svømning,SVØ;Natur/teknologi,N/T,NT,NAT,Natur og teknologi;Historie,HIS,HI;Kristendomskundskab,KRI,KR,Kristendom;Samfundsfag,SAM;Geografi,GEO,GE;Biologi,BIO;Fysik/kemi,FYS,FK,Fysik-kemi;Musik,MUS,MU;Billedkunst,BIL,BK;Madkundskab,MAD,MK,Hjemkundskab;Håndværk og design,HÅN,HD,H&D,HDÅ;Klassens tid,KLT,KT,KLA;Understøttende undervisning,UUV,UU;Valgfag,VAL;Børnehaveklasse,BHK;Lektiecafé,LEK;Teknologiforståelse,TEK";
 
 // A class marker standing alone at the start or end of a title: "3.B", "3b", "0A", "(6.A)".
 const CLASS_MARKER = /^\(?\d{1,2}\.?\s?[a-zæøå]\)?\s+|\s+\(?\d{1,2}\.?\s?[a-zæøå]\)?$/iu;
@@ -59,10 +59,12 @@ const BUILT_IN = new Map<string, string>(
 );
 
 /**
- * Returns a namer: the configured names first, then the built-in Danish ones, else the text
- * without a class marker standing alone at its start or end. Only whole titles are named.
+ * Returns a namer: the configured names first, then the built-in Danish ones unless `expand` is
+ * false, else the text without a class marker standing alone at its start or end. Only whole
+ * titles are named. A subject keeps the key of its built-in name either way, so that "IDR" and
+ * "Idræt" are one subject whether written out or not.
  */
-export function subjectNamer(overrides: readonly SubjectName[]): SubjectNamer {
+export function subjectNamer(overrides: readonly SubjectName[], expand = true): SubjectNamer {
   const configured = new Map(overrides.map((item) => [subjectKey(item.aula), item.name.trim()]));
   const named = new Map<string, SubjectLabel>();
   return (raw) => {
@@ -70,8 +72,10 @@ export function subjectNamer(overrides: readonly SubjectName[]): SubjectNamer {
     if (!label) {
       const key = subjectKey(raw);
       // The class is the child's own, so its marker says nothing; Aula's title stays the tooltip.
-      const name = configured.get(key) ?? BUILT_IN.get(key) ?? raw.trim().replace(CLASS_MARKER, "");
-      label = { name, raw, key: subjectKey(name) };
+      const own = configured.get(key);
+      const plain = raw.trim().replace(CLASS_MARKER, "");
+      const known = own ?? BUILT_IN.get(key) ?? plain;
+      label = { name: expand ? known : (own ?? plain), raw, key: subjectKey(known) };
       named.set(raw, label);
     }
     return label;

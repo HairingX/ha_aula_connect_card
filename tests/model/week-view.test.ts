@@ -12,6 +12,7 @@ const OPTIONS: WeekViewOptions = {
   switchAt: 720,
   packing: [],
   subjectNames: [],
+  expandAbbreviations: true,
   blocks: DEFAULT_ORDER,
   weeks: 2,
 };
@@ -157,7 +158,7 @@ describe("the week card", () => {
     expect(monday?.notYet).toBeUndefined();
     const focus = monday?.rows[0];
     expect(focus?.kind === "focus" && focus.row.plan.blocks[0]).toEqual({
-      id: "homework",
+      id: "task",
       empty: "planMissing",
     });
   });

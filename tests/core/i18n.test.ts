@@ -17,11 +17,11 @@ describe("cardLanguage", () => {
 
 describe("translator", () => {
   it("gives Danish texts in Danish", () => {
-    expect(translator("da")("noHomework")).toBe("Ingen lektier i ugeplanen.");
+    expect(translator("da")("noHomework")).toBe("Intet i ugeplanen.");
   });
 
   it("gives English texts otherwise", () => {
-    expect(translator("de")("noHomework")).toBe("No homework in the week plan.");
+    expect(translator("de")("noHomework")).toBe("Nothing in the week plan.");
   });
 
   it("fills in placeholders and leaves unknown ones", () => {
@@ -32,8 +32,7 @@ describe("translator", () => {
 
   it("picks the singular or plural form by n", () => {
     const da = translator("da");
-    expect(da("homeworkCount", { n: 1 })).toBe("1 lektie");
-    expect(da("homeworkCount", { n: 2 })).toBe("2 lektier");
+    expect(da("daysWithoutSchool", { n: 2 })).toBe("+ 2 dage uden skole");
     expect(da("daysWithoutSchool", { n: 1 })).toBe("+ 1 dag uden skole");
     expect(translator("en")("daysWithoutSchool", { n: 3 })).toBe("+ 3 days without school");
     expect(translator("en")("daysWithoutSchool")).toBe("+ {n} days without school");

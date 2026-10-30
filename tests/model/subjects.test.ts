@@ -22,6 +22,7 @@ describe("the namer", () => {
 
   it.each([
     ["IDR", "Idræt"],
+    ["BHK", "Børnehaveklasse"],
     ["3.B IDR", "Idræt"],
     ["dan", "Dansk"],
     ["N/T", "Natur/teknologi"],
@@ -51,6 +52,14 @@ describe("the namer", () => {
     expect(own("UUV").name).toBe("Bevægelse");
     expect(own("IDR").name).toBe("IDR");
     expect(own("DAN").name).toBe("Dansk");
+  });
+
+  it("shows abbreviations as Aula has them while writing out is off, still one subject with the name", () => {
+    const kept = subjectNamer([{ aula: "UUV", name: "Bevægelse" }], false);
+    expect(kept("3.B IDR").name).toBe("IDR");
+    expect(kept("IDR").key).toBe(namer("Idræt").key);
+    expect(kept("Idræt").name).toBe("Idræt");
+    expect(kept("UUV").name).toBe("Bevægelse");
   });
 
   it("knows each subject by its own name too", () => {

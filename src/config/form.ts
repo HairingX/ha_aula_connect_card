@@ -66,10 +66,10 @@ export interface ConfigForm {
 
 /** The block names in the editor. */
 export const BLOCK_LABELS: Readonly<Record<BlockId, TextKey>> = {
-  homework: "blockHomework",
+  task: "blockTask",
   pack: "blockPack",
   timetable: "blockTimetable",
-  plan: "blockPlan",
+  comment: "blockComment",
   events: "blockEvents",
   birthdays: "blockBirthdays",
 };
@@ -83,8 +83,10 @@ const LABELS: Readonly<Record<string, TextKey>> = {
   info_lines: "editorInfoLines",
   switch_time: "editorSwitch",
   size: "editorSize",
+  notes: "editorNotes",
   packing: "editorPackingList",
   subject_names: "editorSubjectNamesList",
+  expand_abbreviations: "editorExpand",
 };
 
 const HELPERS: Readonly<Record<string, TextKey>> = {
@@ -95,6 +97,7 @@ const HELPERS: Readonly<Record<string, TextKey>> = {
   info_lines: "editorInfoLinesHelper",
   switch_time: "editorSwitchHelper",
   size: "editorSizeHelper",
+  notes: "editorNotesHelper",
   packing_group: "editorPackingHelper",
   subject_names_group: "editorSubjectNamesHelper",
 };
@@ -114,6 +117,7 @@ export type FieldName =
   | "info_lines"
   | "switch_time"
   | "size"
+  | "notes"
   | "packing_group"
   | "subject_names_group";
 
@@ -158,8 +162,9 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
         select: {
           multiple: true,
           reorder: true,
-          // Birthdays are said in the day's header, never as a block that could move.
-          options: BLOCKS.filter((id) => id !== "birthdays").map((id) => ({
+          // Birthdays are said in the day's header and events in the timetable, never as a block
+          // that could move.
+          options: BLOCKS.filter((id) => id !== "birthdays" && id !== "events").map((id) => ({
             value: id,
             label: t(BLOCK_LABELS[id]),
           })),
@@ -196,6 +201,19 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
           options: [
             { value: "normal", label: t("editorSizeNormal") },
             { value: "large", label: t("editorSizeLarge") },
+          ],
+        },
+      },
+    },
+    notes: {
+      name: "notes",
+      selector: {
+        select: {
+          mode: "list",
+          options: [
+            { value: "tasks", label: t("notesTasks") },
+            { value: "comments", label: t("notesComments") },
+            { value: "all", label: t("notesAll") },
           ],
         },
       },
@@ -238,6 +256,7 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
       title: t("editorSubjectNames"),
       icon: "mdi:school-outline",
       schema: [
+        { name: "expand_abbreviations", default: true, selector: { boolean: {} } },
         {
           name: "subject_names",
           selector: {

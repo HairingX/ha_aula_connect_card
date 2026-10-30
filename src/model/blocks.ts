@@ -24,11 +24,11 @@ import {
   type LessonTime,
 } from "./lessons.ts";
 import { inTimetableOrder, isHomework, noteView, type NoteView } from "./notes.ts";
-import { packRows, quotes, type PackRow, type PackRule, type Quote } from "./pack.ts";
+import { packRows, type PackRow, type PackRule } from "./pack.ts";
 import type { SubjectLabel, SubjectNamer } from "./subjects.ts";
 
 /** The blocks, in their default order. */
-export const BLOCKS = ["homework", "pack", "timetable", "plan", "events", "birthdays"] as const;
+export const BLOCKS = ["task", "pack", "timetable", "comment", "events", "birthdays"] as const;
 
 /** A block of a day. */
 export type BlockId = (typeof BLOCKS)[number];
@@ -143,8 +143,6 @@ export interface DayContent {
   readonly plan: readonly NoteView[];
   /** The configured things to bring. */
   readonly pack: readonly PackRow[];
-  /** The week plan's reminders, quoted. */
-  readonly quotes: readonly Quote[];
   /** The events at a time of the day, in the order they begin. */
   readonly timed: readonly TimedEvent[];
   /** The events lasting the whole day, holidays first, then the birthdays. */
@@ -177,6 +175,12 @@ export function homeworkOf(view: DayView, rules: ContentRules): NoteView[] {
   );
 }
 
+/** Returns a day's notes other than what the week plan marks. */
+export function commentsOf(view: DayView, rules: ContentRules): NoteView[] {
+  if (!rules.weekPlan) return [];
+  return view.notes.filter((note) => !isHomework(note)).map((note) => noteView(note, rules.namer));
+}
+
 function status(value: string | null): LessonStatus | undefined {
   if (value === null || value.trim() === "" || value === "normal") return undefined;
   return value === "substitute" ? { kind: "substitute" } : { kind: "other", text: value };
@@ -205,13 +209,11 @@ export function dayContent(
           cancelled: isCancelled(entry.block.lesson),
         },
   );
-  const lessonKeys = view.lessons.map((lesson) => namer(lesson.title).key);
   const subjects = new Map<string, SubjectLabel>();
   for (const lesson of view.lessons) {
     const subject = namer(lesson.title);
     if (!isCancelled(lesson) && !subjects.has(subject.key)) subjects.set(subject.key, subject);
   }
-  const notes = weekPlan ? view.notes.map((note) => noteView(note, namer)) : [];
   const whole = view.events.filter((event) => isWholeDay(event, view.day, zone));
   return {
     view,
@@ -223,9 +225,8 @@ export function dayContent(
     hours: schoolHours(view.lessons),
     subjects: [...subjects.values()],
     homework: homeworkOf(view, rules),
-    plan: notes.filter((note) => !isHomework(note.note)),
+    plan: commentsOf(view, rules),
     pack: packRows(view.lessons, rules.packing, namer),
-    quotes: quotes(notes, lessonKeys),
     timed: view.events
       .filter((event) => !whole.includes(event))
       .map((event) => ({ event, span: spanOn(event, view.day, zone) })),
@@ -252,14 +253,16 @@ export interface PlannedBlock {
   readonly empty: EmptyKind | undefined;
 }
 
-/** The blocks a day shows, and its quotes. */
+/** The blocks a day shows, and what Husk and the timetable add to them. */
 export interface BlockPlan {
   /** The blocks, in the configured order, without those that have nothing to show. */
   readonly blocks: readonly PlannedBlock[];
-  /** The quotes Husk shows: none while both homework and the plan are hidden. */
-  readonly quotes: readonly Quote[];
   /** The subjects Husk names: none while the timetable, which lists them, is shown. */
   readonly subjects: readonly SubjectLabel[];
+  /** The events lasting the whole day the timetable shows first; none while events are hidden. */
+  readonly allDay: readonly CalendarEvent[];
+  /** The events with a time the timetable shows among the lessons; none while hidden. */
+  readonly timed: readonly TimedEvent[];
   /** Whether no block has anything: the day says "Intet i Aula for denne dag." */
   readonly nothing: boolean;
 }
@@ -271,21 +274,27 @@ function homeworkEmpty(content: DayContent): EmptyKind | undefined {
 }
 
 /**
- * Plans a day's blocks. A block without content is left out, except that homework on a school
- * day says why it has none, and the timetable says there is none on a weekday with other
- * content. Events lasting the whole day and birthdays are the header's, so the events block holds
- * the timed events only, and birthdays are no block.
+ * Plans a day's blocks. A block without content is left out, except that what the week plan
+ * marks says why there is none on a school day, and the timetable says there is none on a weekday
+ * with other content. The day's events are the timetable's, as in a calendar: those lasting the
+ * whole day first, the others among the lessons. Birthdays are the header's, so neither events
+ * nor birthdays are a block of their own.
  */
 export function planBlocks(content: DayContent, blocks: readonly BlockId[]): BlockPlan {
-  const quoted =
-    blocks.includes("homework") || blocks.includes("plan") ? content.quotes : ([] as const);
   const subjects = blocks.includes("timetable") ? [] : content.subjects;
+  const events = blocks.includes("events");
+  const allDay = events
+    ? content.facts.flatMap((fact) =>
+        fact.kind === "event" && !isHolidayEvent(fact.event) ? [fact.event] : [],
+      )
+    : [];
+  const timed = events ? content.timed : [];
   const has: Record<BlockId, boolean> = {
-    homework: content.homework.length > 0,
-    pack: subjects.length > 0 || content.pack.length > 0 || quoted.length > 0,
-    timetable: content.timetable.length > 0,
-    plan: content.plan.length > 0,
-    events: content.timed.length > 0,
+    task: content.homework.length > 0,
+    pack: subjects.length > 0 || content.pack.length > 0,
+    timetable: content.timetable.length > 0 || allDay.length > 0 || timed.length > 0,
+    comment: content.plan.length > 0,
+    events: false,
     birthdays: false,
   };
   // A day with something else on it says it has no timetable, so the header's facts count.
@@ -294,7 +303,7 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
   const planned: PlannedBlock[] = [];
   for (const id of blocks) {
     const empty =
-      id === "homework"
+      id === "task"
         ? homeworkEmpty(content)
         : id === "timetable" && other && !isWeekend(content.view.day)
           ? "noTimetable"
@@ -302,24 +311,46 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
     if (has[id]) planned.push({ id, empty: undefined });
     else if (empty) planned.push({ id, empty });
   }
-  return { blocks: planned, quotes: quoted, subjects, nothing: planned.length === 0 };
+  return {
+    blocks: planned,
+    subjects,
+    allDay,
+    timed,
+    nothing: planned.length === 0,
+  };
 }
 
 /**
- * Returns the folded timetable: a line for each subject in the order it comes, its lessons in a
- * row taken as one from the start of the first, across a break; the breaks are left out. A
- * lesson whose status differs from the one before it has a line of its own, as it is news.
+ * Returns the folded timetable: a line for each subject as it comes, from the start of its first
+ * lesson to the end of its last, joining only lessons with no break between them, so that the
+ * breaks show as gaps between the times. A lesson whose status differs from the one before it
+ * has a line of its own, as it is news.
  */
 export function foldTimetable(rows: readonly TimetableRow[]): LessonRow[] {
-  const lessons = rows.filter((row) => row.kind === "lesson");
-  return lessons.filter((row, index) => {
-    const before = lessons[index - 1];
-    return (
-      before?.subject.key !== row.subject.key ||
-      before.cancelled !== row.cancelled ||
-      JSON.stringify(before.status) !== JSON.stringify(row.status)
-    );
-  });
+  const lines: LessonRow[] = [];
+  let before: TimetableRow | undefined;
+  for (const row of rows) {
+    const last = lines[lines.length - 1];
+    if (row.kind === "lesson") {
+      const joins =
+        before?.kind === "lesson" &&
+        last?.subject.key === row.subject.key &&
+        last.cancelled === row.cancelled &&
+        JSON.stringify(last.status) === JSON.stringify(row.status);
+      if (joins)
+        lines[lines.length - 1] = { ...last, block: { ...last.block, end: row.block.end } };
+      else lines.push(row);
+    }
+    before = row;
+  }
+  return lines;
+}
+
+/** Returns what a day's header says: its holidays and birthdays, without a hidden one. */
+export function headerFacts(content: DayContent, blocks: readonly BlockId[]): Fact[] {
+  return visibleFacts(content, blocks).filter(
+    (fact) => fact.kind === "birthday" || isHolidayEvent(fact.event),
+  );
 }
 
 /** Returns a day's facts, without those of a hidden block. */
