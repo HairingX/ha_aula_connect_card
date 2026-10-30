@@ -1,3 +1,5 @@
+import { gzipSync } from "node:zlib";
+
 import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 
@@ -74,11 +76,49 @@ function collapseTemplates(): Plugin {
   };
 }
 
+/** The most the bundle may weigh: as it is served, and gzipped at zlib's default level. */
+export interface Budget {
+  /** Bytes as served. */
+  readonly raw: number;
+  /** Bytes gzipped. */
+  readonly gzip: number;
+}
+
+/** The card's budget, in bytes; growth beyond it fails the build. */
+export const BUDGET: Budget = { raw: 108_000, gzip: 35_000 };
+
+/** Returns a line for each limit of the budget the code is over; none when it fits. */
+export function overBudget(code: string, budget: Budget): string[] {
+  const raw = Buffer.byteLength(code);
+  const gzip = gzipSync(code).length;
+  return [
+    ...(raw > budget.raw ? [`${String(raw)} bytes, over the budget of ${String(budget.raw)}`] : []),
+    ...(gzip > budget.gzip
+      ? [`${String(gzip)} bytes gzipped, over the budget of ${String(budget.gzip)}`]
+      : []),
+  ];
+}
+
+/** Fails the build when a chunk, as it is written, is over the budget. */
+function budget(limits: Budget): Plugin {
+  return {
+    name: "aula:budget",
+    apply: "build",
+    writeBundle(_options, bundle) {
+      for (const output of Object.values(bundle)) {
+        if (output.type !== "chunk") continue;
+        const problems = overBudget(output.code, limits);
+        if (problems.length > 0) this.error(`${output.fileName}: ${problems.join("; ")}`);
+      }
+    },
+  };
+}
+
 export default defineConfig({
   define: {
     __CARD_VERSION__: JSON.stringify(version),
   },
-  plugins: [minifyStyles(), collapseTemplates()],
+  plugins: [minifyStyles(), collapseTemplates(), budget(BUDGET)],
   build: {
     lib: {
       entry: "src/index.ts",
