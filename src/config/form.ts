@@ -56,7 +56,10 @@ export interface ConfigForm {
     selector?: Readonly<Record<string, unknown>>;
   }) => string | undefined;
   /** Returns a field's help text, if any; an expandable's becomes a paragraph in it. */
-  readonly computeHelper: (schema: { name: string }) => string | undefined;
+  readonly computeHelper: (schema: {
+    name: string;
+    selector?: Readonly<Record<string, unknown>>;
+  }) => string | undefined;
   /** Throws for a configuration the form cannot edit, with the reason: the card's own check. */
   readonly assertConfig: (config: unknown) => void;
 }
@@ -71,7 +74,8 @@ export const BLOCK_LABELS: Readonly<Record<BlockId, TextKey>> = {
   birthdays: "blockBirthdays",
 };
 
-const LABELS: Readonly<Record<string, TextKey | "">> = {
+// Every field has a label: Home Assistant shows the key's name in place of an empty one.
+const LABELS: Readonly<Record<string, TextKey>> = {
   children: "editorChildren",
   weeks: "editorWeeks",
   order: "editorOrder",
@@ -80,9 +84,8 @@ const LABELS: Readonly<Record<string, TextKey | "">> = {
   info_lines: "editorInfoLines",
   switch_time: "editorSwitch",
   size: "editorSize",
-  // Inside their groups, whose titles name them.
-  packing: "",
-  subject_names: "",
+  packing: "editorPackingList",
+  subject_names: "editorSubjectNamesList",
 };
 
 const HELPERS: Readonly<Record<string, TextKey>> = {
@@ -96,6 +99,11 @@ const HELPERS: Readonly<Record<string, TextKey>> = {
   packing_group: "editorPackingHelper",
   subject_names_group: "editorSubjectNamesHelper",
 };
+
+// A block's switch shares its name with a field of its own, such as the timetable's, whose label
+// and help are not the switch's.
+const isSwitch = (schema: { selector?: Readonly<Record<string, unknown>> }): boolean =>
+  schema.selector !== undefined && "boolean" in schema.selector;
 
 // The switches of homework and the plan stand for themselves, unless 0.0.2's `tasks: false`
 // hides both and no switch of their own says otherwise.
@@ -135,7 +143,7 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
           multiple: true,
           mode: known ? "list" : "dropdown",
           custom_value: !known,
-          // Numbers, as YAML has them: Home Assistant ticks the option equal to the value.
+          // Numbers, as YAML has them: Home Assistant's checkboxes tick the option equal to it.
           options: children.map((child) => ({
             value: child.child_id,
             label: `${child.first_name} · ${child.institution_name}`,
@@ -148,9 +156,11 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
       selector: {
         select: {
           mode: "list",
+          // Text: Home Assistant's radio list turns the value into text before it ticks the option
+          // equal to it, and gives back text.
           options: [
-            { value: 1, label: t("editorWeeksOne") },
-            { value: 2, label: t("editorWeeksTwo") },
+            { value: "1", label: t("editorWeeksOne") },
+            { value: "2", label: t("editorWeeksTwo") },
           ],
         },
       },
@@ -280,16 +290,13 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
 }
 
 /**
- * Throws for what the form would show other than the card does: Home Assistant ticks only an
- * option equal to the value, and the time field shows only a time written as one.
+ * Throws for what the form would show other than the card does: Home Assistant's checkboxes tick
+ * only an option equal to the value, and its time field shows only a time written as one.
  */
 function assertShown(raw: Record<string, unknown>, known: boolean): void {
   const children = Array.isArray(raw.children) ? (raw.children as unknown[]) : [];
   if (known && children.some((id) => typeof id === "string")) {
     throw new Error("children: write the child ids as numbers, such as [1001], to choose here");
-  }
-  if (typeof raw.weeks === "string") {
-    throw new Error("weeks: write 1 or 2 without quotes to choose here");
   }
   // The time field shows only a time with its minutes.
   if (typeof raw.switch_time === "number" || /^\s*\d+\s*$/.test(String(raw.switch_time))) {
@@ -310,16 +317,14 @@ export function configForm(
   return {
     schema: names.map((name) => all[name]),
     computeLabel: (schema) => {
-      // A block's switch shares its name with a field of its own, such as the timetable's.
-      const block = schema.selector && "boolean" in schema.selector;
-      const key = block
+      const key = isSwitch(schema)
         ? (BLOCK_LABELS as Readonly<Record<string, TextKey | undefined>>)[schema.name]
         : undefined;
       const label = key ?? LABELS[schema.name];
-      return label === undefined ? undefined : label === "" ? "" : t(label);
+      return label === undefined ? undefined : t(label);
     },
     computeHelper: (schema) => {
-      const key = HELPERS[schema.name];
+      const key = isSwitch(schema) ? undefined : HELPERS[schema.name];
       return key === undefined ? undefined : t(key);
     },
     assertConfig: (config) => {

@@ -349,6 +349,54 @@ describe("the editor", () => {
     });
   });
 
+  // Home Assistant's radio list turns its value into text, ticks the option equal to that, and
+  // gives back the ticked option's value.
+  const radioTicks = (field: FormSchema | undefined, value: unknown): unknown[] => {
+    const select = field && "selector" in field ? field.selector.select : undefined;
+    const options = (select as { options?: readonly { value: unknown }[] } | undefined)?.options;
+    const text = typeof value === "number" ? String(value) : value;
+    return (options ?? []).map((option) => option.value).filter((option) => option === text);
+  };
+
+  it("ticks the weeks the card shows, written as a number or as text, and reads what it gives back", () => {
+    rememberChildren(CHILDREN);
+    const form = weekConfigForm();
+    const weeks = form.schema.find((item) => item.name === "weeks");
+    for (const value of [1, "1", 2, "2"]) {
+      expect(() => {
+        form.assertConfig({ weeks: value });
+      }).not.toThrow();
+      const shown = resolveWeekConfig({ weeks: value }).weeks;
+      expect(radioTicks(weeks, value)).toEqual([String(shown)]);
+      expect(resolveWeekConfig({ weeks: radioTicks(weeks, value)[0] }).weeks).toBe(shown);
+    }
+  });
+
+  it("gives every list of single choices text values, which is all Home Assistant's radio list ticks", () => {
+    rememberChildren(CHILDREN);
+    const lists = [dayConfigForm(), weekConfigForm(), homeworkConfigForm()]
+      .flatMap((form) => form.schema)
+      .flatMap((field) => {
+        const select = "selector" in field ? field.selector.select : undefined;
+        const list = select as
+          { mode?: string; multiple?: boolean; options: readonly { value: unknown }[] } | undefined;
+        return list?.mode === "list" && list.multiple !== true
+          ? [{ name: field.name, options: list.options }]
+          : [];
+      });
+    expect(lists.map((list) => list.name)).toEqual([
+      "timetable",
+      "size",
+      "weeks",
+      "timetable",
+      "size",
+      "size",
+    ]);
+    for (const list of lists) {
+      for (const option of list.options) expect(typeof option.value).toBe("string");
+    }
+  });
+
   it("shows only what it can show as the card does, and says how to write the rest", () => {
     rememberChildren(CHILDREN);
     const form = weekConfigForm();
@@ -359,16 +407,13 @@ describe("the editor", () => {
       form.assertConfig({ children: ["1001"] });
     }).toThrow("children: write the child ids as numbers, such as [1001], to choose here");
     expect(() => {
-      form.assertConfig({ weeks: "2" });
-    }).toThrow("weeks: write 1 or 2 without quotes to choose here");
-    expect(() => {
       form.assertConfig({ switch_time: 720 });
     }).toThrow('switch_time: write the time as "12:00" to set it here');
     expect(() => {
       form.assertConfig({ switch_time: "12" });
     }).toThrow('switch_time: write the time as "12:00" to set it here');
     expect(form.schema[1]).toMatchObject({
-      selector: { select: { options: [{ value: 1 }, { value: 2 }] } },
+      selector: { select: { options: [{ value: "1" }, { value: "2" }] } },
     });
   });
 
@@ -425,13 +470,16 @@ describe("the editor", () => {
       "Lektier og noter (tidligere indstilling)",
     );
     expect(da.computeLabel({ name: "info_lines" })).toBe("Linjer i dagens plan før Vis mere");
-    expect(da.computeHelper({ name: "timetable" })).toBe("Standard: kort.");
+    expect(da.computeHelper({ name: "timetable", selector: { select: {} } })).toBe(
+      "Standard: kort.",
+    );
     expect(da.computeHelper({ name: "info_lines" })).toBe(
       "Standard: 6. 0 viser altid hele teksten.",
     );
     expect(da.computeHelper({ name: "show" })).toBeUndefined();
     expect(da.computeLabel({ name: "tasks" })).toBe("Lektier og noter (tidligere indstilling)");
-    expect(da.computeLabel({ name: "packing" })).toBe("");
+    expect(da.computeLabel({ name: "packing" })).toBe("Fag og ting");
+    expect(da.computeLabel({ name: "subject_names" })).toBe("Egne navne");
     expect(da.computeLabel({ name: "unknown" })).toBeUndefined();
     expect(da.computeHelper({ name: "switch_time" })).toBe(
       "Tomt felt = 12.00. Før dette klokkeslæt vises i dag; 00.00 viser i dag hele dagen.",
@@ -444,9 +492,28 @@ describe("the editor", () => {
     rememberLanguage("en");
     const en = weekConfigForm();
     expect(en.computeLabel({ name: "switch_time" })).toBe("Show the next school day from");
+    expect(en.computeLabel({ name: "packing" })).toBe("Subjects and things");
+    expect(en.computeLabel({ name: "subject_names" })).toBe("Your names");
     expect(en.schema.find((item) => item.name === "packing_group")).toMatchObject({
       title: "Things to bring",
     });
+  });
+
+  it("labels every field, as Home Assistant shows the key's name in place of an empty label", () => {
+    rememberChildren(CHILDREN);
+    const fieldsOf = (schema: readonly FormSchema[]): FormSchema[] =>
+      schema.flatMap((field) => ("schema" in field ? fieldsOf(field.schema) : [field]));
+    for (const form of [dayConfigForm(), weekConfigForm(), homeworkConfigForm()]) {
+      for (const field of fieldsOf(form.schema)) {
+        expect(form.computeLabel(field), field.name).toBeTruthy();
+      }
+    }
+  });
+
+  it("gives a block's switch no help of the field it shares its name with", () => {
+    const form = dayConfigForm();
+    expect(form.computeHelper({ name: "timetable", selector: { boolean: {} } })).toBeUndefined();
+    expect(form.computeLabel({ name: "timetable", selector: { boolean: {} } })).toBe("Timetable");
   });
 
   it("checks a configuration with the card's own rules", () => {

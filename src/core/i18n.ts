@@ -184,6 +184,7 @@ const TEXTS = {
     "Things to bring when the subject is on the timetable. The card also quotes the week plan's reminders (husk, medbring, tag … med).",
     "Ting der skal med, når faget er på skemaet. Kortet citerer også ugeplanens sætninger med »husk«, »medbring« og »tag … med«.",
   ],
+  editorPackingList: ["Subjects and things", "Fag og ting"],
   editorPackingSubject: ["Subject", "Fag"],
   editorPackingItems: ["Things", "Ting"],
   editorSubjectNames: ["Subject names", "Fagnavne"],
@@ -191,6 +192,7 @@ const TEXTS = {
     "The card knows the common abbreviations (DAN, MAT, IDR …); correct or add names here.",
     "Kortet kender de almindelige forkortelser (DAN, MAT, IDR …); ret eller tilføj navne her.",
   ],
+  editorSubjectNamesList: ["Your names", "Egne navne"],
   editorSubjectAula: ["Name in Aula", "Navn i Aula"],
   editorSubjectName: ["Show as", "Vis som"],
 } satisfies Record<string, readonly [english: Text, danish: Text]>;
