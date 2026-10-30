@@ -74,9 +74,10 @@ export function time(text: string, ctx: ViewContext, cls = ""): TemplateResult |
 
 /** Shows a time span, such as "08.00–12.55" or "8:00 AM – 12:55 PM". */
 export function timeSpan(start: string, end: string, ctx: ViewContext): TemplateResult {
-  // Thin spaces set the dash off from AM and PM, which would otherwise run into it.
+  // Thin spaces set the dash off from AM and PM, which would otherwise run into it; the one
+  // after it never breaks, so that a line does not end with the dash.
   return html`<span class="tabular"
-    >${time(start, ctx)}${ctx.amPm ? " – " : "–"}${time(end, ctx)}</span
+    >${time(start, ctx)}${ctx.amPm ? " – " : "–"}${time(end, ctx)}</span
   >`;
 }
 
@@ -126,9 +127,10 @@ export function eventIcon(type: string): string {
 
 /**
  * Shows a fact of a day's header in words, with its icon: a whole-day event, with its place,
- * or a birthday, spoken in full. Text, not a chip: nothing on the card can be tapped.
+ * or a birthday, spoken in full. Text, not a chip: nothing on the card can be tapped. `after`
+ * follows in the same run of text, such as the days the fact is on.
  */
-export function fact(item: Fact, ctx: ViewContext): TemplateResult {
+export function fact(item: Fact, ctx: ViewContext, after: unknown = nothing): TemplateResult {
   if (item.kind === "event") {
     const { event } = item;
     return html`<span class="fact"
@@ -137,14 +139,16 @@ export function fact(item: Fact, ctx: ViewContext): TemplateResult {
           event.location
             ? html`<span class="quiet"> · ${aula(event.location, ctx)}</span>`
             : nothing
-        }</span
+        }${after}</span
       ></span
     >`;
   }
   const name = item.birthday.name;
   return html`<span class="fact"
-    >${icon("mdi:cake-variant-outline")}<span aria-hidden="true">${aula(name, ctx)}</span
-    ><span class="sr">${ctx.t("birthdayOf", { name })}</span></span
+    >${icon("mdi:cake-variant-outline")}<span
+      ><span aria-hidden="true">${aula(name, ctx)}</span
+      ><span class="sr">${ctx.t("birthdayOf", { name })}</span>${after}</span
+    ></span
   >`;
 }
 

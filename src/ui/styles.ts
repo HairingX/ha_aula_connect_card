@@ -109,6 +109,9 @@ export const base = css`
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+  time {
+    white-space: nowrap;
+  }
   .period {
     font-size: 0.8em;
   }
@@ -529,24 +532,29 @@ export const blocks = css`
       font-size: var(--aula-font-2xl);
     }
   }
-  /* The wall: what the morning asks is read from across a kitchen; the rest is read up close. */
-  .aula.large .hero .title {
-    font-size: calc(var(--ha-font-size-4xl, 32px) * 1.75);
-    font-weight: var(--aula-medium);
-  }
-  .aula.large .tile {
-    width: 96px;
-    height: 104px;
-  }
-  .aula.large .tile .number {
-    font-size: calc(var(--ha-font-size-2xl, 24px) * 1.5);
-  }
+  /* The wall: what the morning asks is read from across a kitchen; the rest is read up close.
+     A narrow card keeps the rest's sizes, as the wall's would not fit beside the date. */
   .aula.large .hours {
     flex-basis: 100%;
-    font-size: calc(var(--ha-font-size-2xl, 24px) * 1.5);
   }
-  .aula.large .hours ha-icon {
-    --mdc-icon-size: 0.8em;
+  @container aula (min-width: 480px) {
+    .aula.large .hero .title {
+      font-size: calc(var(--ha-font-size-4xl, 32px) * 1.75);
+      font-weight: var(--aula-medium);
+    }
+    .aula.large .tile {
+      width: 96px;
+      height: 104px;
+    }
+    .aula.large .tile .number {
+      font-size: calc(var(--ha-font-size-2xl, 24px) * 1.5);
+    }
+    .aula.large .hours {
+      font-size: calc(var(--ha-font-size-2xl, 24px) * 1.5);
+    }
+    .aula.large .hours ha-icon {
+      --mdc-icon-size: 0.8em;
+    }
   }
 
   .blocks,
@@ -880,6 +888,7 @@ export const dayStyles = css`
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    align-content: start;
     gap: var(--aula-space-1) var(--aula-space-3);
   }
   .kid-who {
@@ -1105,10 +1114,12 @@ export const weekStyles = css`
     color: var(--aula-text-2);
   }
   .today-row > summary,
+  .holiday-row.today-row,
   .focus-day.today {
     position: relative;
   }
   .today-row > summary::before,
+  .holiday-row.today-row::before,
   .focus-day.today::before {
     content: "";
     position: absolute;
@@ -1157,6 +1168,9 @@ export const weekStyles = css`
   }
   .weekend-day + .weekend-day {
     margin-top: var(--aula-space-6);
+  }
+  .weekend-day > .facts + .blocks {
+    margin-top: var(--aula-space-4);
   }
   .weekend-title {
     margin-bottom: var(--aula-space-2);

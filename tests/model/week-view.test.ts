@@ -37,7 +37,7 @@ function shape(row: WeekRow): string {
     case "weekend":
       return `weekend ${row.days.map((day) => day.day.slice(8)).join("+")}${row.today ? " today" : ""}`;
     case "holiday":
-      return `holiday ${row.event.title}`;
+      return `holiday ${row.event.title}${row.today ? " today" : ""}`;
   }
 }
 
@@ -123,9 +123,12 @@ describe("the week card", () => {
     expect(weeks("fri-1400", { weeks: 1 }).map((week) => week.number)).toEqual([44, 45]);
   });
 
-  it("makes the days a holiday covers one row", () => {
+  it("makes the days a holiday covers one row, marked when today is one of them", () => {
     const [holiday, after] = weeks("holiday");
-    expect(holiday?.rows.map(shape)).toEqual(["holiday Efterårsferie"]);
+    expect(holiday?.rows.map(shape)).toEqual(["holiday Efterårsferie today"]);
+    expect(weeks("before-holiday").flatMap((week) => week.rows.map(shape))).toContain(
+      "holiday Efterårsferie",
+    );
     expect(after?.rows[0] && shape(after.rows[0])).toBe("focus 19");
   });
 

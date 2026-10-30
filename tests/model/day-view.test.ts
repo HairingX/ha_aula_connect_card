@@ -98,6 +98,13 @@ describe("the rows above the school day's header", () => {
     const [line] = above("holiday").bridges;
     expect(line?.row).toMatchObject({ kind: "holiday", first: "2026-10-10", last: "2026-10-18" });
   });
+
+  it("names a holiday going on today once, by its dates rather than in the rest of today", () => {
+    const rows = above("holiday");
+    expect(rows.today).toEqual([]);
+    expect(rows.facts).toEqual([]);
+    expect(rows.bridges.map((line) => line.row.kind)).toEqual(["holiday"]);
+  });
 });
 
 describe("the header", () => {

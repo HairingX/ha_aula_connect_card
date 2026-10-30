@@ -119,7 +119,7 @@ export function emptyText(
     case "noWeekPlan":
       return ctx.t("noWeekPlanHomework");
     case "noTimetable":
-      return ctx.t("noTimetableInAula");
+      return ctx.t("noLessons");
     case "noHomework":
       return ctx.t("noHomework");
     default:
@@ -129,7 +129,7 @@ export function emptyText(
           : id === "pack"
             ? "noPack"
             : id === "timetable"
-              ? "noTimetableInAula"
+              ? "noLessons"
               : id === "plan"
                 ? "noPlan"
                 : "noEvents",

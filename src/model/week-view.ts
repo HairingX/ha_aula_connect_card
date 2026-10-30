@@ -97,6 +97,8 @@ export type WeekRow =
       readonly first: Day;
       /** Its own last day. */
       readonly last: Day;
+      /** Whether it covers today. */
+      readonly today: boolean;
     };
 
 /** A week of a child. */
@@ -198,7 +200,12 @@ function week(
     const holiday = holidays.get(view.day);
     if (holiday && !over(holiday)) {
       if (lastHoliday?.id !== holiday.id) {
-        rows.push({ kind: "holiday", event: holiday, ...holidaySpan(holiday, view.day) });
+        rows.push({
+          kind: "holiday",
+          event: holiday,
+          ...holidaySpan(holiday, view.day),
+          today: holidays.get(today)?.id === holiday.id,
+        });
       }
       lastHoliday = holiday;
       continue;

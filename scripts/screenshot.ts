@@ -7,7 +7,8 @@
  *
  * Each shot is a scenario of `tests/fixtures/scenarios.ts`, so that it shows a tested case. The
  * page's connection answers only the range the store is expected to ask for: a change of the
- * range policy fails the script.
+ * range policy fails the script. So does a shot whose layout is broken: text past the card's
+ * edge, children side by side whose names do not share a line, or a time broken across lines.
  *
  * @packageDocumentation
  */
@@ -394,6 +395,56 @@ function glance(arg: { tag: string; screen: number }): string[] {
   return problems;
 }
 
+/**
+ * Runs in the page: tells what is wrong with a card's layout, if anything. No text may reach past
+ * the card's content box, unless an element within clips it; children set side by side have their
+ * names on one line; and no time of day is broken across lines.
+ */
+function layout(tag: string): string[] {
+  const root = document.querySelector(tag)?.shadowRoot;
+  const body = root?.querySelector(".body");
+  if (!root || !body) return ["no card"];
+  const problems: string[] = [];
+  const style = getComputedStyle(body);
+  const right =
+    body.getBoundingClientRect().right -
+    parseFloat(style.paddingRight) -
+    parseFloat(style.borderRightWidth);
+  const walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = (node.textContent ?? "").trim();
+    const parent = node.parentElement;
+    if (text === "" || !parent || parent.closest(".sr")) continue;
+    let clip = Infinity;
+    for (let element: Element | null = parent; element && element !== body;) {
+      if (getComputedStyle(element).overflowX !== "visible")
+        clip = Math.min(clip, element.getBoundingClientRect().right);
+      element = element.parentElement;
+    }
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    for (const rect of range.getClientRects()) {
+      const end = Math.min(rect.right, clip);
+      if (rect.width > 0 && end > right + 1)
+        problems.push(
+          `"${text.slice(0, 24)}" reaches ${String(Math.round(end - right))} px past the card`,
+        );
+    }
+  }
+  for (const strip of root.querySelectorAll(".strip")) {
+    if (getComputedStyle(strip).display !== "grid") continue;
+    const names = [...strip.querySelectorAll(".kid-name, .who-name")];
+    const tops = new Set(names.map((name) => Math.round(name.getBoundingClientRect().top)));
+    if (tops.size > 1) problems.push(`the children's names stand at ${[...tops].join(", ")} px`);
+  }
+  for (const time of root.querySelectorAll("time")) {
+    // A box for each run of text, on one line unless the time is broken.
+    const lines = new Set([...time.getClientRects()].map((rect) => Math.round(rect.bottom)));
+    if (lines.size > 1) problems.push(`the time "${time.textContent}" is broken across lines`);
+  }
+  return problems;
+}
+
 function rendered(tag: string): boolean {
   const root = document.querySelector(tag)?.shadowRoot;
   return root?.querySelector(".body") != null && root.querySelector('[aria-busy="true"]') == null;
@@ -478,10 +529,13 @@ for (const item of shots) {
       { selector: tag, target: item.click },
     );
   }
-  if (item.glance === true) {
-    const problems = (await tab.evaluate(glance, { tag, screen: FIRST_SCREEN })) as string[];
-    if (problems.length > 0) throw new Error(`${name(item)}: ${problems.join("; ")}`);
-  }
+  const problems = [
+    ...((await tab.evaluate(layout, tag)) as string[]),
+    ...(item.glance === true
+      ? ((await tab.evaluate(glance, { tag, screen: FIRST_SCREEN })) as string[])
+      : []),
+  ];
+  if (problems.length > 0) throw new Error(`${name(item)}: ${problems.join("; ")}`);
   const file = `${name(item)}.png`;
   await tab.locator(tag).screenshot({ path: join(out, file), animations: "disabled" });
   done.push({ file, item, scenario });

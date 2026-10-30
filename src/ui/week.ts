@@ -59,32 +59,45 @@ function dayColumn(day: string, ctx: ViewContext): TemplateResult {
   </span>`;
 }
 
-function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardState): unknown {
+/**
+ * A day's blocks; `named` also names its whole-day events and birthdays, which a row's summary
+ * otherwise gives. A day with nothing else names them anyway.
+ */
+function blocks(
+  row: DayRowView,
+  child: Child,
+  ctx: ViewContext,
+  state: CardState,
+  named = false,
+): unknown {
   const { content, plan } = row;
-  if (plan.nothing) {
-    return row.facts.length > 0
+  const shown =
+    row.facts.length > 0 && (named || plan.nothing)
       ? facts(row.facts.map((item) => fact(item, ctx)))
-      : html`<p class="empty">${ctx.t("nothingThisDay")}</p>`;
+      : nothing;
+  if (plan.nothing) {
+    return shown === nothing ? html`<p class="empty">${ctx.t("nothingThisDay")}</p>` : shown;
   }
-  return html`<div class="blocks">
-    ${plan.blocks.map((block) =>
-      renderBlock(
-        block.id,
-        [
-          {
-            content,
-            quotes: plan.quotes,
-            empty: block.empty,
-            child: undefined,
-            key: childKey(child),
-            col: 1,
-          },
-        ],
-        ctx,
-        { detailed: true, level: 5, state },
-      ),
-    )}
-  </div>`;
+  return html`${shown}
+    <div class="blocks">
+      ${plan.blocks.map((block) =>
+        renderBlock(
+          block.id,
+          [
+            {
+              content,
+              quotes: plan.quotes,
+              empty: block.empty,
+              child: undefined,
+              key: childKey(child),
+              col: 1,
+            },
+          ],
+          ctx,
+          { detailed: true, level: 5, state },
+        ),
+      )}
+    </div>`;
 }
 
 function line2(row: DayRowView, ctx: ViewContext): TemplateResult | typeof nothing {
@@ -180,31 +193,36 @@ function weekendRow(
   const first = item.days[0]?.day ?? ctx.today;
   const key = `${childKey(child)}|weekend|${first}`;
   const open = state.isOpen(key, false);
-  // One item per event, with the days it is on, or its time when it is on today.
-  const entries = new Map<string, { item: TemplateResult; days: Day[]; when: unknown }>();
+  // One item per event, with the days it is on, or its time when it is on today: in the run of
+  // its title's text, so that both share a line and its baseline.
+  type Shown = (after: unknown) => TemplateResult;
+  const entries = new Map<string, { show: Shown; days: Day[]; when: unknown }>();
   for (const row of item.days) {
-    const add = (id: string, shown: TemplateResult, when: unknown = nothing): void => {
-      const entry = entries.get(id) ?? { item: shown, days: [], when };
+    const add = (id: string, show: Shown, when: unknown = nothing): void => {
+      const entry = entries.get(id) ?? { show, days: [], when };
       entry.days.push(row.day);
       entries.set(id, entry);
     };
     for (const entry of row.facts) {
       add(
         entry.kind === "event" ? `e${String(entry.event.id)}` : `b${entry.birthday.name}`,
-        fact(entry, ctx),
+        (after) => fact(entry, ctx, after),
       );
     }
     for (const timed of row.content.timed) {
       add(
         `e${String(timed.event.id)}`,
-        html`<span class="fact"
-          >${icon(eventIcon(timed.event.type))}<span>${aula(timed.event.title, ctx)}</span></span
-        >`,
+        (after) =>
+          html`<span class="fact"
+            >${icon(eventIcon(timed.event.type))}<span
+              >${aula(timed.event.title, ctx)}${after}</span
+            ></span
+          >`,
         row.day === ctx.today ? eventWhen(timed, ctx) : nothing,
       );
     }
   }
-  const items = [...entries.values()].map(({ item: shown, days, when }) => {
+  const items = [...entries.values()].map(({ show, days, when }) => {
     const words = days.map((day) => weekdayWord(day, ctx));
     const where =
       when === nothing
@@ -213,7 +231,7 @@ function weekendRow(
           : words[0]
         : when;
     return html`<span class="weekend-item"
-      >${shown}<span class="quiet">${when === nothing ? "," : ""} ${where}</span></span
+      >${show(html`<span class="quiet">${when === nothing ? "," : ""} ${where}</span>`)}</span
     >`;
   });
   return html`<details
@@ -241,7 +259,7 @@ function weekendRow(
                   <h5 class="weekend-title">
                     ${capitalize(formatWeekdayShortDate(row.day, ctx.language), ctx.language)}
                   </h5>
-                  ${blocks(row, child, ctx, state)}
+                  ${blocks(row, child, ctx, state, true)}
                 </div>`,
             )}
           </div>`
@@ -317,10 +335,13 @@ function weekRow(item: WeekRow, child: Child, ctx: ViewContext, state: CardState
     case "weekend":
       return weekendRow(item, child, ctx, state);
     case "holiday":
-      return html`<div class="holiday-row">
+      return html`<div class="holiday-row ${item.today ? "today-row" : ""}">
         <span class="daycol" aria-hidden="true">${icon(eventIcon(item.event.type))}</span>
         <span class="row-text">
-          <h4 class="holiday-name">${aula(item.event.title, ctx)}</h4>
+          <span class="line-1"
+            ><h4 class="holiday-name">${aula(item.event.title, ctx)}</h4>
+            ${item.today ? label(ctx.t("today"), "relation") : nothing}</span
+          >
           <span class="line-2"
             >${formatDayRange(item.first, item.last, ctx.language, "short")}</span
           >

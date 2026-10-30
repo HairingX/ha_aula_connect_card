@@ -178,15 +178,19 @@ function rowKey(row: BridgeRow): string {
 }
 
 // On a day without school, the rest of today also names its whole-day events and birthdays;
-// after the switch on a school day they are over as far as the card is concerned.
+// after the switch on a school day they are over as far as the card is concerned. A holiday
+// is left to its own row, which gives its dates.
 function rest(basis: ChildBasis, ctx: ViewContext, blocks: readonly BlockId[]) {
   const { focus } = basis;
   if (focus.day === focus.today) return undefined;
   const view = dayIn(basis, focus.today);
   if (!view?.known) return undefined;
+  const holiday = holidayOf(view);
   const facts = isSchoolDay(view, basis.rules.timetabled)
     ? []
-    : visibleFacts(dayContent(view, basis.rules, ctx.now, true), blocks);
+    : visibleFacts(dayContent(view, basis.rules, ctx.now, true), blocks).filter(
+        (fact) => fact.kind !== "event" || fact.event.id !== holiday?.id,
+      );
   return todayRest(view, ctx.now, ctx.zone, facts);
 }
 

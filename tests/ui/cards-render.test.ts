@@ -13,12 +13,14 @@ const HOMEWORK = "aula-connect-homework-card";
 const WEEK = "aula-connect-card";
 
 /** Returns what a screen reader reads of an element: without what is hidden from it. */
-function spoken(card: Card, selector: string): string {
-  const element = present(present(card.shadowRoot).querySelector(selector)).cloneNode(
-    true,
-  ) as Element;
+function spokenOf(root: ParentNode, selector: string): string {
+  const element = present(root.querySelector(selector)).cloneNode(true) as Element;
   for (const hidden of element.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
   return element.textContent.replace(/\s+/g, " ").trim();
+}
+
+function spoken(card: Card, selector: string): string {
+  return spokenOf(present(card.shadowRoot), selector);
 }
 
 function texts(card: Card, selector: string): string[] {
@@ -102,6 +104,14 @@ describe("the school day card", () => {
     expect(all(card, '.hero [aria-hidden="true"]').map((item) => item.textContent)).not.toContain(
       "·",
     );
+  });
+
+  it("ends the timetable's empty text with a full stop, as every block's", async () => {
+    const { card } = await mount(DAY, "motionsdag", { config: { children: [1001] } });
+    expect(texts(card, ".block .empty")).toEqual([
+      "Ingen lektier i ugeplanen.",
+      "Intet skema i Aula.",
+    ]);
   });
 
   it("names the holiday ahead and the day school starts again", async () => {
@@ -219,10 +229,39 @@ describe("the week card", () => {
     expect(text(card, ".weekend-row .line-2")).toContain("Spejdertur, Sat–Sun");
   });
 
-  it("separates Saturday and Sunday when the weekend is opened", async () => {
+  it("keeps the dash of a 12-hour span with the time after it, so that no line ends with it", async () => {
+    const { card } = await mount(WEEK, "sat-1000", {
+      config: { children: [1001] },
+      language: "en",
+    });
+    expect(present(card.shadowRoot?.querySelector(".weekend-row .line-2")).textContent).toContain(
+      "AM\u2009\u2013\u202f1:00",
+    );
+  });
+
+  it("separates Saturday and Sunday when the weekend is opened, each with what is on it", async () => {
     const { card } = await mount(WEEK, "sat-1000-birthday", { config: { children: [1001] } });
     await open(card, ".weekend-row");
     expect(texts(card, ".weekend-title")).toEqual(["Lørdag 31. okt.", "Søndag 1. nov."]);
+    expect(all(card, ".weekend-day").map((day) => spokenOf(day, ".facts"))).toEqual([
+      "Spejdertur, Karl har fødselsdag",
+      "Spejdertur",
+    ]);
+  });
+
+  it("sets the days of a weekend's item in the run of its title's text", async () => {
+    const { card } = await mount(WEEK, "thu-1000", { config: { children: [1001] } });
+    const days = all(card, ".weekend-item .quiet").map((item) => item.parentElement);
+    expect(days.map((item) => item?.closest(".fact") !== null)).toEqual([true, true]);
+    expect(days.map((item) => item?.textContent.replace(/\s+/g, " "))).toEqual([
+      "Loppemarked i skolegården, lør.",
+      "ViggoViggo har fødselsdag, søn.",
+    ]);
+  });
+
+  it("marks a holiday as today while it lasts", async () => {
+    const { card } = await mount(WEEK, "holiday", { config: { children: [1001] } });
+    expect(text(card, ".holiday-row.today-row .relation")).toBe("I dag");
   });
 
   it("renders a closed row's content only once it is opened", async () => {
