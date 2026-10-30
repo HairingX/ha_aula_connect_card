@@ -89,10 +89,10 @@ A block with nothing in it for any child is left out, or says so once.
 
 ![The homework card with two children](docs/homework-thu-1930-800-light-blue-da-2child.png)
 
-It starts at the day that matters now, then every later day with homework this week and next,
-each child's notes under the child's name. A week whose plan is not in Aula yet says so. The
-days before are folded into "Tidligere lektier". On a wide card one child's days stand in two
-columns, and several children each have a column.
+It reads from top to bottom in date order: the days before folded into "Tidligere lektier" at
+the top, then the day that matters now and every later day with homework this week and next,
+each child's notes under the child's name. A week whose plan is not in Aula yet says so. On a
+wide card one child's days stand in two columns, and several children each have a column.
 
 ## Week card
 
