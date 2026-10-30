@@ -20,7 +20,7 @@ export interface SubjectName {
  * Billedkunst), SA, KL and SV, which are ambiguous or read as a teacher's initials.
  */
 export const DANISH_SUBJECTS =
-  "Dansk,DAN,DA,DSK;Matematik,MAT,MA;Engelsk,ENG,EN;Tysk,TYS,TY;Fransk,FRA,FR;Spansk,SPA;Idræt,IDR,ID;Svømning,SVØ;Natur/teknologi,N/T,NT,NAT,Natur og teknologi;Historie,HIS,HI;Kristendomskundskab,KRI,KR,Kristendom;Samfundsfag,SAM;Geografi,GEO,GE;Biologi,BIO;Fysik/kemi,FYS,FK,Fysik-kemi;Musik,MUS,MU;Billedkunst,BIL,BK;Madkundskab,MAD,MK,Hjemkundskab;Håndværk og design,HÅN,HD,H&D,HDÅ;Klassens tid,KLT,KT,KLA;Understøttende undervisning,UUV,UU;Valgfag,VAL;Lektiecafé,LEK;Teknologiforståelse,TEK";
+  "Dansk,DAN,DA,DSK;Matematik,MAT,MA;Engelsk,ENG,EN;Tysk,TYS,TY;Fransk,FRA,FR;Spansk,SPA;Idræt,IDR,ID;Svømning,SVØ;Natur/teknologi,N/T,NT,NAT,Natur og teknologi;Historie,HIS,HI;Kristendomskundskab,KRI,KR,Kristendom;Samfundsfag,SAM;Geografi,GEO,GE;Biologi,BIO;Fysik/kemi,FYS,FK,Fysik-kemi;Musik,MUS,MU;Billedkunst,BIL,BK,BHK;Madkundskab,MAD,MK,Hjemkundskab;Håndværk og design,HÅN,HD,H&D,HDÅ;Klassens tid,KLT,KT,KLA;Understøttende undervisning,UUV,UU;Valgfag,VAL;Lektiecafé,LEK;Teknologiforståelse,TEK";
 
 // A class marker standing alone at the start or end of a title: "3.B", "3b", "0A", "(6.A)".
 const CLASS_MARKER = /^\(?\d{1,2}\.?\s?[a-zæøå]\)?\s+|\s+\(?\d{1,2}\.?\s?[a-zæøå]\)?$/iu;

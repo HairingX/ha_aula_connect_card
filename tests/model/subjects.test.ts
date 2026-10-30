@@ -22,6 +22,7 @@ describe("the namer", () => {
 
   it.each([
     ["IDR", "Idræt"],
+    ["BHK", "Billedkunst"],
     ["3.B IDR", "Idræt"],
     ["dan", "Dansk"],
     ["N/T", "Natur/teknologi"],
