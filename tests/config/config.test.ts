@@ -470,13 +470,16 @@ describe("the editor", () => {
       "Lektier og noter (tidligere indstilling)",
     );
     expect(da.computeLabel({ name: "info_lines" })).toBe("Linjer i dagens plan før Vis mere");
-    expect(da.computeHelper({ name: "timetable" })).toBe("Standard: kort.");
+    expect(da.computeHelper({ name: "timetable", selector: { select: {} } })).toBe(
+      "Standard: kort.",
+    );
     expect(da.computeHelper({ name: "info_lines" })).toBe(
       "Standard: 6. 0 viser altid hele teksten.",
     );
     expect(da.computeHelper({ name: "show" })).toBeUndefined();
     expect(da.computeLabel({ name: "tasks" })).toBe("Lektier og noter (tidligere indstilling)");
-    expect(da.computeLabel({ name: "packing" })).toBe("");
+    expect(da.computeLabel({ name: "packing" })).toBe("Fag og ting");
+    expect(da.computeLabel({ name: "subject_names" })).toBe("Egne navne");
     expect(da.computeLabel({ name: "unknown" })).toBeUndefined();
     expect(da.computeHelper({ name: "switch_time" })).toBe(
       "Tomt felt = 12.00. Før dette klokkeslæt vises i dag; 00.00 viser i dag hele dagen.",
@@ -489,9 +492,28 @@ describe("the editor", () => {
     rememberLanguage("en");
     const en = weekConfigForm();
     expect(en.computeLabel({ name: "switch_time" })).toBe("Show the next school day from");
+    expect(en.computeLabel({ name: "packing" })).toBe("Subjects and things");
+    expect(en.computeLabel({ name: "subject_names" })).toBe("Your names");
     expect(en.schema.find((item) => item.name === "packing_group")).toMatchObject({
       title: "Things to bring",
     });
+  });
+
+  it("labels every field, as Home Assistant shows the key's name in place of an empty label", () => {
+    rememberChildren(CHILDREN);
+    const fieldsOf = (schema: readonly FormSchema[]): FormSchema[] =>
+      schema.flatMap((field) => ("schema" in field ? fieldsOf(field.schema) : [field]));
+    for (const form of [dayConfigForm(), weekConfigForm(), homeworkConfigForm()]) {
+      for (const field of fieldsOf(form.schema)) {
+        expect(form.computeLabel(field), field.name).toBeTruthy();
+      }
+    }
+  });
+
+  it("gives a block's switch no help of the field it shares its name with", () => {
+    const form = dayConfigForm();
+    expect(form.computeHelper({ name: "timetable", selector: { boolean: {} } })).toBeUndefined();
+    expect(form.computeLabel({ name: "timetable", selector: { boolean: {} } })).toBe("Timetable");
   });
 
   it("checks a configuration with the card's own rules", () => {
