@@ -1,7 +1,5 @@
 /**
- * The week card's configuration: 0.0.2's `custom:aula-connect-card`, whose keys keep working.
- * `show.tasks` hides homework and the plan, as it hid notes; `sections` is accepted and ignored,
- * as homework and the plan are fixed blocks now.
+ * The week card's configuration.
  *
  * @packageDocumentation
  */
@@ -16,8 +14,8 @@ import {
 } from "./common.ts";
 import { configForm, type ConfigForm } from "./form.ts";
 
-/** The week card's element, as 0.0.2 named it. */
-export const WEEK_CARD = "aula-connect-card";
+/** The week card's element. */
+export const WEEK_CARD = "aula-connect-week-card";
 
 /** The week card's configuration, with its defaults filled in. */
 export interface WeekCardConfig extends CommonConfig, BlocksConfig {

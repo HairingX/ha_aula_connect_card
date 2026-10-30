@@ -19,9 +19,9 @@ afterEach(() => {
 
 const ALL = ["homework", "pack", "timetable", "plan", "events", "birthdays"];
 
-describe("0.0.2's week card configurations", () => {
-  it("keep working as the week card, with the defaults filled in", () => {
-    expect(resolveWeekConfig({ type: "custom:aula-connect-card" })).toEqual({
+describe("the week card's configuration", () => {
+  it("fills in the defaults", () => {
+    expect(resolveWeekConfig({ type: "custom:aula-connect-week-card" })).toEqual({
       children: [],
       switchAt: 720,
       size: "normal",
@@ -36,16 +36,16 @@ describe("0.0.2's week card configurations", () => {
     });
   });
 
-  it("keep the children, shown in the order given", () => {
+  it("keeps the children, shown in the order given", () => {
     expect(resolveWeekConfig({ children: [1002, "1001"] }).children).toEqual([1002, 1001]);
   });
 
-  it("keep weeks: 1 and 2, as numbers or text", () => {
+  it("takes weeks: 1 and 2, as numbers or text", () => {
     expect(resolveWeekConfig({ weeks: 1 }).weeks).toBe(1);
     expect(resolveWeekConfig({ weeks: "2" }).weeks).toBe(2);
   });
 
-  it("keep show.timetable, events and birthdays", () => {
+  it("hides the blocks show turns off", () => {
     expect(resolveWeekConfig({ show: { timetable: false, birthdays: false } }).blocks).toEqual([
       "homework",
       "pack",
@@ -54,30 +54,17 @@ describe("0.0.2's week card configurations", () => {
     ]);
   });
 
-  it("hide homework and the plan with show.tasks: false, unless their own switch says", () => {
-    expect(resolveWeekConfig({ show: { tasks: false } }).blocks).toEqual([
-      "pack",
-      "timetable",
-      "events",
-      "birthdays",
-    ]);
-    expect(resolveWeekConfig({ show: { tasks: false, homework: true } }).blocks).toContain(
-      "homework",
+  it("refuses show.tasks, naming the blocks", () => {
+    expect(() => resolveWeekConfig({ show: { tasks: false } })).toThrow(
+      new Error(
+        'show: unknown block "tasks"; the blocks are homework, pack, timetable, plan, events, birthdays',
+      ),
     );
   });
 
-  it("show everything with the show 0.0.2's stub wrote in full", () => {
-    const show = { timetable: true, tasks: true, events: true, birthdays: true };
-    expect(resolveWeekConfig({ show }).blocks).toEqual(ALL);
-  });
-
-  it("accept and ignore sections, and any key Home Assistant adds", () => {
-    const config = resolveWeekConfig({
-      sections: [{ title: "Prøver", text: "prøve" }],
-      grid_options: { columns: 12 },
-      visibility: [],
-    });
-    expect(config).not.toHaveProperty("sections");
+  it("accepts and ignores any key Home Assistant adds", () => {
+    const config = resolveWeekConfig({ grid_options: { columns: 12 }, visibility: [] });
+    expect(config).not.toHaveProperty("grid_options");
     expect(config.blocks).toEqual(ALL);
   });
 });
@@ -99,7 +86,7 @@ describe("checking a configuration", () => {
     [{ show: [] }, "show: must be a mapping of blocks to true or false"],
     [
       { show: { notes: false } },
-      'show: unknown block "notes"; the blocks are homework, pack, timetable, plan, events, birthdays, tasks',
+      'show: unknown block "notes"; the blocks are homework, pack, timetable, plan, events, birthdays',
     ],
     [{ show: { timetable: "no" } }, "show.timetable: must be true or false"],
     [{ packing: [{ subject: "Idræt" }] }, "packing[0].items: must name at least one thing"],
@@ -426,28 +413,12 @@ describe("the editor", () => {
     expect(JSON.stringify(subjectNames)).toContain('"options":["DAN","IDR","Lejrskole"]');
   });
 
-  it("shows the blocks on by default, and 0.0.2's switch only where it is set", () => {
+  it("shows a switch for each block, on by default", () => {
     const show = dayConfigForm().schema.find((item) => item.name === "show");
-    const hidden = (name: string) => ({
-      condition: "or",
-      conditions: [
-        { field: "tasks", operator: "not_eq", value: false },
-        { field: name, operator: "exists" },
-      ],
-    });
-    expect(show).toMatchObject({
-      type: "expandable",
-      flatten: false,
-      schema: [
-        ...ALL.map((name) => ({
-          name,
-          default: true,
-          selector: { boolean: {} },
-          ...(name === "homework" || name === "plan" ? { visible: hidden(name) } : {}),
-        })),
-        { name: "tasks", visible: { field: "tasks", operator: "exists" } },
-      ],
-    });
+    expect(show).toMatchObject({ type: "expandable", flatten: false });
+    expect(show && "schema" in show ? show.schema : []).toEqual(
+      ALL.map((name) => ({ name, default: true, selector: { boolean: {} } })),
+    );
   });
 
   it("moves blocks, but not birthdays, which the header says", () => {
@@ -466,9 +437,6 @@ describe("the editor", () => {
     expect(da.computeLabel({ name: "timetable", selector: { select: {} } })).toBe(
       "Skemaets visning",
     );
-    expect(da.computeLabel({ name: "tasks", selector: { boolean: {} } })).toBe(
-      "Lektier og noter (tidligere indstilling)",
-    );
     expect(da.computeLabel({ name: "info_lines" })).toBe("Linjer i dagens plan før Vis mere");
     expect(da.computeHelper({ name: "timetable", selector: { select: {} } })).toBe(
       "Standard: kort.",
@@ -477,7 +445,6 @@ describe("the editor", () => {
       "Standard: 6. 0 viser altid hele teksten.",
     );
     expect(da.computeHelper({ name: "show" })).toBeUndefined();
-    expect(da.computeLabel({ name: "tasks" })).toBe("Lektier og noter (tidligere indstilling)");
     expect(da.computeLabel({ name: "packing" })).toBe("Fag og ting");
     expect(da.computeLabel({ name: "subject_names" })).toBe("Egne navne");
     expect(da.computeLabel({ name: "unknown" })).toBeUndefined();

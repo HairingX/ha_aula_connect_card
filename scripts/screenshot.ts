@@ -62,7 +62,7 @@ const { chromium } = createRequire(import.meta.url)("playwright") as {
 const CARDS = {
   day: "aula-connect-day-card",
   homework: "aula-connect-homework-card",
-  week: "aula-connect-card",
+  week: "aula-connect-week-card",
 } as const;
 
 const PRIMARIES = {
@@ -156,13 +156,6 @@ const SETS: Record<string, () => Shot[]> = {
     shot("day", "thu-0715", 800, { ...WALL, children: 2 }),
     shot("day", "thu-0715", 800, { ...WALL, children: 2, theme: "dark" }),
     shot("day", "thu-1930", 380, { config: { order: ["timetable"] }, tag: "order-timetable" }),
-    shot("week", "thu-1930", 380, {
-      config: {
-        show: { timetable: true, tasks: false, events: true, birthdays: true },
-        sections: [{ title: "Lektier", type: "task" }],
-      },
-      tag: "config-0.0.2",
-    }),
   ],
   // The review rounds' matrix: each card at the moments that matter, as the brief asks.
   round: () => [

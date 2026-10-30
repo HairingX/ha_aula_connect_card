@@ -96,8 +96,7 @@ columns, and several children each have a column.
 
 ## Week card
 
-`type: custom:aula-connect-card` - the week day by day, for planning. It is the card of earlier
-versions, and keeps their configurations working.
+`type: custom:aula-connect-week-card` - the week day by day, for planning.
 
 ![The week card on a wide screen](docs/week-thu-1930-800-light-blue-da-1child.png)
 
@@ -217,19 +216,6 @@ sections:
 With `size: large` the header's title is 56 px, each child's hours 36 px and the things to bring
 30 px, read from across a kitchen, and Husk comes first. The first screen of a 1280 × 800 tablet
 holds the day, each child's hours and what each child is to bring.
-
-## Changes from 0.0.2
-
-Configurations of `custom:aula-connect-card` keep working as the week card. What changes:
-
-- **The next school day takes over at noon** (`switch_time: "12:00"`); `"00:00"` keeps today all
-  day, as before.
-- **This week collapses** once the day that matters is next week; with `weeks: 1` the card shows
-  that week, after this week collapsed.
-- **The timetable is folded** to subjects and start times (`timetable: full` opens it), and **a
-  note longer than six lines folds** (`info_lines: 0` shows every note whole).
-- **`sections` is ignored**: homework is under Lektier and every other note under Dagens plan.
-- Lesson counts, authors and the summaries' note counts per section are gone.
 
 ## The API it uses
 

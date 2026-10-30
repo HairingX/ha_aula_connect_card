@@ -36,12 +36,12 @@ export type BlockId = (typeof BLOCKS)[number];
 /** The default order of the blocks: what to do and bring first. */
 export const DEFAULT_ORDER: readonly BlockId[] = BLOCKS;
 
-/** Which blocks are shown; `tasks` is 0.0.2's switch for homework and the plan together. */
-export type ShowConfig = Readonly<Partial<Record<BlockId | "tasks", boolean>>>;
+/** Which blocks are shown. */
+export type ShowConfig = Readonly<Partial<Record<BlockId, boolean>>>;
 
-/** Tells whether a block is shown: its own switch, else 0.0.2's `tasks` for the notes, else yes. */
+/** Tells whether a block is shown: its own switch, else yes. */
 export function isShown(id: BlockId, show: ShowConfig): boolean {
-  return show[id] ?? !(show.tasks === false && (id === "homework" || id === "plan"));
+  return show[id] ?? true;
 }
 
 /**

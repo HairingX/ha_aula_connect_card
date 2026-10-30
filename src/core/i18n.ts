@@ -153,7 +153,6 @@ const TEXTS = {
     "Valgte blokke vises øverst i den rækkefølge, de står her – træk for at flytte. Resten følger standardrækkefølgen: Lektier, Husk, Skema, Dagens plan, Begivenheder; med stor tekst Husk først.",
   ],
   editorShow: ["Show or hide blocks", "Vis og skjul blokke"],
-  editorTasks: ["Homework and notes (earlier setting)", "Lektier og noter (tidligere indstilling)"],
   editorTimetable: ["Timetable view", "Skemaets visning"],
   editorTimetableHelper: ["Default: compact.", "Standard: kort."],
   editorTimetableCompact: ["Compact – subjects and start times", "Kort – fag og starttider"],
