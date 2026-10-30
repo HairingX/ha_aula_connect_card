@@ -1,6 +1,5 @@
 /**
- * The week card, `custom:aula-connect-card`, the element 0.0.2 had: each child's weeks day by
- * day, for planning.
+ * The week card, `custom:aula-connect-week-card`: each child's weeks day by day, for planning.
  *
  * @packageDocumentation
  */
@@ -24,7 +23,7 @@ import { base, blocks, weekStyles } from "../ui/styles.ts";
 import { renderWeek } from "../ui/week.ts";
 
 /** The week card. */
-export class AulaConnectCard extends AulaCard<WeekCardConfig, WeekCardView> {
+export class AulaConnectWeekCard extends AulaCard<WeekCardConfig, WeekCardView> {
   /** The card's styles. */
   static override styles = base + blocks + weekStyles;
 

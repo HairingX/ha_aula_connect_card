@@ -79,7 +79,6 @@ const LABELS: Readonly<Record<string, TextKey>> = {
   children: "editorChildren",
   weeks: "editorWeeks",
   order: "editorOrder",
-  tasks: "editorTasks",
   timetable: "editorTimetable",
   info_lines: "editorInfoLines",
   switch_time: "editorSwitch",
@@ -104,16 +103,6 @@ const HELPERS: Readonly<Record<string, TextKey>> = {
 // and help are not the switch's.
 const isSwitch = (schema: { selector?: Readonly<Record<string, unknown>> }): boolean =>
   schema.selector !== undefined && "boolean" in schema.selector;
-
-// The switches of homework and the plan stand for themselves, unless 0.0.2's `tasks: false`
-// hides both and no switch of their own says otherwise.
-const notHiddenByTasks = (name: string): Readonly<Record<string, unknown>> => ({
-  condition: "or",
-  conditions: [
-    { field: "tasks", operator: "not_eq", value: false },
-    { field: name, operator: "exists" },
-  ],
-});
 
 /** The editor's fields, by name. */
 export type FieldName =
@@ -185,20 +174,7 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
       flatten: false,
       title: t("editorShow"),
       icon: "mdi:eye-outline",
-      schema: [
-        ...BLOCKS.map((id) => ({
-          name: id,
-          default: true,
-          selector: { boolean: {} },
-          ...(id === "homework" || id === "plan" ? { visible: notHiddenByTasks(id) } : {}),
-        })),
-        // 0.0.2's switch, shown only where a configuration still has it.
-        {
-          name: "tasks",
-          visible: { field: "tasks", operator: "exists" },
-          selector: { boolean: {} },
-        },
-      ],
+      schema: BLOCKS.map((id) => ({ name: id, default: true, selector: { boolean: {} } })),
     },
     timetable: {
       name: "timetable",

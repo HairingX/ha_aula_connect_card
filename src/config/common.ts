@@ -164,20 +164,18 @@ export function parseOrder(value: unknown): BlockId[] {
   return result;
 }
 
-const SHOW_KEYS: readonly string[] = [...BLOCKS, "tasks"];
-
-/** Reads `show`: blocks to true or false, and 0.0.2's `tasks` for homework and the plan. */
+/** Reads `show`: blocks to true or false. */
 export function parseShow(value: unknown): ShowConfig {
   if (absent(value)) return {};
   if (!isRecord(value)) throw new Error("show: must be a mapping of blocks to true or false");
-  const result: Partial<Record<BlockId | "tasks", boolean>> = {};
+  const result: Partial<Record<BlockId, boolean>> = {};
   for (const [key, flag] of Object.entries(value)) {
-    if (!SHOW_KEYS.includes(key)) {
-      throw new Error(`show: unknown block "${key}"; the blocks are ${SHOW_KEYS.join(", ")}`);
+    if (!isBlock(key)) {
+      throw new Error(`show: unknown block "${key}"; the blocks are ${BLOCKS.join(", ")}`);
     }
     if (flag === null || flag === undefined) continue;
     if (typeof flag !== "boolean") throw new Error(`show.${key}: must be true or false`);
-    result[key as BlockId | "tasks"] = flag;
+    result[key] = flag;
   }
   return result;
 }

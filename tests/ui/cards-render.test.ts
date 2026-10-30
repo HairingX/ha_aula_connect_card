@@ -13,7 +13,7 @@ const [IDA] = CHILDREN as [Child, Child];
 
 const DAY = "aula-connect-day-card";
 const HOMEWORK = "aula-connect-homework-card";
-const WEEK = "aula-connect-card";
+const WEEK = "aula-connect-week-card";
 
 /** Returns what a screen reader reads of an element: without what is hidden from it. */
 function spokenOf(root: ParentNode, selector: string): string {
