@@ -56,7 +56,16 @@ export function orderBlocks(order: readonly BlockId[], show: ShowConfig): BlockI
 
 /** A lesson's status as shown: a substitute, or another change in Aula's own words. */
 export type LessonStatus =
-  { readonly kind: "substitute" } | { readonly kind: "other"; readonly text: string };
+  | {
+      /** A substitute teacher. */
+      readonly kind: "substitute";
+    }
+  | {
+      /** Another change. */
+      readonly kind: "other";
+      /** Aula's own words for it. */
+      readonly text: string;
+    };
 
 /** A row of a day's timetable: a block of lessons, or a break. */
 export type TimetableRow =

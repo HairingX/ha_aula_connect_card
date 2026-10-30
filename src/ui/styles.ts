@@ -331,7 +331,7 @@ export const base = css`
     background: var(--aula-accent);
   }
 
-  /* Facts: words with an icon, like the hours; nothing about them looks as if it could be tapped. */
+  /* No fill: nothing on a card that only shows may look as if it could be tapped. */
   .facts {
     display: flex;
     flex-wrap: wrap;
@@ -570,7 +570,7 @@ export const blocks = css`
     font-weight: var(--aula-medium);
     --mdc-icon-size: calc(20px * var(--aula-scale));
   }
-  /* A block's parts: one column per child, the same in every block, so that they line up. */
+  /* The same columns in every block, so that a child's parts line up down the card. */
   .cols {
     display: var(--grid, flex);
     flex-direction: column;
@@ -636,7 +636,7 @@ export const blocks = css`
     }
   }
 
-  /* Homework: one surface for a day's notes, a quiet line between them, never clamped. */
+  /* Never clamped: homework is what the family acts on. */
   .homework {
     display: flex;
     flex-direction: column;
@@ -669,7 +669,6 @@ export const blocks = css`
     overflow-wrap: anywhere;
   }
 
-  /* Husk: which subjects, then each thing, where it comes from beneath it. */
   .pack {
     display: flex;
     flex-direction: column;
@@ -908,7 +907,7 @@ export const dayStyles = css`
   .single .day-blocks > .block:last-child {
     margin-bottom: 0;
   }
-  /* One child's blocks run in columns, top to bottom, left then right, in the DOM's order. */
+  /* CSS columns keep the DOM's order, which Tab and screen readers follow. */
   @container aula-child (min-width: 600px) {
     .aula:not(.large) .single .day-blocks {
       columns: 2;
@@ -1125,7 +1124,6 @@ export const weekStyles = css`
     min-height: var(--aula-target);
     padding: var(--aula-space-2) var(--aula-space-3);
   }
-  /* The open day: a quiet container, laid out as the day card is when it is wide enough. */
   .focus-day {
     container: aula-open / inline-size;
     margin: var(--aula-space-2) 0;
@@ -1166,8 +1164,7 @@ export const weekStyles = css`
     font-weight: var(--aula-medium);
   }
   .weekend-item {
-    display: inline-flex;
-    align-items: center;
+    min-width: 0;
   }
   .rows > li:has(> .focus-day) + li,
   .rows > li + li:has(> .focus-day) {

@@ -26,11 +26,20 @@ export interface LessonBlock {
 
 /** A row of a day's timetable: lessons, or a break between them. */
 export type TimelineEntry =
-  | { readonly kind: "lessons"; readonly block: LessonBlock }
   | {
+      /** Lessons. */
+      readonly kind: "lessons";
+      /** The block of lessons. */
+      readonly block: LessonBlock;
+    }
+  | {
+      /** A break. */
       readonly kind: "break";
+      /** When it begins. */
       readonly start: string;
+      /** When it ends. */
       readonly end: string;
+      /** How long it is. */
       readonly minutes: number;
     };
 

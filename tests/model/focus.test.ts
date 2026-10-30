@@ -66,7 +66,7 @@ function focus(
 }
 
 type Row = [
-  row: string,
+  moment: string,
   now: string,
   data: WeekData | undefined,
   switchAt: number | null,
@@ -78,16 +78,70 @@ type Row = [
 
 const thu = (time: string): string => local("2026-10-29", time);
 const ROWS: Row[] = [
-  ["1", thu("07:15"), fortnight, NOON, ZONE, "2026-10-29", "today", false],
-  ["2", thu("11:59"), fortnight, NOON, ZONE, "2026-10-29", "today", false],
-  ["3", thu("12:00"), fortnight, NOON, ZONE, "2026-10-30", "tomorrow", true],
-  ["4", thu("19:30"), fortnight, NOON, ZONE, "2026-10-30", "tomorrow", true],
-  ["5", thu("19:30"), fortnight, null, ZONE, "2026-10-29", "today", false],
-  ["6", thu("13:00"), fortnight, 15 * 60, ZONE, "2026-10-29", "today", false],
-  ["7", local("2026-10-30", "07:15"), fortnight, NOON, ZONE, "2026-10-30", "today", false],
-  ["8", local("2026-10-30", "12:40"), fortnight, NOON, ZONE, "2026-11-02", "next_school_day", true],
+  ["Thursday morning is today", thu("07:15"), fortnight, NOON, ZONE, "2026-10-29", "today", false],
   [
-    "9",
+    "a minute before the switch is still today",
+    thu("11:59"),
+    fortnight,
+    NOON,
+    ZONE,
+    "2026-10-29",
+    "today",
+    false,
+  ],
+  [
+    "the switch moves to tomorrow",
+    thu("12:00"),
+    fortnight,
+    NOON,
+    ZONE,
+    "2026-10-30",
+    "tomorrow",
+    true,
+  ],
+  ["the evening is tomorrow", thu("19:30"), fortnight, NOON, ZONE, "2026-10-30", "tomorrow", true],
+  [
+    "no switch keeps today all evening",
+    thu("19:30"),
+    fortnight,
+    null,
+    ZONE,
+    "2026-10-29",
+    "today",
+    false,
+  ],
+  [
+    "a later switch keeps today after noon",
+    thu("13:00"),
+    fortnight,
+    15 * 60,
+    ZONE,
+    "2026-10-29",
+    "today",
+    false,
+  ],
+  [
+    "Friday morning is today",
+    local("2026-10-30", "07:15"),
+    fortnight,
+    NOON,
+    ZONE,
+    "2026-10-30",
+    "today",
+    false,
+  ],
+  [
+    "Friday after the switch passes the weekend to Monday",
+    local("2026-10-30", "12:40"),
+    fortnight,
+    NOON,
+    ZONE,
+    "2026-11-02",
+    "next_school_day",
+    true,
+  ],
+  [
+    "Saturday looks to Monday",
     local("2026-10-31", "10:00"),
     fortnight,
     NOON,
@@ -96,11 +150,38 @@ const ROWS: Row[] = [
     "next_school_day",
     false,
   ],
-  ["10", local("2026-11-01", "09:00"), fortnight, NOON, ZONE, "2026-11-02", "tomorrow", false],
-  ["11", local("2026-11-01", "18:00"), fortnight, NOON, ZONE, "2026-11-02", "tomorrow", true],
-  ["12", local("2026-10-31", "10:00"), saturdayLesson, NOON, ZONE, "2026-10-31", "today", false],
   [
-    "13",
+    "Sunday morning is Monday tomorrow",
+    local("2026-11-01", "09:00"),
+    fortnight,
+    NOON,
+    ZONE,
+    "2026-11-02",
+    "tomorrow",
+    false,
+  ],
+  [
+    "Sunday evening is Monday tomorrow",
+    local("2026-11-01", "18:00"),
+    fortnight,
+    NOON,
+    ZONE,
+    "2026-11-02",
+    "tomorrow",
+    true,
+  ],
+  [
+    "a Saturday with a lesson is a school day",
+    local("2026-10-31", "10:00"),
+    saturdayLesson,
+    NOON,
+    ZONE,
+    "2026-10-31",
+    "today",
+    false,
+  ],
+  [
+    "an empty Tuesday is passed over",
     local("2026-10-26", "19:30"),
     tuesdayOnly({}),
     NOON,
@@ -110,7 +191,7 @@ const ROWS: Row[] = [
     true,
   ],
   [
-    "14",
+    "a sports day without lessons is a school day",
     local("2026-10-26", "19:30"),
     tuesdayOnly({ events: [allDay("m", "Motionsdag", "event", "2026-10-27", "2026-10-27")] }),
     NOON,
@@ -119,9 +200,18 @@ const ROWS: Row[] = [
     "tomorrow",
     true,
   ],
-  ["15", local("2026-10-26", "19:30"), homeworkTuesday, NOON, ZONE, "2026-10-27", "tomorrow", true],
   [
-    "16",
+    "a day with only homework is a school day",
+    local("2026-10-26", "19:30"),
+    homeworkTuesday,
+    NOON,
+    ZONE,
+    "2026-10-27",
+    "tomorrow",
+    true,
+  ],
+  [
+    "a registered vacation is no school day",
     local("2026-10-26", "19:30"),
     tuesdayOnly({
       events: [allDay("v", "Ferie", "vacation_registration", "2026-10-27", "2026-10-27")],
@@ -132,9 +222,18 @@ const ROWS: Row[] = [
     "next_school_day",
     true,
   ],
-  ["17", thu("07:15"), noLessons, NOON, ZONE, "2026-10-29", "today", false],
   [
-    "18",
+    "a school without a timetable has today",
+    thu("07:15"),
+    noLessons,
+    NOON,
+    ZONE,
+    "2026-10-29",
+    "today",
+    false,
+  ],
+  [
+    "a school without a timetable passes the weekend",
     local("2026-10-30", "14:00"),
     noLessons,
     NOON,
@@ -144,7 +243,7 @@ const ROWS: Row[] = [
     true,
   ],
   [
-    "19",
+    "a day off passes to Tuesday",
     local("2026-11-01", "18:00"),
     {
       ...noLessons,
@@ -157,7 +256,7 @@ const ROWS: Row[] = [
     true,
   ],
   [
-    "20",
+    "inside a holiday is the Monday after",
     local("2026-10-14", "10:00"),
     holidayFortnight("2026-10-12"),
     NOON,
@@ -167,7 +266,7 @@ const ROWS: Row[] = [
     false,
   ],
   [
-    "21",
+    "the last evening of a holiday is Monday tomorrow",
     local("2026-10-18", "18:00"),
     holidayFortnight("2026-10-12"),
     NOON,
@@ -177,7 +276,7 @@ const ROWS: Row[] = [
     true,
   ],
   [
-    "22",
+    "the morning before a holiday is today",
     local("2026-10-09", "07:15"),
     holidayFortnight("2026-10-05"),
     NOON,
@@ -187,7 +286,7 @@ const ROWS: Row[] = [
     false,
   ],
   [
-    "23",
+    "the afternoon before a holiday has no school day ahead",
     local("2026-10-09", "14:00"),
     holidayFortnight("2026-10-05"),
     NOON,
@@ -196,9 +295,18 @@ const ROWS: Row[] = [
     "none",
     true,
   ],
-  ["24", thu("07:15"), weekData("2026-10-12"), NOON, ZONE, undefined, "none", false],
   [
-    "25",
+    "no data for today has no focus yet",
+    thu("07:15"),
+    weekData("2026-10-12"),
+    NOON,
+    ZONE,
+    undefined,
+    "none",
+    false,
+  ],
+  [
+    "the day summer time ends counts its hours right",
     local("2026-10-25", "18:00"),
     weekData("2026-10-19"),
     NOON,
@@ -207,9 +315,18 @@ const ROWS: Row[] = [
     "tomorrow",
     true,
   ],
-  ["26", "2026-10-29T23:30:00Z", fortnight, NOON, ZONE, "2026-10-30", "today", false],
   [
-    "27",
+    "after midnight in Copenhagen is the next day",
+    "2026-10-29T23:30:00Z",
+    fortnight,
+    NOON,
+    ZONE,
+    "2026-10-30",
+    "today",
+    false,
+  ],
+  [
+    "the same instant in New York is still the evening",
     "2026-10-29T23:30:00Z",
     fortnight,
     NOON,
@@ -221,7 +338,7 @@ const ROWS: Row[] = [
 ];
 
 describe("the focus day", () => {
-  it.each(ROWS)("row %s: at %s", (_row, now, data, switchAt, zone, day, reason, afterSwitch) => {
+  it.each(ROWS)("%s (%s)", (_moment, now, data, switchAt, zone, day, reason, afterSwitch) => {
     const chosen = focus(now, data, switchAt, zone);
     expect(chosen).toMatchObject({ day, reason, afterSwitch });
   });
@@ -247,7 +364,7 @@ describe("the focus day", () => {
 });
 
 describe("holding the focus while the card is touched", () => {
-  // Row 28: a tap at Thursday 11:59:40; the ticks at 12:00 and 12:01.
+  // A tap at Thursday 11:59:40; the ticks at 12:00 and 12:01.
   const tap = new Date(local("2026-10-29", "11:59")).getTime() + 40_000;
   const before = focus(thu("11:59"), fortnight);
   const atNoon = focus(thu("12:00"), fortnight);

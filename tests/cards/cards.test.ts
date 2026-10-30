@@ -275,7 +275,7 @@ describe("the cards", () => {
 
 describe("a shared screen", () => {
   it("holds the day shown for a minute after a touch, then moves on", async () => {
-    // Row 28: a tap at 11:59:40; the ticks at 12:00 and 12:01.
+    // A tap at 11:59:40; the ticks at 12:00 and 12:01.
     const halfPast = new Date(local("2026-10-29", "11:59")).getTime() + 30_000;
     const { card } = await mount(
       "aula-connect-day-card",

@@ -40,9 +40,18 @@ export type Hold = (key: ChildKey, chosen: Focus) => Focus;
 
 /** Whether a child can be shown yet. */
 export type ChildState =
-  | { readonly kind: "loading" }
-  | { readonly kind: "error"; readonly error: unknown }
   | {
+      /** The child's data is on its way. */
+      readonly kind: "loading";
+    }
+  | {
+      /** The child's data could not be had. */
+      readonly kind: "error";
+      /** Why. */
+      readonly error: unknown;
+    }
+  | {
+      /** The child's data is there. */
       readonly kind: "ready";
       /** Whether the data is being renewed. */
       readonly stale: boolean;

@@ -12,28 +12,49 @@ import type { Focus } from "./focus.ts";
 
 /** Something on a weekend day. */
 export type BridgeItem =
-  | { readonly kind: "event"; readonly event: CalendarEvent; readonly day: Day }
-  | { readonly kind: "birthday"; readonly birthday: Birthday; readonly day: Day };
+  | {
+      /** An event. */
+      readonly kind: "event";
+      /** The event. */
+      readonly event: CalendarEvent;
+      /** The day it is on. */
+      readonly day: Day;
+    }
+  | {
+      /** A birthday. */
+      readonly kind: "birthday";
+      /** The birthday. */
+      readonly birthday: Birthday;
+      /** The day it is on. */
+      readonly day: Day;
+    };
 
 /** A line for days passed over. */
 export type BridgeRow =
   | {
-      /** Days one holiday covers; its own first and last day, even beyond the range. */
+      /** Days one holiday covers. */
       readonly kind: "holiday";
+      /** The holiday. */
       readonly event: CalendarEvent;
+      /** Its own first day, even before the range. */
       readonly first: Day;
+      /** Its own last day, even beyond the range. */
       readonly last: Day;
+      /** The days passed over that it covers. */
       readonly days: readonly Day[];
     }
   | {
       /** A Saturday, a Sunday, or both, with something on. */
       readonly kind: "weekend";
+      /** The days. */
       readonly days: readonly Day[];
+      /** What is on them. */
       readonly items: readonly BridgeItem[];
     }
   | {
       /** Weekdays in a row without school. */
       readonly kind: "empty";
+      /** The days. */
       readonly days: readonly Day[];
     };
 

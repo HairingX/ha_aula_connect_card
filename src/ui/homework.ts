@@ -31,6 +31,7 @@ import {
   aula,
   avatar,
   dayTitle,
+  headingOf,
   icon,
   loading,
   names,
@@ -68,16 +69,18 @@ function day(
   const index = (child: Child): number =>
     view.children.findIndex((entry) => childKey(entry.child) === childKey(child)) + 1;
   return html`<section class="hw-day ${item.focus ? "focus" : ""}">
-    ${level === 3 ? html`<h3 class="day-head">${head}</h3>` : html`<h4 class="day-head">${head}</h4>`}
+    ${headingOf(level, head, "day-head")}
     <div class="cols">
       ${item.parts.map(
         (part) =>
           html`<div class="part" style="--col: ${index(part.child)}">
             ${
               several
-                ? html`<p class="part-who">
-                    ${avatar(part.child)}<span>${part.child.first_name}</span>
-                  </p>`
+                ? headingOf(
+                    level + 1,
+                    html`${avatar(part.child)}<span>${part.child.first_name}</span>`,
+                    "part-who",
+                  )
                 : nothing
             }
             ${

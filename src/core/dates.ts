@@ -12,8 +12,11 @@ const DAY_MS = 86_400_000;
 
 const formats = new Map<string, Intl.DateTimeFormat>();
 
-function format(language: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
-  const key = `${language}|${JSON.stringify(options)}`;
+function format(
+  language: string | undefined,
+  options: Intl.DateTimeFormatOptions,
+): Intl.DateTimeFormat {
+  const key = `${String(language)}|${JSON.stringify(options)}`;
   let result = formats.get(key);
   if (!result) {
     result = new Intl.DateTimeFormat(language, options);
@@ -49,7 +52,7 @@ export function useAmPm(locale: HassLocale): boolean {
   if (locale.time_format === "12") return true;
   if (locale.time_format === "24") return false;
   const language = locale.time_format === "system" ? undefined : locale.language;
-  return new Intl.DateTimeFormat(language, { hour: "numeric" })
+  return format(language, { hour: "numeric" })
     .formatToParts(new Date(Date.UTC(2020, 0, 1, 13)))
     .some((part) => part.type === "dayPeriod");
 }
@@ -183,9 +186,16 @@ export function formatDayRange(
   return first === last ? days.format(utc(first)) : days.formatRange(utc(first), utc(last));
 }
 
+const relative = new Map<string, Intl.RelativeTimeFormat>();
+
 /** Formats a number of days ahead in words, such as "i overmorgen", "om 3 dage" or "in 2 days". */
 export function formatDaysAhead(days: number, language: string): string {
-  return new Intl.RelativeTimeFormat(language, { numeric: "auto" }).format(days, "day");
+  let words = relative.get(language);
+  if (!words) {
+    words = new Intl.RelativeTimeFormat(language, { numeric: "auto" });
+    relative.set(language, words);
+  }
+  return words.format(days, "day");
 }
 
 /**

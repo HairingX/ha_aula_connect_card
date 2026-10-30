@@ -20,18 +20,29 @@ import { isRecord } from "./common.ts";
 /** A field or group of Home Assistant's form, as far as the cards use them. */
 export type FormSchema =
   | {
+      /** The configuration key the field edits. */
       readonly name: string;
+      /** Whether the field must have a value. */
       readonly required?: boolean;
+      /** The value shown while the key is absent. */
       readonly default?: unknown;
+      /** When the field is shown, as Home Assistant's form conditions say. */
       readonly visible?: Readonly<Record<string, unknown>>;
+      /** Home Assistant's selector of the field. */
       readonly selector: Readonly<Record<string, unknown>>;
     }
   | {
+      /** The group's name; with `flatten`, its fields are the configuration's own. */
       readonly name: string;
+      /** A group that opens and closes. */
       readonly type: "expandable";
+      /** The group's title. */
       readonly title: string;
+      /** The group's mdi icon. */
       readonly icon?: string;
+      /** Whether the group's fields edit the configuration itself, not a mapping in it. */
       readonly flatten: boolean;
+      /** The group's fields. */
       readonly schema: readonly FormSchema[];
     };
 
