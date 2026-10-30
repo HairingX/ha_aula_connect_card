@@ -6,7 +6,7 @@
  * @packageDocumentation
  */
 
-import { html, LitElement, nothing, type TemplateResult } from "lit";
+import { html, nothing, render as renderTemplate, type TemplateResult } from "lit/html.js";
 
 import { viewContext, type ViewContext } from "../core/context.ts";
 import { rememberLanguage } from "../core/memory.ts";
@@ -77,11 +77,18 @@ export async function stub(type: string, hass?: HomeAssistant): Promise<{ type: 
   return { type: `custom:${type}` };
 }
 
-/** The base of the three card elements. */
+/**
+ * The base of the three card elements: a shadow root with the card's styles, into which it
+ * renders lit's templates when asked, once a task.
+ */
 export abstract class AulaCard<Config extends CardConfigBase, View extends CardViewBase>
-  extends LitElement
+  extends HTMLElement
   implements CardState
 {
+  /** The card's styles, as CSS. */
+  static styles = "";
+  /** Where the card renders. */
+  readonly renderRoot: ShadowRoot;
   /** The resolved configuration. */
   protected config: Config | undefined;
   #hassValue: HomeAssistant | undefined;
@@ -93,9 +100,15 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
   readonly #cut = new Map<string, boolean>();
   #lastSize: number | undefined;
   #resized: ResizeObserver | undefined;
+  #connected = false;
+  #pending: Promise<void> | undefined;
 
   constructor() {
     super();
+    this.renderRoot = this.attachShadow({ mode: "open" });
+    const style = document.createElement("style");
+    style.textContent = (this.constructor as typeof AulaCard).styles;
+    this.renderRoot.append(style);
     this.aula = new AulaController(this, {
       wanted: () => this.config?.children,
       tick: (now) => {
@@ -149,16 +162,19 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     return Math.round(size * (this.config?.size === "large" ? 1.5 : 1));
   }
 
-  /** Starts tracking touches, so that the card holds still under a finger. */
-  override connectedCallback(): void {
-    super.connectedCallback();
+  /** Watches the store and the clock, and tracks touches, so that the card holds still under a finger. */
+  connectedCallback(): void {
+    this.#connected = true;
+    this.aula.hostConnected();
     for (const type of INTERACTIONS) this.addEventListener(type, this.#touched, { passive: true });
     this.renderRoot.addEventListener("scroll", this.#touched, { capture: true, passive: true });
+    this.requestUpdate();
   }
 
-  /** Stops tracking touches and sizes. */
-  override disconnectedCallback(): void {
-    super.disconnectedCallback();
+  /** Stops watching, and tracking touches and sizes. */
+  disconnectedCallback(): void {
+    this.#connected = false;
+    this.aula.hostDisconnected();
     for (const type of INTERACTIONS) this.removeEventListener(type, this.#touched);
     this.renderRoot.removeEventListener("scroll", this.#touched, { capture: true });
     this.#resized?.disconnect();
@@ -221,12 +237,27 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     return this.#cut.get(key) ?? false;
   }
 
+  /** Renders the card again at the end of the task, once however often it is asked. */
+  requestUpdate(): void {
+    this.#pending ??= Promise.resolve().then(() => {
+      this.#pending = undefined;
+      if (!this.#connected) return;
+      renderTemplate(this.render(), this.renderRoot);
+      this.#measure();
+    });
+  }
+
+  /** Resolves once the card has rendered all it was asked to. */
+  get updateComplete(): Promise<boolean> {
+    return this.#pending ? this.#pending.then(() => this.updateComplete) : Promise.resolve(true);
+  }
+
   /**
    * Measures which folded texts are cut short, so that "Vis mere" shows only then: after each
    * render, and when a text's width changes, as when the card is turned or shown. An unfolded
    * text keeps what was measured while it was folded.
    */
-  protected override updated(): void {
+  #measure(): void {
     let changed = false;
     if (typeof ResizeObserver === "function") {
       this.#resized ??= new ResizeObserver(() => {
@@ -245,8 +276,8 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     if (changed) this.requestUpdate();
   }
 
-  /** Renders the card; nothing until it has a configuration and `hass`. */
-  protected override render(): TemplateResult | typeof nothing {
+  /** Returns what the card shows; nothing until it has a configuration and `hass`. */
+  protected render(): TemplateResult | typeof nothing {
     const { config } = this;
     const hass = this.#hassValue;
     if (!config || !hass) return nothing;

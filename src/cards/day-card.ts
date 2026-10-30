@@ -5,7 +5,7 @@
  * @packageDocumentation
  */
 
-import type { TemplateResult } from "lit";
+import type { TemplateResult } from "lit/html.js";
 
 import type { ViewContext } from "../core/context.ts";
 import type { StoreSnapshot } from "../core/store.ts";
@@ -21,7 +21,7 @@ import { base, blocks, dayStyles } from "../ui/styles.ts";
 /** The school day card. */
 export class AulaConnectDayCard extends AulaCard<DayCardConfig, DayCardView> {
   /** The card's styles. */
-  static override styles = [base, blocks, dayStyles];
+  static override styles = base + blocks + dayStyles;
 
   /** Returns the form of the visual editor. */
   static getConfigForm(): ConfigForm {

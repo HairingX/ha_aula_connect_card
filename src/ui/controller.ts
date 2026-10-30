@@ -5,12 +5,16 @@
  * @packageDocumentation
  */
 
-import type { ReactiveController, ReactiveControllerHost } from "lit";
-
 import { onMinute } from "../core/clock.ts";
 import { settingsKey } from "../core/context.ts";
 import { storeFor, type AulaStore, type StoreSnapshot } from "../core/store.ts";
 import type { HomeAssistant } from "../core/types.ts";
+
+/** The card a controller serves, which it asks to render again. */
+export interface ControllerHost {
+  /** Renders the card again at the end of the task. */
+  requestUpdate(): void;
+}
 
 /** What a controller asks its card. */
 export interface ControllerHooks {
@@ -21,8 +25,8 @@ export interface ControllerHooks {
 }
 
 /** Watches the store and the clock for a card. */
-export class AulaController implements ReactiveController {
-  readonly #host: ReactiveControllerHost;
+export class AulaController {
+  readonly #host: ControllerHost;
   readonly #hooks: ControllerHooks;
   #hass: HomeAssistant | undefined;
   #settings = "";
@@ -31,11 +35,10 @@ export class AulaController implements ReactiveController {
   #stopClock: (() => void) | undefined;
   #connected = false;
 
-  /** Makes the controller of `host`. */
-  constructor(host: ReactiveControllerHost, hooks: ControllerHooks) {
+  /** Makes the controller of `host`, which tells it when it comes onto the page and leaves it. */
+  constructor(host: ControllerHost, hooks: ControllerHooks) {
     this.#host = host;
     this.#hooks = hooks;
-    host.addController(this);
   }
 
   /** What the store holds now; undefined until the card watches it. */

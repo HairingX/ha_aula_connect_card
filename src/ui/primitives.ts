@@ -4,7 +4,7 @@
  * @packageDocumentation
  */
 
-import { html, nothing, type TemplateResult } from "lit";
+import { html, nothing, type TemplateResult } from "lit/html.js";
 
 import { errorText } from "../core/api.ts";
 import type { ViewContext } from "../core/context.ts";

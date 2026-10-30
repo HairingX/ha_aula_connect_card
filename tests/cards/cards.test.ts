@@ -140,6 +140,23 @@ describe("registration", () => {
   });
 });
 
+describe("the element", () => {
+  it("renders only while on the page, once however often it is asked", async () => {
+    const card = document.createElement("aula-connect-day-card") as Card;
+    cards.push(card);
+    card.setConfig({ type: "custom:aula-connect-day-card" });
+    card.hass = fakeHass();
+    await card.updateComplete;
+    expect(card.shadowRoot?.querySelector("ha-card")).toBeNull();
+    document.body.append(card);
+    card.setConfig({ type: "custom:aula-connect-day-card", size: "large" });
+    await card.updateComplete;
+    expect(card.shadowRoot?.querySelectorAll("ha-card")).toHaveLength(1);
+    expect(card.shadowRoot?.querySelector(".aula.large")).not.toBeNull();
+    expect(card.shadowRoot?.querySelector("style")?.textContent).toContain(":host");
+  });
+});
+
 describe("before there is anything to show", () => {
   it("renders nothing without a configuration and hass", async () => {
     const card = document.createElement("aula-connect-day-card") as Card;
@@ -441,9 +458,7 @@ describe("Home Assistant's state", () => {
 
 describe("the theme's primary colour", () => {
   it("never colours text: it fills only the marks beside words, and outlines focus", () => {
-    const sheets = [base, blocks, dayStyles, homeworkStyles, weekStyles]
-      .map((sheet) => sheet.cssText)
-      .join("\n");
+    const sheets = [base, blocks, dayStyles, homeworkStyles, weekStyles].join("\n");
     const uses = [
       ...sheets.matchAll(/([\w-]+)\s*:\s*[^;{}]*var\(--(?:aula-accent|primary-color)\b[^;{}]*;/g),
     ].map((match) => match[1]);

@@ -6,7 +6,8 @@
  * @packageDocumentation
  */
 
-import { css } from "lit";
+// Each sheet is one template without expressions, so that the build can minify it.
+const css = (strings: TemplateStringsArray): string => strings.join("");
 
 /** The tokens, the card's frame, and what every card shares. */
 export const base = css`

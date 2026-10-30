@@ -1,4 +1,3 @@
-import type { CSSResult } from "lit";
 import { describe, expect, it } from "vitest";
 
 import { base, blocks, dayStyles, homeworkStyles, weekStyles } from "../../src/ui/styles.ts";
@@ -13,8 +12,8 @@ interface Rule {
 }
 
 /** Returns a stylesheet's rules, those inside an at-rule with the at-rule's prelude. */
-function rules(sheet: CSSResult): Rule[] {
-  const css = sheet.cssText.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ");
+function rules(sheet: string): Rule[] {
+  const css = sheet.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ");
   const result: Rule[] = [];
   const stack: string[] = [];
   let text = "";
@@ -41,7 +40,7 @@ function rules(sheet: CSSResult): Rule[] {
 }
 
 /** Returns the declarations a selector gets, inside an at-rule or none. */
-function declared(sheet: CSSResult, selector: string, within = ""): string[] {
+function declared(sheet: string, selector: string, within = ""): string[] {
   return rules(sheet)
     .filter((rule) => rule.within === within && rule.selectors.includes(selector))
     .flatMap((rule) => rule.declarations);

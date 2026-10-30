@@ -7,7 +7,7 @@
  * @packageDocumentation
  */
 
-import { html, nothing, type TemplateResult } from "lit";
+import { html, nothing, type TemplateResult } from "lit/html.js";
 
 import type { ViewContext } from "../core/context.ts";
 import { capitalize, formatDay, formatDayRange, formatWeekday } from "../core/dates.ts";
