@@ -134,7 +134,7 @@ function summary(
   if (extra.length === 0) {
     if (shown("timetable"))
       facts.push(content.hours ? hours(content.hours, ctx) : ctx.t("allCancelled"));
-    if (shown("homework")) facts.push(ctx.t("homeworkCount", { n: content.homework.length }));
+    if (shown("important")) facts.push(ctx.t("homeworkCount", { n: content.homework.length }));
     if (facts.length === 0 && content.view.lessons.length === 0)
       facts.push(ctx.t("noTimetableInAula"));
   }

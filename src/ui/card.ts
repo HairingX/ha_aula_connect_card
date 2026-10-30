@@ -27,6 +27,8 @@ export interface CardConfigBase {
   readonly timetable: "compact" | "full";
   /** The lines of a note of the plan shown before "Vis mere"; 0 shows every note whole. */
   readonly infoLines: number;
+  /** The name shown for the week plan's marked notes, in place of the block's own. */
+  readonly importantLabel: string | undefined;
 }
 
 /** How a day's timetable and plan are folded. */
@@ -281,7 +283,7 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     const { config } = this;
     const hass = this.#hassValue;
     if (!config || !hass) return nothing;
-    const ctx = viewContext(hass, new Date());
+    const ctx = viewContext(hass, new Date(), config.importantLabel);
     return html`<ha-card>
       <div class="aula ${config.size}" lang=${ctx.lang}>
         <div class="body">${this.#body(this.aula.snapshot, config, ctx)}</div>

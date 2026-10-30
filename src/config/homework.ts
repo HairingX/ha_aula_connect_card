@@ -9,7 +9,7 @@ import { configRecord, resolveCommon, type CommonConfig } from "./common.ts";
 import { configForm, type ConfigForm } from "./form.ts";
 
 /** The homework card's element. */
-export const HOMEWORK_CARD = "aula-connect-homework-card";
+export const HOMEWORK_CARD = "aula-connect-important-card";
 
 /** The homework card's configuration, with its defaults filled in. */
 export type HomeworkCardConfig = CommonConfig;

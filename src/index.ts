@@ -27,7 +27,7 @@ const defined = [
     name: "pickerHomeworkName",
     description: "pickerHomeworkDescription",
     preview: true,
-    anchor: "#homework-card",
+    anchor: "#important-card",
   }),
   // A week is about 1300 px high: as a preview it would stretch its row of the picker.
   registerCard(WEEK_CARD, AulaConnectWeekCard, {

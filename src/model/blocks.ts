@@ -28,7 +28,7 @@ import { packRows, quotes, type PackRow, type PackRule, type Quote } from "./pac
 import type { SubjectLabel, SubjectNamer } from "./subjects.ts";
 
 /** The blocks, in their default order. */
-export const BLOCKS = ["homework", "pack", "timetable", "plan", "events", "birthdays"] as const;
+export const BLOCKS = ["important", "pack", "timetable", "plan", "events", "birthdays"] as const;
 
 /** A block of a day. */
 export type BlockId = (typeof BLOCKS)[number];
@@ -278,7 +278,7 @@ function homeworkEmpty(content: DayContent): EmptyKind | undefined {
  */
 export function planBlocks(content: DayContent, blocks: readonly BlockId[]): BlockPlan {
   const quoted =
-    blocks.includes("homework") || blocks.includes("plan") ? content.quotes : ([] as const);
+    blocks.includes("important") || blocks.includes("plan") ? content.quotes : ([] as const);
   const subjects = blocks.includes("timetable") ? [] : content.subjects;
   const has: Record<BlockId, boolean> = {
     homework: content.homework.length > 0,
@@ -294,7 +294,7 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
   const planned: PlannedBlock[] = [];
   for (const id of blocks) {
     const empty =
-      id === "homework"
+      id === "important"
         ? homeworkEmpty(content)
         : id === "timetable" && other && !isWeekend(content.view.day)
           ? "noTimetable"

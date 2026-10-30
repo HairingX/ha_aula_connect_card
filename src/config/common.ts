@@ -29,6 +29,8 @@ export interface CommonConfig {
   readonly timetable: "compact" | "full";
   /** The lines of a note of the plan shown before "Vis mere"; 0 shows every note whole. */
   readonly infoLines: number;
+  /** The name shown for the week plan's marked notes, in place of the block's own. */
+  readonly importantLabel: string | undefined;
 }
 
 /** The keys of a card that shows a day's blocks. */
@@ -68,6 +70,13 @@ function text(value: unknown): string | undefined {
 export function configRecord(config: unknown): Record<string, unknown> {
   if (!isRecord(config)) throw new Error("The configuration must be a mapping");
   return config;
+}
+
+/** Reads `important_label`: the name shown for the week plan's marked notes, if any. */
+export function parseImportantLabel(value: unknown): string | undefined {
+  if (absent(value)) return undefined;
+  if (typeof value !== "string") throw new Error("important_label: must be text, such as Opgaver");
+  return text(value);
 }
 
 /** Reads `children`: child ids, which are numbers. */
@@ -258,6 +267,7 @@ export function resolveCommon(config: Record<string, unknown>, lenient = false):
     packing: parsePacking(config.packing, lenient),
     timetable: parseTimetable(config.timetable),
     infoLines: parseInfoLines(config.info_lines),
+    importantLabel: parseImportantLabel(config.important_label),
   };
 }
 

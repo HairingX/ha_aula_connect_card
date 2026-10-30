@@ -34,13 +34,18 @@ function locale(hass: HomeAssistant): HassLocale {
   return { ...hass.locale, language: hass.locale.language || hass.language };
 }
 
-/** Returns the view context of `hass` at `now`. */
-export function viewContext(hass: HomeAssistant, now: Date): ViewContext {
+/**
+ * Returns the view context of `hass` at `now`; its texts fill `{label}` with `label`, or with the
+ * important block's own name.
+ */
+export function viewContext(hass: HomeAssistant, now: Date, label?: string): ViewContext {
   const zone = timeZone(hass);
   const { day, minute } = localTime(now, zone);
   const settings = locale(hass);
+  const base = translator(hass.language, true);
+  const named = label ?? base("blockImportant");
   return {
-    t: translator(hass.language, true),
+    t: (key, values) => base(key, { label: named, ...values }),
     lang: cardLanguage(hass.language),
     language: settings.language,
     zone,

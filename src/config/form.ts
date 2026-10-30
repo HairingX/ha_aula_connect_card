@@ -66,7 +66,7 @@ export interface ConfigForm {
 
 /** The block names in the editor. */
 export const BLOCK_LABELS: Readonly<Record<BlockId, TextKey>> = {
-  homework: "blockHomework",
+  important: "blockImportant",
   pack: "blockPack",
   timetable: "blockTimetable",
   plan: "blockPlan",

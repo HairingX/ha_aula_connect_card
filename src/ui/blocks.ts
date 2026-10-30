@@ -88,7 +88,7 @@ export function homeworkTitle(day: string, ctx: ViewContext): string {
 
 function title(id: BlockId, day: string, ctx: ViewContext): string {
   switch (id) {
-    case "homework":
+    case "important":
       return homeworkTitle(day, ctx);
     case "pack":
       return ctx.t("blockPack");
@@ -103,7 +103,7 @@ function title(id: BlockId, day: string, ctx: ViewContext): string {
 
 /** Shows homework notes on one surface: the subject as a label, Meebook's title, the text. */
 export function homeworkList(notes: readonly NoteView[], ctx: ViewContext): TemplateResult {
-  return html`<ul class="homework">
+  return html`<ul class="important">
     ${notes.map(
       (note) =>
         html`<li class="hw">
@@ -139,7 +139,7 @@ export function emptyText(
       return ctx.t("noHomework");
     default:
       return ctx.t(
-        id === "homework"
+        id === "important"
           ? "noHomework"
           : id === "pack"
             ? "noPack"
@@ -303,7 +303,7 @@ function body(
   unfolded: boolean,
 ): unknown {
   switch (id) {
-    case "homework":
+    case "important":
       return homeworkList(part.content.homework, ctx);
     case "pack":
       return pack(part, ctx);
