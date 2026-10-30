@@ -210,6 +210,8 @@ const SETS: Record<string, () => Shot[]> = {
       tag: "nopacking",
     }),
     shot("day", "thu-1930-reminders", 800, { ...WALL, children: 2 }),
+    shot("day", "thu-1930", 800, { ...WALL, locale: "en-US", children: 2 }),
+    shot("day", "thu-1930", 640, { children: 2 }),
     shot("day", "thu-1930-reminders", 304),
     shot("day", "fri-1240", 800, { children: 2 }),
     shot("day", "sun-1800-noplan", 380, { children: 2 }),

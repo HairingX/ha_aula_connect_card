@@ -96,6 +96,14 @@ describe("what is never cut", () => {
 });
 
 describe("the cards' layout", () => {
+  it("keeps an empty part's sentence beside its name when a longer part beside stretches it", () => {
+    expect(declared(blocks, ".part.is-empty")).toContain("align-content: flex-start");
+  });
+
+  it("keeps a folded lesson's start time whole", () => {
+    expect(declared(blocks, ".folded time")).toContain("white-space: nowrap");
+  });
+
   it("pads a card 16 px at every width, as Home Assistant's own cards", () => {
     const padding = rules(base).filter(
       (rule) =>
