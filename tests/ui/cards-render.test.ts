@@ -394,7 +394,7 @@ describe("the school day card's blocks", () => {
 });
 
 describe("the homework card", () => {
-  it("groups by the day homework is for, then by child, and folds the earlier days at once", async () => {
+  it("groups by the day homework is for, then by child, with the earlier days folded first", async () => {
     const { card } = await mount(HOMEWORK, "thu-1530");
     const [tomorrow] = all(card, ".hw-day");
     expect(tomorrow?.classList.contains("focus")).toBe(true);
@@ -403,6 +403,10 @@ describe("the homework card", () => {
     expect(tomorrow?.querySelectorAll(".part")).toHaveLength(2);
     expect(text(card, ".fold > summary")).toBe("Tidligere lektier (4)");
     expect(all(card, ".earlier-days")).toEqual([]);
+    expect(all(card, ".fold, .hw-day").map((element) => element.className)).toEqual([
+      "fold earlier",
+      ...all(card, ".hw-day").map((element) => element.className),
+    ]);
     await open(card, ".fold");
     expect(all(card, ".earlier-days .hw-day").length).toBeGreaterThan(0);
   });
@@ -460,7 +464,7 @@ describe("the homework card", () => {
     expect(texts(card, ".day-title")).toEqual(["Ingen skoledage (Ida)", "Efterårsferie (Oskar)"]);
   });
 
-  it("names the holiday ahead above the earlier homework", async () => {
+  it("names the holiday ahead, after the earlier homework", async () => {
     const { card } = await mount(HOMEWORK, "before-holiday", { config: { children: [1001] } });
     expect(text(card, ".hw-day.focus .day-title")).toBe("Efterårsferie");
     expect(text(card, ".hw-day.focus .day-date")).toBe(

@@ -1,6 +1,6 @@
 /**
- * The homework card's template: the homework by the day it is for, the focus day first even when
- * it has none, each day with a part for each child, and the earlier days folded at the bottom.
+ * The homework card's template: the earlier days folded at the top, then the homework by the day
+ * it is for from the focus day on, even when it has none, each day with a part for each child.
  * Children stand side by side in aligned columns where there is room.
  *
  * @packageDocumentation
@@ -181,14 +181,6 @@ export function renderHomework(
             ${several ? who(child.child, []) : nothing}${childState(child.state, t)}
           </div>`,
     )}
-    ${view.heroes.map((item) => heroLine(item, ctx))}
-    ${view.days.length > 0 ? html`<div class="hw-days">${view.days.map((item) => day(item, view, ctx, 3))}</div>` : nothing}
-    ${view.notYet.map(
-      (item) =>
-        html`<p class="not-yet">
-          ${t("weekPlanNotYet", { n: item.week })}${item.only.length > 0 ? ` (${names(item.only, ctx)})` : ""}
-        </p>`,
-    )}
     ${
       view.earlier.length > 0
         ? html`<details
@@ -209,5 +201,13 @@ export function renderHomework(
           </details>`
         : nothing
     }
+    ${view.heroes.map((item) => heroLine(item, ctx))}
+    ${view.days.length > 0 ? html`<div class="hw-days">${view.days.map((item) => day(item, view, ctx, 3))}</div>` : nothing}
+    ${view.notYet.map(
+      (item) =>
+        html`<p class="not-yet">
+          ${t("weekPlanNotYet", { n: item.week })}${item.only.length > 0 ? ` (${names(item.only, ctx)})` : ""}
+        </p>`,
+    )}
   </section>`;
 }
