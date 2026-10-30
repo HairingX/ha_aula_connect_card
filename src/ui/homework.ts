@@ -162,12 +162,13 @@ export function renderHomework(
   return html`<section class="homework-card stack ${columns(count)}" aria-label=${label}>
     ${title}
     ${
-      several
+      // Every day's part names its child; a strip above the columns adds only the schools.
+      several && view.differentSchools
         ? html`<div class="strip cols" aria-hidden="true">
             ${children.map(
               (child, index) =>
                 html`<div class="kid" style="--col: ${index + 1}">
-                  ${who(child, view.differentSchools ? [child.institution_name] : [])}
+                  ${who(child, [child.institution_name])}
                 </div>`,
             )}
           </div>`

@@ -413,6 +413,22 @@ describe("the homework card", () => {
     expect(all(card, ".hw-day:first-of-type .hw")).toHaveLength(2);
   });
 
+  it("names each child once a day, with no names above the columns, when the children share a school", async () => {
+    const { card } = await mount(HOMEWORK, "thu-1530");
+    expect(all(card, ".strip")).toEqual([]);
+    expect(texts(card, ".hw-day:first-of-type .part-who")).toEqual(["IIda", "OOskar"]);
+  });
+
+  it("names the schools above the columns when the children go to different ones", async () => {
+    const { card } = await mount(HOMEWORK, "thu-1530", {
+      setup: (hass) => {
+        hass.callWS.mockResolvedValue({ children: [IDA, OSKAR_ELSEWHERE] });
+      },
+    });
+    expect(texts(card, ".strip .who-name")).toEqual([IDA.first_name, "Oskar"]);
+    expect(texts(card, ".strip .who-meta")).toEqual([IDA.institution_name, "Lindegårdens Skole"]);
+  });
+
   it("has a title saying whose homework it is and the weeks it covers, for one child or several", async () => {
     const { card } = await mount(HOMEWORK, "thu-1530", { config: { children: [1001] } });
     expect(spoken(card, ".title-who")).toBe("Ida, Lektier, uge 44–45");
