@@ -86,6 +86,7 @@ const LABELS: Readonly<Record<string, TextKey>> = {
   notes: "editorNotes",
   packing: "editorPackingList",
   subject_names: "editorSubjectNamesList",
+  expand_abbreviations: "editorExpand",
 };
 
 const HELPERS: Readonly<Record<string, TextKey>> = {
@@ -255,6 +256,7 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
       title: t("editorSubjectNames"),
       icon: "mdi:school-outline",
       schema: [
+        { name: "expand_abbreviations", default: true, selector: { boolean: {} } },
         {
           name: "subject_names",
           selector: {

@@ -12,6 +12,7 @@ const OPTIONS: DayViewOptions = {
   switchAt: 720,
   packing: [{ subject: "Svømning", items: ["Badetøj"] }],
   subjectNames: [],
+  expandAbbreviations: true,
   blocks: DEFAULT_ORDER,
 };
 

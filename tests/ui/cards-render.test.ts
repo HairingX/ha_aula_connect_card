@@ -269,6 +269,21 @@ describe("the school day card", () => {
   });
 });
 
+describe("abbreviations", () => {
+  it("are shown as Aula has them while writing out is off, and still match the things to bring", async () => {
+    const { card } = await mount(DAY, "thu-1010", {
+      config: {
+        children: [1001],
+        expand_abbreviations: false,
+        packing: [{ subject: "Idræt", items: ["Idrætstøj"] }],
+      },
+    });
+    expect(texts(card, ".lessons.folded .subject")).toEqual(["IDR", "DAN", "ENG"]);
+    expect(texts(card, ".pack-item")).toEqual(["Idrætstøj"]);
+    expect(texts(card, ".pack-source")).toEqual(["IDR"]);
+  });
+});
+
 describe("the school day card's rows above", () => {
   it("names each child's time when school ends, never one child's as every child's", async () => {
     const { card } = await mount(DAY, "thu-1300");

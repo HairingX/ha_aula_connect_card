@@ -12,6 +12,7 @@ const OPTIONS: ViewOptions & { notes: NotesShown } = {
   switchAt: 720,
   packing: [],
   subjectNames: [],
+  expandAbbreviations: true,
   notes: "tasks",
 };
 const IDA = { ...OPTIONS, children: [1001] };

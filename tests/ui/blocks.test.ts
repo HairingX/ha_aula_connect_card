@@ -12,7 +12,14 @@ const item = scenarioNamed("thu-1930");
 const ctx = contextOf(item);
 const [group] = dayCardView(
   snapshotOf(item),
-  { children: [1001], switchAt: 720, packing: [], subjectNames: [], blocks: DEFAULT_ORDER },
+  {
+    children: [1001],
+    switchAt: 720,
+    packing: [],
+    subjectNames: [],
+    expandAbbreviations: true,
+    blocks: DEFAULT_ORDER,
+  },
   ctx,
   noHold,
 ).groups;

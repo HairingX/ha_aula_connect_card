@@ -178,9 +178,10 @@ const TEXTS = {
   editorPackingItems: ["Things", "Ting"],
   editorSubjectNames: ["Subject names", "Fagnavne"],
   editorSubjectNamesHelper: [
-    "The card knows the common abbreviations (DAN, MAT, IDR …); correct or add names here.",
-    "Kortet kender de almindelige forkortelser (DAN, MAT, IDR …); ret eller tilføj navne her.",
+    "The card writes the common abbreviations out (DAN as Dansk, IDR as Idræt …); turn it off to show them as Aula has them, and correct or add names here.",
+    "Kortet skriver de almindelige forkortelser ud (DAN som Dansk, IDR som Idræt …); slå det fra for at vise dem, som Aula skriver dem, og ret eller tilføj navne her.",
   ],
+  editorExpand: ["Write abbreviations out", "Skriv forkortelser ud"],
   editorSubjectNamesList: ["Your names", "Egne navne"],
   editorSubjectAula: ["Name in Aula", "Navn i Aula"],
   editorSubjectName: ["Show as", "Vis som"],

@@ -12,6 +12,7 @@ const OPTIONS: WeekViewOptions = {
   switchAt: 720,
   packing: [],
   subjectNames: [],
+  expandAbbreviations: true,
   blocks: DEFAULT_ORDER,
   weeks: 2,
 };

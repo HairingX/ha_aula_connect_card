@@ -26,6 +26,7 @@ describe("the week card's configuration", () => {
       switchAt: 720,
       size: "normal",
       subjectNames: [],
+      expandAbbreviations: true,
       packing: [],
       timetable: "compact",
       infoLines: 6,
@@ -104,6 +105,7 @@ describe("checking a configuration", () => {
       'packing[0]: unknown key "item"; the keys are subject and items',
     ],
     [{ subject_names: [{ aula: "UUV" }] }, "subject_names[0].name: must be a name"],
+    [{ expand_abbreviations: "no" }, "expand_abbreviations: must be true or false"],
     [{ subject_names: [{ name: "Bevægelse" }] }, "subject_names[0].aula: must be a lesson title"],
   ])("refuses %j: %s", (config, message) => {
     expect(() => resolveWeekConfig(config)).toThrow(message);
