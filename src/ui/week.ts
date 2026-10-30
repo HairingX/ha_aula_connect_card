@@ -10,6 +10,7 @@ import { html, nothing, type TemplateResult } from "lit/html.js";
 
 import type { ViewContext } from "../core/context.ts";
 import {
+  addDays,
   capitalize,
   daysBetween,
   formatDay,
@@ -369,6 +370,9 @@ function week(
       <span
         >${t("weekNumber", { n: section.number })} ·
         ${section.relation === "this" ? t("thisWeek") : t("nextWeek")}</span
+      >
+      <span class="week-dates"
+        >${formatDayRange(section.start, addDays(section.start, 6), ctx.language, "short")}</span
       >
     </h3>
     ${

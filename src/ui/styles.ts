@@ -1160,6 +1160,10 @@ export const weekStyles = css`
     color: var(--aula-text-2);
     font-weight: var(--aula-medium);
   }
+  .week-dates {
+    font-size: var(--aula-font-s);
+    font-weight: var(--aula-normal);
+  }
   .not-yet {
     padding-bottom: var(--aula-space-2);
   }
