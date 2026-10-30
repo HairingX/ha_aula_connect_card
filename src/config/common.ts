@@ -75,24 +75,30 @@ export function parseChildren(value: unknown): number[] {
 }
 
 /**
- * Reads `switch_time`: "HH:MM" or "HH:MM:SS", seconds ignored; or an integer, as YAML 1.1 reads
- * an unquoted 12:00 (720, minutes) or 12:00:00 (43200, seconds). Midnight turns the switch off.
+ * Reads `switch_time`: "HH:MM", "HH.MM" or "HH:MM:SS", seconds ignored; or a whole number: 0 to
+ * 23 an hour, 60 to 1439 minutes after midnight, as YAML 1.1 reads an unquoted 12:00 (720), and
+ * 3600 to 86399 seconds, as it reads 12:00:00 (43200). Midnight turns the switch off.
  */
 export function parseSwitchTime(value: unknown): number | null {
   if (absent(value)) return DEFAULT_SWITCH;
   let minutes: number | undefined;
   if (typeof value === "string") {
-    const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(value.trim());
+    const match = /^(\d{1,2})[:.](\d{2})(?::(\d{2}))?$/.exec(value.trim());
     if (match) {
       const hours = Number(match[1]);
       const mins = Number(match[2]);
       if (hours < 24 && mins < 60 && Number(match[3] ?? 0) < 60) minutes = hours * 60 + mins;
     }
-  } else if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) {
-    if (value < 1440) minutes = value;
-    else if (value < 86_400) minutes = Math.floor(value / 60);
+  } else if (typeof value === "number" && Number.isSafeInteger(value)) {
+    if (value >= 0 && value < 24) minutes = value * 60;
+    else if (value >= 60 && value < 1440) minutes = value;
+    else if (value >= 3600 && value < 86_400) minutes = Math.floor(value / 60);
   }
-  if (minutes === undefined) throw new Error('switch_time: must be a time such as "12:00"');
+  if (minutes === undefined) {
+    throw new Error(
+      `switch_time: ${JSON.stringify(value)} is not a time; write it as "12:00", or a whole hour such as 12`,
+    );
+  }
   return minutes === 0 ? null : minutes;
 }
 
@@ -160,13 +166,22 @@ function entry(value: unknown, name: string, keys: readonly string[]): Record<st
   return value;
 }
 
-/** Reads `packing`: subjects and the things to bring for them, as a list or one text. */
-export function parsePacking(value: unknown): PackRule[] {
-  return list(value, "packing", "subjects and things").map((item, index) => {
+// A row of the editor's list still being filled in: what it lacks is left out, while the editor
+// stays, and the card itself says what is missing.
+function unfinished(missing: boolean, lenient: boolean, message: string): boolean {
+  if (missing && !lenient) throw new Error(message);
+  return missing;
+}
+
+/**
+ * Reads `packing`: subjects and the things to bring for them, as a list or one text. `lenient`
+ * leaves out a row without a subject or a thing, as the editor has while one is being added.
+ */
+export function parsePacking(value: unknown, lenient = false): PackRule[] {
+  return list(value, "packing", "subjects and things").flatMap((item, index) => {
     const name = `packing[${String(index)}]`;
     const rule = entry(item, name, ["subject", "items"]);
     const subject = text(rule.subject);
-    if (subject === undefined) throw new Error(`${name}.subject: must be a subject`);
     const raw =
       typeof rule.items === "string" ? [rule.items] : list(rule.items, `${name}.items`, "things");
     const items = raw
@@ -176,32 +191,40 @@ export function parsePacking(value: unknown): PackRule[] {
         if (value === undefined) throw new Error(`${name}.items: must be things to bring`);
         return value;
       });
-    if (items.length === 0) throw new Error(`${name}.items: must name at least one thing`);
-    return { subject, items };
+    if (unfinished(subject === undefined, lenient, `${name}.subject: must be a subject`)) return [];
+    if (unfinished(items.length === 0, lenient, `${name}.items: must name at least one thing`))
+      return [];
+    return [{ subject: subject ?? "", items }];
   });
 }
 
-/** Reads `subject_names`: lesson titles in Aula, and the names to show for them. */
-export function parseSubjectNames(value: unknown): SubjectName[] {
-  return list(value, "subject_names", "names").map((item, index) => {
+/**
+ * Reads `subject_names`: lesson titles in Aula, and the names to show for them. `lenient` leaves
+ * out a row without either, as the editor has while one is being added.
+ */
+export function parseSubjectNames(value: unknown, lenient = false): SubjectName[] {
+  return list(value, "subject_names", "names").flatMap((item, index) => {
     const name = `subject_names[${String(index)}]`;
     const names = entry(item, name, ["aula", "name"]);
     const aula = text(names.aula);
     const shown = text(names.name);
-    if (aula === undefined) throw new Error(`${name}.aula: must be a lesson title`);
-    if (shown === undefined) throw new Error(`${name}.name: must be a name`);
-    return { aula, name: shown };
+    if (unfinished(aula === undefined, lenient, `${name}.aula: must be a lesson title`)) return [];
+    if (unfinished(shown === undefined, lenient, `${name}.name: must be a name`)) return [];
+    return [{ aula: aula ?? "", name: shown ?? "" }];
   });
 }
 
-/** Reads the keys every card has. Keys the card does not know are left to Home Assistant. */
-export function resolveCommon(config: Record<string, unknown>): CommonConfig {
+/**
+ * Reads the keys every card has. Keys the card does not know are left to Home Assistant.
+ * `lenient` leaves out the rows the editor is still filling in.
+ */
+export function resolveCommon(config: Record<string, unknown>, lenient = false): CommonConfig {
   return {
     children: parseChildren(config.children),
     switchAt: parseSwitchTime(config.switch_time),
     size: parseSize(config.size),
-    subjectNames: parseSubjectNames(config.subject_names),
-    packing: parsePacking(config.packing),
+    subjectNames: parseSubjectNames(config.subject_names, lenient),
+    packing: parsePacking(config.packing, lenient),
   };
 }
 

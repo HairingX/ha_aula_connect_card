@@ -7,7 +7,8 @@
  */
 
 import type { Lesson } from "../core/types.ts";
-import { inTimetableOrder, type NoteView } from "./notes.ts";
+import { isCancelled } from "./lessons.ts";
+import { inTimetableOrder, isHomework, type NoteView } from "./notes.ts";
 import type { SubjectLabel, SubjectNamer } from "./subjects.ts";
 
 /** The things to bring when a subject is on the timetable. */
@@ -27,9 +28,9 @@ export interface PackRow {
 }
 
 /**
- * Returns the configured things to bring for a day's lessons: one row per subject with a rule, in
- * the order of the timetable. A thing already listed for an earlier subject that day, ignoring
- * case, is left out.
+ * Returns the configured things to bring for a day's lessons that are held: one row per subject
+ * with a rule, in the order of the timetable. A thing already listed for an earlier subject that
+ * day, ignoring case, is left out.
  */
 export function packRows(
   lessons: readonly Lesson[],
@@ -40,6 +41,7 @@ export function packRows(
   const subjects = new Set<string>();
   const listed = new Set<string>();
   for (const lesson of lessons) {
+    if (isCancelled(lesson)) continue;
     const subject = namer(lesson.title);
     if (subjects.has(subject.key)) continue;
     subjects.add(subject.key);
@@ -74,43 +76,112 @@ export const MAX_QUOTES = 3;
 const START = "(?:^|[^\\p{L}\\p{N}])";
 const END = "(?=[^\\p{L}\\p{N}]|$)";
 const word = (pattern: string): string => `${START}(?:${pattern})${END}`;
+// "med" closing the phrase, as in "tag blade med i en pose", not "med hele klassen".
+const CLOSING_MED = `${START}med(?=\\s*(?:[.,;:!?)–-]|$)|\\s+(?:i|til|hjem|hjemmefra|tilbage)${END})`;
+// Things a class brings, as the last part of a word: "idrætstøj", "madpakken", "blokfløjte".
+const THINGS =
+  "\\p{L}*(?:madpakke|tøj|sko|støvle|håndklæde|taske|pose|bog|bøger|penalhus|blyant|lommeregner|computer|ipad|oplader|fløjte|instrument|dunk|flaske|frugt|seddel|sedl|kostume|hjelm|cykel|cykl|brille|kit|towel|lunch|book|clothes|shoes)(?:e|en|et|er|erne|ene|ne|s)?";
 const REMINDERS = [
-  word("husk"),
-  word("medbringe?"),
-  `${word("tage?")}.*${word("med")}`,
-  `${word("skal\\s+have")}.*${word("med")}`,
-  word("remember"),
-  word("bring"),
+  word("medbring(?:e|es)?|bring"),
+  `${word("tag|tage")}.*${CLOSING_MED}`,
+  `${word("skal\\s+have")}.*${CLOSING_MED}`,
+  // "Husk madpakke", but not "husk at læse": that is homework, not something to bring.
+  `${word("husk|remember")}(?!\\s*,?\\s*(?:at|to)${END}).*${word(THINGS)}`,
 ].map((pattern) => new RegExp(pattern, "iu"));
 
-/** Returns a text's sentences: split at line breaks, and after ".", "!" or "?" and a space. */
+// Words a full stop shortens, after which a sentence goes on.
+const ABBREVIATIONS = new Set([
+  "kl",
+  "s",
+  "ss",
+  "f.eks",
+  "fx",
+  "d",
+  "ca",
+  "nr",
+  "bl.a",
+  "evt",
+  "inkl",
+  "osv",
+  "ang",
+  "pga",
+  "dvs",
+  "jf",
+  "vedr",
+  "mht",
+  "ift",
+  "m.m",
+  "o.l",
+  "stk",
+  "kap",
+  "opg",
+  "min",
+  "ex",
+  "tlf",
+]);
+const MONTH = /^(?:jan|feb|mar|apr|maj|may|jun|jul|aug|sep|okt|oct|nov|dec)/iu;
+
+// A sentence ends at ".", "!" or "?" before a capital, but not after an abbreviation, nor in a
+// date such as "3. November".
+function ends(mark: string, before: string, after: string): boolean {
+  if (!/^[\p{Lu}"“»(•]/u.test(after)) return false;
+  if (mark !== ".") return true;
+  const last = (/\S+$/u.exec(before)?.[0] ?? "").toLocaleLowerCase("da");
+  return !ABBREVIATIONS.has(last) && !(/^\d+$/.test(last) && MONTH.test(after));
+}
+
+/**
+ * Returns a text's sentences: split at line breaks, and after ".", "!" or "?" where the next
+ * sentence begins, but not after an abbreviation such as "kl." or "f.eks." or in a date.
+ */
 export function sentences(text: string): string[] {
-  return text
-    .replace(/([.!?])\s+/gu, "$1\n")
-    .split("\n")
+  const result: string[] = [];
+  for (const line of text.split("\n")) {
+    let from = 0;
+    for (const match of line.matchAll(/([.!?])\s+/gu)) {
+      const at = match.index;
+      const next = at + match[0].length;
+      if (!ends(match[1] ?? "", line.slice(from, at), line.slice(next))) continue;
+      result.push(line.slice(from, at + 1));
+      from = next;
+    }
+    result.push(line.slice(from));
+  }
+  return result
     .map((sentence) => sentence.replace(/^•\s*/u, "").trim())
     .filter((sentence) => sentence !== "");
 }
 
-/** Tells whether a sentence asks to remember or bring something. */
+/**
+ * Tells whether a sentence asks to bring something: "medbring", "tag ... med", "skal have ...
+ * med", or "husk" with a thing a class brings, such as "Husk madpakke"; never "husk at læse".
+ */
 export function isReminder(sentence: string): boolean {
   return REMINDERS.some((pattern) => pattern.test(sentence));
 }
 
 /**
- * Returns the sentences of a day's notes, of any type, that ask to remember or bring something:
- * each once, in the order of their subject's first lesson, at most `MAX_QUOTES`.
+ * Returns the sentences of a day's notes, of any type, that ask to bring something: each once,
+ * at most `MAX_QUOTES`, in the order of their subject's first lesson. When there are more, the
+ * plan's are kept before the homework's, which is shown in full.
  */
 export function quotes(notes: readonly NoteView[], lessonKeys: readonly string[]): Quote[] {
-  const found: Quote[] = [];
+  const found: (Quote & { homework: boolean })[] = [];
   const seen = new Set<string>();
   for (const note of notes) {
     for (const sentence of sentences(note.text)) {
       const key = sentence.toLocaleLowerCase("da");
       if (seen.has(key) || !isReminder(sentence)) continue;
       seen.add(key);
-      found.push({ text: sentence, subject: note.subject });
+      found.push({ text: sentence, subject: note.subject, homework: isHomework(note.note) });
     }
   }
-  return inTimetableOrder(found, (quote) => quote.subject?.key, lessonKeys).slice(0, MAX_QUOTES);
+  const kept = new Set(
+    [...found].sort((a, b) => Number(a.homework) - Number(b.homework)).slice(0, MAX_QUOTES),
+  );
+  return inTimetableOrder(
+    found.filter((quote) => kept.has(quote)),
+    (quote) => quote.subject?.key,
+    lessonKeys,
+  ).map(({ text, subject }) => ({ text, subject }));
 }

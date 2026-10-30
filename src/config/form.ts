@@ -15,6 +15,7 @@ import {
 import { translator, type TextKey, type Translate } from "../core/i18n.ts";
 import { BLOCKS, type BlockId } from "../model/blocks.ts";
 import { subjectNamer } from "../model/subjects.ts";
+import { isRecord } from "./common.ts";
 
 /** A field or group of Home Assistant's form, as far as the cards use them. */
 export type FormSchema =
@@ -71,11 +72,23 @@ const LABELS: Readonly<Record<string, TextKey | "">> = {
 
 const HELPERS: Readonly<Record<string, TextKey>> = {
   children: "editorChildrenHelper",
+  weeks: "editorWeeksHelper",
   order: "editorOrderHelper",
   switch_time: "editorSwitchHelper",
+  size: "editorSizeHelper",
   packing_group: "editorPackingHelper",
   subject_names_group: "editorSubjectNamesHelper",
 };
+
+// The switches of homework and the plan stand for themselves, unless 0.0.2's `tasks: false`
+// hides both and no switch of their own says otherwise.
+const notHiddenByTasks = (name: string): Readonly<Record<string, unknown>> => ({
+  condition: "or",
+  conditions: [
+    { field: "tasks", operator: "not_eq", value: false },
+    { field: name, operator: "exists" },
+  ],
+});
 
 /** The editor's fields, by name. */
 export type FieldName =
@@ -103,8 +116,9 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
           multiple: true,
           mode: known ? "list" : "dropdown",
           custom_value: !known,
+          // Numbers, as YAML has them: Home Assistant ticks the option equal to the value.
           options: children.map((child) => ({
-            value: String(child.child_id),
+            value: child.child_id,
             label: `${child.first_name} · ${child.institution_name}`,
           })),
         },
@@ -116,8 +130,8 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
         select: {
           mode: "list",
           options: [
-            { value: "1", label: t("editorWeeksOne") },
-            { value: "2", label: t("editorWeeksTwo") },
+            { value: 1, label: t("editorWeeksOne") },
+            { value: 2, label: t("editorWeeksTwo") },
           ],
         },
       },
@@ -128,7 +142,11 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
         select: {
           multiple: true,
           reorder: true,
-          options: BLOCKS.map((id) => ({ value: id, label: t(BLOCK_LABELS[id]) })),
+          // Birthdays are said in the day's header, never as a block that could move.
+          options: BLOCKS.filter((id) => id !== "birthdays").map((id) => ({
+            value: id,
+            label: t(BLOCK_LABELS[id]),
+          })),
         },
       },
     },
@@ -139,7 +157,12 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
       title: t("editorShow"),
       icon: "mdi:eye-outline",
       schema: [
-        ...BLOCKS.map((id) => ({ name: id, default: true, selector: { boolean: {} } })),
+        ...BLOCKS.map((id) => ({
+          name: id,
+          default: true,
+          selector: { boolean: {} },
+          ...(id === "homework" || id === "plan" ? { visible: notHiddenByTasks(id) } : {}),
+        })),
         // 0.0.2's switch, shown only where a configuration still has it.
         {
           name: "tasks",
@@ -224,10 +247,31 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
   };
 }
 
-/** Returns a card's form: the named fields, in order, checked by the card's own `resolve`. */
+/**
+ * Throws for what the form would show other than the card does: Home Assistant ticks only an
+ * option equal to the value, and the time field shows only a time written as one.
+ */
+function assertShown(config: unknown, known: boolean): void {
+  const raw = isRecord(config) ? config : {};
+  const children = Array.isArray(raw.children) ? (raw.children as unknown[]) : [];
+  if (known && children.some((id) => typeof id === "string")) {
+    throw new Error("children: write the child ids as numbers, such as [1001], to choose here");
+  }
+  if (typeof raw.weeks === "string") {
+    throw new Error("weeks: write 1 or 2 without quotes to choose here");
+  }
+  if (typeof raw.switch_time === "number") {
+    throw new Error('switch_time: write the time as "12:00" to set it here');
+  }
+}
+
+/**
+ * Returns a card's form: the named fields, in order, checked by the card's own `resolve`, which
+ * leaves out the rows the editor is still filling in.
+ */
 export function configForm(
   names: readonly FieldName[],
-  resolve: (config: unknown) => unknown,
+  resolve: (config: unknown, lenient: boolean) => unknown,
 ): ConfigForm {
   const t = translator(rememberedLanguage());
   const all = fields(t);
@@ -242,7 +286,8 @@ export function configForm(
       return key === undefined ? undefined : t(key);
     },
     assertConfig: (config) => {
-      resolve(config);
+      resolve(config, true);
+      assertShown(config, knownChildren().length > 0);
     },
   };
 }

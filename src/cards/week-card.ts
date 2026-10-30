@@ -19,10 +19,9 @@ import {
 } from "../config/week.ts";
 import type { Hold } from "../model/child.ts";
 import { weekCardView, type WeekCardView } from "../model/week-view.ts";
-import { AulaCard } from "../ui/card.ts";
+import { AulaCard, stub } from "../ui/card.ts";
 import { base, blocks, weekStyles } from "../ui/styles.ts";
 import { renderWeek } from "../ui/week.ts";
-import { stub } from "./day-card.ts";
 
 /** The week card. */
 export class AulaConnectCard extends AulaCard<WeekCardConfig, WeekCardView> {

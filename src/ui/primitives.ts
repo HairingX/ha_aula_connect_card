@@ -22,8 +22,8 @@ import {
   instant,
 } from "../core/dates.ts";
 import type { Translate } from "../core/i18n.ts";
-import type { CalendarEvent, Child, Day } from "../core/types.ts";
-import type { Chip } from "../model/blocks.ts";
+import type { Child, Day } from "../core/types.ts";
+import type { Fact, TimedEvent } from "../model/blocks.ts";
 import type { FocusReason } from "../model/focus.ts";
 
 /** Shows an mdi icon, hidden from screen readers. */
@@ -124,17 +124,44 @@ export function eventIcon(type: string): string {
   }
 }
 
-/** Shows a chip of a day's header: an all-day event, or a birthday spoken in full. */
-export function chip(item: Chip, ctx: ViewContext): TemplateResult {
+/**
+ * Shows a fact of a day's header in words, with its icon: a whole-day event, with its place,
+ * or a birthday, spoken in full. Text, not a chip: nothing on the card can be tapped.
+ */
+export function fact(item: Fact, ctx: ViewContext): TemplateResult {
   if (item.kind === "event") {
-    return html`<span class="chip"
-      >${icon(eventIcon(item.event.type))}${aula(item.event.title, ctx)}</span
+    const { event } = item;
+    return html`<span class="fact"
+      >${icon(eventIcon(event.type))}<span
+        >${aula(event.title, ctx)}${
+          event.location
+            ? html`<span class="quiet"> · ${aula(event.location, ctx)}</span>`
+            : nothing
+        }</span
+      ></span
     >`;
   }
   const name = item.birthday.name;
-  return html`<span class="chip"
+  return html`<span class="fact"
     >${icon("mdi:cake-variant-outline")}<span aria-hidden="true">${aula(name, ctx)}</span
     ><span class="sr">${ctx.t("birthdayOf", { name })}</span></span
+  >`;
+}
+
+/**
+ * Shows parts of a line with a dot between them. Each dot belongs to the part after it, and one
+ * that would begin a line is cut off, so that no line ends or begins with a dot.
+ */
+export function segments(parts: readonly unknown[], cls = ""): TemplateResult {
+  return html`<span class="segs ${cls}"
+    ><span class="segs-in"
+      >${parts.map(
+        (part, index) =>
+          html`<span class="seg"
+            >${index > 0 ? html`<span class="sr">, </span>` : nothing}${part}</span
+          >`,
+      )}</span
+    ></span
   >`;
 }
 
@@ -175,26 +202,24 @@ export function heading(
   titleClass = "title",
 ): TemplateResult {
   const next = reason === "tomorrow" || reason === "next_school_day";
-  const parts: unknown[] = [
-    ...dateLine(day, ctx),
-    ...(next
-      ? [
-          html`<span class="next"
-            >${icon("mdi:calendar-arrow-right")}${ctx.t("nextSchoolDay")}</span
-          >`,
-        ]
-      : []),
-  ];
-  return html`<span class="heading">
-    <span class=${titleClass}>${dayTitle(day, ctx)}<span class="sr">,</span></span>
-    <span class="date-line"
-      >${parts.map((part, index) => html`${index > 0 ? separator : nothing}<span>${part}</span>`)}</span
-    >
-  </span>`;
+  return titled(
+    dayTitle(day, ctx),
+    [...dateLine(day, ctx), ...(next ? [ctx.t("nextSchoolDay")] : [])],
+    titleClass,
+  );
 }
 
-// Seen as a dot, heard as a pause.
-const separator = html`<span class="sr">, </span><span aria-hidden="true">·</span>`;
+/** Shows a title over its date line, read as one. */
+export function titled(
+  title: unknown,
+  line: readonly unknown[],
+  titleClass = "title",
+): TemplateResult {
+  return html`<span class="heading">
+    <span class=${titleClass}>${title}<span class="sr">,</span></span>
+    ${segments(line, "date-line")}
+  </span>`;
+}
 
 /** Shows a day's school hours with a clock. */
 export function hours(span: { start: string; end: string }, ctx: ViewContext): TemplateResult {
@@ -203,25 +228,62 @@ export function hours(span: { start: string; end: string }, ctx: ViewContext): T
   >`;
 }
 
-/** Returns an event's time as text: "Hele dagen", or its span. */
-export function eventTime(event: CalendarEvent, ctx: ViewContext): TemplateResult | string {
-  return event.all_day ? ctx.t("allDay") : timeSpan(event.start, event.end, ctx);
+/** Shows a heading of a level from 2 to 5; lit cannot bind a tag's name. */
+export function headingOf(level: number, content: unknown, cls = ""): TemplateResult {
+  switch (level) {
+    case 2:
+      return html`<h2 class=${cls}>${content}</h2>`;
+    case 3:
+      return html`<h3 class=${cls}>${content}</h3>`;
+    case 4:
+      return html`<h4 class=${cls}>${content}</h4>`;
+    default:
+      return html`<h5 class=${cls}>${content}</h5>`;
+  }
+}
+
+/**
+ * Shows when an event is on a day: its span within the day, or only its start with `startOnly`;
+ * "08.00 →" on the first of several days, "→ 14.00" on the last, and "Hele dagen" between.
+ */
+export function eventWhen(item: TimedEvent, ctx: ViewContext, startOnly = false): unknown {
+  const { event } = item;
+  switch (item.span) {
+    case "within":
+      return startOnly ? time(event.start, ctx) : timeSpan(event.start, event.end, ctx);
+    case "from":
+      return html`<span class="tabular">${time(event.start, ctx)} →</span>`;
+    case "until":
+      return html`<span class="tabular">→ ${time(event.end, ctx)}</span>`;
+    default:
+      return ctx.t("allDay");
+  }
 }
 
 /** Shows the who line: a child's initial and name, and what the card is about. */
-export function who(child: Child, meta: readonly string[], end: unknown = nothing): TemplateResult {
-  return html`<span class="who">
-    ${avatar(child)}<span class="who-name">${child.first_name}</span>${meta.map(
-      (part) =>
-        html`<span class="who-meta" aria-hidden="true">·</span
-          ><span class="who-meta">${part}</span>`,
-    )}${end === nothing ? nothing : html`<span class="who-end">${end}</span>`}
-  </span>`;
+export function who(child: Child, meta: readonly string[]): TemplateResult {
+  return html`<span class="who"
+    >${avatar(child)}${segments([
+      html`<span class="who-name">${child.first_name}</span>`,
+      ...meta.map((part) => html`<span class="who-meta">${part}</span>`),
+    ])}</span
+  >`;
 }
+
+const lists = new Map<string, Intl.ListFormat>();
 
 /** Returns names joined as a sentence: "Ida og Oskar", "Ida and Oskar". */
 export function names(children: readonly Child[], ctx: ViewContext): string {
-  return new Intl.ListFormat(ctx.lang, { type: "conjunction" }).format(
-    children.map((child) => child.first_name),
-  );
+  let list = lists.get(ctx.lang);
+  if (!list) {
+    list = new Intl.ListFormat(ctx.lang, { type: "conjunction" });
+    lists.set(ctx.lang, list);
+  }
+  return list.format(children.map((child) => child.first_name));
+}
+
+/** Returns a weekday's abbreviation as a word in a sentence: "lør." in Danish, "Sat" in English. */
+export function weekdayWord(day: Day, ctx: ViewContext): string {
+  const short = formatWeekdayShort(day, ctx.language);
+  return ctx.lang === "da" ? `${short.toLocaleLowerCase(ctx.language)}.` : short;
 }

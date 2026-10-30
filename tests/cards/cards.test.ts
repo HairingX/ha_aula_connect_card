@@ -5,7 +5,9 @@ import { AulaConnectDayCard } from "../../src/cards/day-card.ts";
 import { AulaConnectHomeworkCard } from "../../src/cards/homework-card.ts";
 import { AulaConnectCard } from "../../src/cards/week-card.ts";
 import { forget } from "../../src/core/memory.ts";
+import { RETRY_WINDOW_MS, STARTING_MS } from "../../src/core/store.ts";
 import { IDLE_RESET_MS } from "../../src/model/focus.ts";
+import { STUB_WAIT_MS } from "../../src/ui/card.ts";
 import { base, blocks, dayStyles, homeworkStyles, weekStyles } from "../../src/ui/styles.ts";
 import { FakeConnection, fakeHass, present, settle, wsError, type FakeHass } from "../fake-hass.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
@@ -154,18 +156,44 @@ describe("before there is anything to show", () => {
 
   it("shows why the children cannot be listed", async () => {
     const { card } = await mount("aula-connect-day-card", "thu-1930", {}, (hass) => {
+      hass.callWS.mockRejectedValue(wsError("home_assistant_error", "Timeout"));
+    });
+    expect(text(card, '[role="alert"]')).toBe("Kunne ikke hente fra Aula: Timeout");
+  });
+
+  it("loads while Home Assistant starts, and only then says the integration is not loaded", async () => {
+    const { card } = await mount("aula-connect-day-card", "thu-1930", {}, (hass) => {
       hass.callWS.mockRejectedValue(wsError("unknown_command", "Unknown command."));
     });
+    expect(card.shadowRoot?.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(card.shadowRoot?.querySelector('[role="alert"]')).toBeNull();
+    await vi.advanceTimersByTimeAsync(STARTING_MS + 30_000);
+    await card.updateComplete;
     expect(text(card, '[role="alert"]')).toContain("Aula Connect er ikke indlæst");
   });
 
-  it("says when there are no children, and names a configured child that is missing", async () => {
+  it("says when there are no children once retries are over, and names a missing child", async () => {
     const { card } = await mount("aula-connect-homework-card", "thu-1930", { children: [1001, 9] });
     expect(text(card, '[role="alert"]')).toBe("Aula Connect har intet barn med id 9.");
     const empty = await mount("aula-connect-card", "thu-1930", {}, (hass) => {
       hass.callWS.mockResolvedValue({ children: [] });
     });
+    expect(empty.card.shadowRoot?.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(text(empty.card)).not.toContain("ingen børn");
+    await vi.advanceTimersByTimeAsync(RETRY_WINDOW_MS + 60_000);
+    await empty.card.updateComplete;
     expect(text(empty.card)).toContain("Aula Connect har ingen børn sat op.");
+  });
+
+  it("says what went wrong instead of going blank when a view fails", async () => {
+    vi.spyOn(
+      AulaConnectDayCard.prototype as unknown as { view: () => unknown },
+      "view",
+    ).mockImplementation(() => {
+      throw new Error("bad data");
+    });
+    const { card } = await mount("aula-connect-day-card", "thu-1930");
+    expect(text(card, '[role="alert"]')).toBe("Kunne ikke hente fra Aula: Error: bad data");
   });
 });
 
@@ -194,7 +222,7 @@ describe("the cards", () => {
     day.setConfig({ size: "large" });
     expect(day.getCardSize()).toBe(14);
     expect(day.getGridOptions()).toEqual({
-      columns: 12,
+      columns: "full",
       rows: "auto",
       min_columns: 12,
       min_rows: 4,
@@ -202,7 +230,7 @@ describe("the cards", () => {
     const homework = new AulaConnectHomeworkCard();
     expect(homework.getCardSize()).toBe(6);
     expect(homework.getGridOptions()).toEqual({
-      columns: 12,
+      columns: "full",
       rows: "auto",
       min_columns: 12,
       min_rows: 3,
@@ -220,7 +248,7 @@ describe("the cards", () => {
     expect(card.getCardSize()).toBeGreaterThan(9);
   });
 
-  it("give a stub that follows the defaults, remembering the children for the editor", async () => {
+  it("give a stub that follows the defaults, listing the children for the editor once", async () => {
     const hass = fakeHass({ children: [...scenarioNamed("thu-1930").children] });
     expect(await AulaConnectDayCard.getStubConfig(hass)).toEqual({
       type: "custom:aula-connect-day-card",
@@ -228,11 +256,20 @@ describe("the cards", () => {
     expect(AulaConnectDayCard.getConfigForm().schema[0]).toMatchObject({
       selector: { select: { mode: "list" } },
     });
-    hass.callWS.mockRejectedValue(new Error("down"));
     expect(await AulaConnectCard.getStubConfig(hass)).toEqual({ type: "custom:aula-connect-card" });
+    expect(hass.callWS).toHaveBeenCalledOnce();
+    expect(hass.connection.subscriptions).toHaveLength(0);
     expect(await AulaConnectHomeworkCard.getStubConfig()).toEqual({
       type: "custom:aula-connect-homework-card",
     });
+  });
+
+  it("give a stub without waiting long for a listing that does not come", async () => {
+    const hass = fakeHass();
+    hass.callWS.mockReturnValue(new Promise(() => undefined));
+    const stubbed = AulaConnectDayCard.getStubConfig(hass);
+    await vi.advanceTimersByTimeAsync(STUB_WAIT_MS);
+    expect(await stubbed).toEqual({ type: "custom:aula-connect-day-card" });
   });
 });
 
@@ -295,9 +332,7 @@ describe("the theme's primary colour", () => {
     const uses = [
       ...sheets.matchAll(/([\w-]+)\s*:\s*[^;{}]*var\(--(?:aula-accent|primary-color)\b[^;{}]*;/g),
     ].map((match) => match[1]);
-    expect(new Set(uses)).toEqual(
-      new Set(["--aula-accent", "background", "border-inline-start", "outline"]),
-    );
+    expect(new Set(uses)).toEqual(new Set(["--aula-accent", "background", "border-inline-start"]));
     expect(sheets).not.toMatch(/(?:^|[;{\s])color\s*:\s*var\(--(?:aula-accent|primary-color)/);
   });
 });

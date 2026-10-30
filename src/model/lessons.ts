@@ -38,6 +38,11 @@ function normal(status: string | null): string {
   return status === null || status === "normal" ? "" : status;
 }
 
+/** Tells whether a lesson is cancelled, by Aula's status in Danish or English. */
+export function isCancelled(lesson: Lesson): boolean {
+  return /\b(?:aflyst|cancell?ed)\b/i.test(lesson.status ?? "");
+}
+
 function people(teachers: readonly string[]): string {
   return JSON.stringify(
     teachers
@@ -107,14 +112,18 @@ export function timeline(blocks: readonly LessonBlock[]): TimelineEntry[] {
   return result;
 }
 
-/** Returns a day's school hours: from its first lesson's start to its last lesson's end. */
+/**
+ * Returns a day's school hours: from its first lesson's start to its last lesson's end, leaving
+ * out cancelled lessons.
+ */
 export function schoolHours(
   lessons: readonly Lesson[],
 ): { start: string; end: string } | undefined {
-  const first = lessons[0];
+  const held = lessons.filter((lesson) => !isCancelled(lesson));
+  const first = held[0];
   if (!first) return undefined;
   let end = first.end;
-  for (const lesson of lessons) if (millis(lesson.end) > millis(end)) end = lesson.end;
+  for (const lesson of held) if (millis(lesson.end) > millis(end)) end = lesson.end;
   return { start: first.start, end };
 }
 

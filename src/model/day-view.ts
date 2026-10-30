@@ -1,21 +1,25 @@
 /**
- * The school day card's view: the day that matters now, for each child, under one header when
- * the children share it.
+ * The school day card's view: the day that matters now. Children who share it share one header,
+ * and each block holds a part for each of them, so that one question is answered for every child
+ * before the next.
  *
  * @packageDocumentation
  */
 
 import type { ViewContext } from "../core/context.ts";
+import { addDays, isWeekend } from "../core/dates.ts";
 import type { StoreSnapshot } from "../core/store.ts";
 import type { CalendarEvent, Child, Day } from "../core/types.ts";
 import {
   dayContent,
   planBlocks,
-  visibleChips,
+  visibleFacts,
   type BlockId,
   type BlockPlan,
-  type Chip,
   type DayContent,
+  type EmptyKind,
+  type Fact,
+  type TimedEvent,
 } from "./blocks.ts";
 import { bridgeRows, fitRows, type BridgeRow } from "./bridges.ts";
 import {
@@ -26,6 +30,7 @@ import {
   type Hold,
   type ViewOptions,
 } from "./child.ts";
+import { holidayOf, holidaySpan, isSchoolDay } from "./days.ts";
 import type { Focus } from "./focus.ts";
 import type { SubjectLabel } from "./subjects.ts";
 import { todayRest, type TodayRest } from "./today.ts";
@@ -58,15 +63,42 @@ export interface BridgeLine {
 export interface AboveRows {
   /** What is left of today, per child; empty when the focus day is today. */
   readonly today: readonly TodayEntry[];
-  /** Today's timed events still to come, each once. */
-  readonly events: readonly CalendarEvent[];
+  /** Today's events at a time still to come, each once. */
+  readonly events: readonly TimedEvent[];
+  /** Today's whole-day events and birthdays on a day without school, each once. */
+  readonly facts: readonly Fact[];
   /** The bridge rows that fit. */
   readonly bridges: readonly BridgeLine[];
   /** The days passed over in the rows that did not fit. */
   readonly moreDays: number;
-  /** The last day looked at, when no day ahead is a school day. */
-  readonly none: Day | undefined;
 }
+
+/** What a group's header says: the day, or, when no school day is ahead, why. */
+export type Hero =
+  | {
+      /** The focus day. */
+      readonly kind: "day";
+      /** The focus. */
+      readonly focus: Focus;
+    }
+  | {
+      /** A holiday up to the last day the data covers. */
+      readonly kind: "holiday";
+      /** The holiday. */
+      readonly event: CalendarEvent;
+      /** Its own first day, even before the range. */
+      readonly first: Day;
+      /** Its own last day, even beyond the range. */
+      readonly last: Day;
+      /** The weekday after it, when school starts again, if it is beyond the data. */
+      readonly resumes: Day | undefined;
+    }
+  | {
+      /** No school day in the data, and no holiday to say why. */
+      readonly kind: "none";
+      /** The last day the data covers. */
+      readonly horizon: Day;
+    };
 
 /** A child's school day. */
 export interface DayChildView {
@@ -76,26 +108,48 @@ export interface DayChildView {
   readonly state: ChildState;
   /** The child's focus day. */
   readonly focus: Focus;
-  /** The rows above the child's header; undefined under a shared header, which has them. */
-  readonly above: AboveRows | undefined;
   /** The focus day's content. */
   readonly content: DayContent | undefined;
   /** The focus day's blocks. */
   readonly plan: BlockPlan | undefined;
-  /** The chips of the child's header: under a shared header, those not every child has. */
-  readonly chips: readonly Chip[];
+  /** The child's own facts: under a shared header, those not every child has. */
+  readonly facts: readonly Fact[];
+}
+
+/** A child's part of a block. */
+export interface BlockPart {
+  /** The child. */
+  readonly child: DayChildView;
+  /** Why the part says it has nothing; "none" for the block's own sentence, as for no events. */
+  readonly empty: EmptyKind | "none" | undefined;
+}
+
+/** A block, with a part for each child of its group. */
+export interface GroupBlock {
+  /** The block. */
+  readonly id: BlockId;
+  /** The children's parts, in the children's order. */
+  readonly parts: readonly BlockPart[];
+}
+
+/** Children who share a focus day, under one header; or one child not ready to be shown. */
+export interface DayGroup {
+  /** The children, in order. */
+  readonly children: readonly DayChildView[];
+  /** The header; undefined while the child is not ready. */
+  readonly hero: Hero | undefined;
+  /** The rows above the header. */
+  readonly above: AboveRows | undefined;
+  /** The header's facts: every child's, or the one child's. */
+  readonly facts: readonly Fact[];
+  /** The blocks, in the configured order, each with a part per child. */
+  readonly blocks: readonly GroupBlock[];
 }
 
 /** The school day card's view. */
 export interface DayCardView {
-  /** One child; children under one header; or children each with their own. */
-  readonly layout: "single" | "shared" | "separate";
-  /** The children shown, in order. */
-  readonly children: readonly DayChildView[];
-  /** The shared header, when the children have the same focus day. */
-  readonly shared:
-    | { readonly focus: Focus; readonly above: AboveRows; readonly chips: readonly Chip[] }
-    | undefined;
+  /** The groups, in the order of their children. */
+  readonly groups: readonly DayGroup[];
   /** The configured child ids no child has. */
   readonly missing: readonly number[];
   /** Whether the children go to different schools, so that each child's names its own. */
@@ -104,10 +158,10 @@ export interface DayCardView {
   readonly size: number;
 }
 
-function rest(basis: ChildBasis, ctx: ViewContext): TodayRest | undefined {
-  if (basis.focus.day === basis.focus.today || basis.focus.horizon === undefined) return undefined;
-  const today = dayIn(basis, basis.focus.today);
-  return today?.known ? todayRest(today, ctx.now) : undefined;
+function factKey(fact: Fact): string {
+  return fact.kind === "event"
+    ? `event:${String(fact.event.id)}`
+    : `birthday:${fact.birthday.name}:${fact.birthday.date}`;
 }
 
 function rowKey(row: BridgeRow): string {
@@ -123,19 +177,45 @@ function rowKey(row: BridgeRow): string {
   }
 }
 
-function above(bases: readonly ChildBasis[], ctx: ViewContext): AboveRows {
+// On a day without school, the rest of today also names its whole-day events and birthdays;
+// after the switch on a school day they are over as far as the card is concerned.
+function rest(basis: ChildBasis, ctx: ViewContext, blocks: readonly BlockId[]) {
+  const { focus } = basis;
+  if (focus.day === focus.today) return undefined;
+  const view = dayIn(basis, focus.today);
+  if (!view?.known) return undefined;
+  const facts = isSchoolDay(view, basis.rules.timetabled)
+    ? []
+    : visibleFacts(dayContent(view, basis.rules, ctx.now, true), blocks);
+  return todayRest(view, ctx.now, ctx.zone, facts);
+}
+
+function above(
+  bases: readonly ChildBasis[],
+  ctx: ViewContext,
+  blocks: readonly BlockId[],
+  hero: Hero,
+): AboveRows {
   const today: TodayEntry[] = [];
-  const events = new Map<string, CalendarEvent>();
+  const events = new Map<string, TimedEvent>();
+  const facts = new Map<string, Fact>();
   for (const basis of bases) {
-    const left = rest(basis, ctx);
+    const left = rest(basis, ctx, blocks);
     if (!left) continue;
     const running = left.running && basis.rules.namer(left.running.lesson.title);
     today.push({ child: basis.child, rest: left, running });
-    for (const event of left.events) events.set(String(event.id), event);
+    for (const item of left.events) events.set(String(item.event.id), item);
+    for (const fact of left.facts) facts.set(factKey(fact), fact);
   }
+  const named = new Set(
+    [...facts.values()].flatMap((fact) => (fact.kind === "event" ? [fact.event.id] : [])),
+  );
   const lines = new Map<string, { row: BridgeRow; children: Child[] }>();
   for (const basis of bases) {
-    for (const row of bridgeRows(basis.days, basis.focus)) {
+    for (const row of bridgeRows(basis.days, basis.focus, named)) {
+      // The header names the holiday that lasts to the end of the data.
+      if (hero.kind === "holiday" && row.kind === "holiday" && row.event.id === hero.event.id)
+        continue;
       const key = rowKey(row);
       const line = lines.get(key);
       if (line) line.children.push(basis.child);
@@ -149,45 +229,119 @@ function above(bases: readonly ChildBasis[], ctx: ViewContext): AboveRows {
     sorted.map((line) => line.row),
     today.length > 0,
   );
-  const first = bases[0];
   return {
     today,
     events: [...events.values()],
+    facts: [...facts.values()],
     bridges: rows.map((row) => {
       const children = lines.get(rowKey(row))?.children ?? [];
       return { row, only: children.length === bases.length ? [] : children };
     }),
     moreDays,
-    none: first?.focus.reason === "none" ? first.focus.horizon : undefined,
   };
 }
 
-function chipKey(chip: Chip): string {
-  return chip.kind === "event"
-    ? `event:${String(chip.event.id)}`
-    : `birthday:${chip.birthday.name}`;
+/**
+ * Returns the header of a child with no school day ahead: the holiday that covers the last day
+ * the data has, and the weekday after it when that is beyond the data; else that last day.
+ */
+export function noSchoolHero(basis: ChildBasis, horizon: Day): Hero {
+  const view = dayIn(basis, horizon);
+  const holiday = view && holidayOf(view);
+  if (!holiday) return { kind: "none", horizon };
+  const { first, last } = holidaySpan(holiday, horizon);
+  let resumes = addDays(last, 1);
+  while (isWeekend(resumes)) resumes = addDays(resumes, 1);
+  return {
+    kind: "holiday",
+    event: holiday,
+    first,
+    last,
+    resumes: resumes > horizon ? resumes : undefined,
+  };
 }
 
-function size(children: readonly DayChildView[]): number {
-  let total = 3;
-  for (const view of children) {
-    if (!view.content) continue;
-    const { timetable, homework, plan, pack, events, birthdays } = view.content;
-    const lessons = timetable.filter((row) => row.kind === "lesson").length;
-    const breaks = timetable.length - lessons;
-    const items = pack.reduce((sum, row) => sum + row.items.length, 0);
-    total +=
-      lessons +
-      breaks / 2 +
-      2 * (homework.length + plan.length) +
-      Math.ceil(items / 3) +
-      events.length +
-      birthdays.length;
+function heroOf(basis: ChildBasis): Hero {
+  const { focus } = basis;
+  return focus.day === undefined
+    ? noSchoolHero(basis, focus.horizon ?? focus.today)
+    : { kind: "day", focus };
+}
+
+function childView(basis: ChildBasis, options: DayViewOptions, ctx: ViewContext): DayChildView {
+  const view = dayIn(basis, basis.focus.day);
+  const content =
+    basis.state.kind === "ready" && view
+      ? dayContent(view, basis.rules, ctx.now, basis.focus.reason === "today")
+      : undefined;
+  return {
+    child: basis.child,
+    state: basis.state,
+    focus: basis.focus,
+    content,
+    plan: content && planBlocks(content, options.blocks),
+    facts: content ? visibleFacts(content, options.blocks) : [],
+  };
+}
+
+function group(bases: readonly ChildBasis[], options: DayViewOptions, ctx: ViewContext): DayGroup {
+  const children = bases.map((basis) => childView(basis, options, ctx));
+  const [first] = bases;
+  if (first?.state.kind !== "ready") {
+    return { children, hero: undefined, above: undefined, facts: [], blocks: [] };
+  }
+  const hero = heroOf(first);
+  const common = (children[0]?.facts ?? []).filter((fact) =>
+    children.every((child) => child.facts.some((other) => factKey(other) === factKey(fact))),
+  );
+  const shared = new Set(common.map(factKey));
+  const own =
+    children.length > 1
+      ? children.map((child) => ({
+          ...child,
+          facts: child.facts.filter((fact) => !shared.has(factKey(fact))),
+        }))
+      : children.map((child) => ({ ...child, facts: [] }));
+  const blocks = options.blocks
+    .filter((id) => own.some((child) => child.plan?.blocks.some((block) => block.id === id)))
+    .map((id) => ({
+      id,
+      parts: own.map((child) => {
+        const planned = child.plan?.blocks.find((block) => block.id === id);
+        return { child, empty: planned ? planned.empty : ("none" as const) };
+      }),
+    }));
+  return {
+    children: own,
+    hero,
+    above: above(bases, ctx, options.blocks, hero),
+    facts: children.length > 1 ? common : (children[0]?.facts ?? []),
+    blocks,
+  };
+}
+
+function size(groups: readonly DayGroup[]): number {
+  let total = 0;
+  for (const item of groups) {
+    total += 3;
+    for (const child of item.children) {
+      if (!child.content) continue;
+      const { timetable, homework, plan, pack, timed } = child.content;
+      const lessons = timetable.filter((row) => row.kind === "lesson").length;
+      const breaks = timetable.length - lessons;
+      const items = pack.reduce((sum, row) => sum + row.items.length, 0);
+      total +=
+        1 + lessons + breaks / 2 + 2 * (homework.length + plan.length) + items / 3 + timed.length;
+    }
   }
   return Math.min(30, Math.round(total));
 }
 
-/** Builds the school day card's view. */
+/**
+ * Builds the school day card's view. Once every child can be shown, children with the same focus
+ * day share a header; until then each child stands alone, so that a header never forms from
+ * some of the children only.
+ */
 export function dayCardView(
   snapshot: StoreSnapshot,
   options: DayViewOptions,
@@ -195,48 +349,20 @@ export function dayCardView(
   hold: Hold,
 ): DayCardView {
   const { bases, missing } = childBases(snapshot, options, ctx, hold);
-  const ready = bases.filter((basis) => basis.state.kind === "ready");
-  const lead = ready[0]?.focus;
-  const shared =
-    bases.length > 1 &&
-    lead?.day !== undefined &&
-    ready.every((basis) => basis.focus.day === lead.day && basis.focus.reason === lead.reason);
-  const children = bases.map((basis): DayChildView => {
-    const view = dayIn(basis, basis.focus.day);
-    const content =
-      basis.state.kind === "ready" && view
-        ? dayContent(view, basis.rules, ctx.now, basis.focus.reason === "today")
-        : undefined;
-    return {
-      child: basis.child,
-      state: basis.state,
-      focus: basis.focus,
-      above: shared || basis.state.kind !== "ready" ? undefined : above([basis], ctx),
-      content,
-      plan: content && planBlocks(content, options.blocks),
-      chips: content ? visibleChips(content, options.blocks) : [],
-    };
-  });
-  let header: DayCardView["shared"];
-  let shown = children;
-  if (shared) {
-    const withContent = children.filter((view) => view.content !== undefined);
-    const common = (withContent[0]?.chips ?? []).filter((chip) =>
-      withContent.every((view) => view.chips.some((other) => chipKey(other) === chipKey(chip))),
-    );
-    const commonKeys = new Set(common.map(chipKey));
-    header = { focus: lead, above: above(ready, ctx), chips: common };
-    shown = children.map((view) => ({
-      ...view,
-      chips: view.chips.filter((chip) => !commonKeys.has(chipKey(chip))),
-    }));
+  const ready = bases.every((basis) => basis.state.kind === "ready");
+  const together = new Map<string, ChildBasis[]>();
+  for (const basis of bases) {
+    const { focus } = basis;
+    const key = ready
+      ? `${focus.day ?? ""}|${focus.reason}|${focus.horizon ?? ""}`
+      : String(together.size);
+    together.set(key, [...(together.get(key) ?? []), basis]);
   }
+  const groups = [...together.values()].map((items) => group(items, options, ctx));
   return {
-    layout: bases.length <= 1 ? "single" : shared ? "shared" : "separate",
-    children: shown,
-    shared: header,
+    groups,
     missing,
     differentSchools: new Set(bases.map((basis) => basis.child.institution_name)).size > 1,
-    size: bases.some((basis) => basis.state.kind === "ready") ? size(shown) : 9,
+    size: bases.some((basis) => basis.state.kind === "ready") ? size(groups) : 9,
   };
 }

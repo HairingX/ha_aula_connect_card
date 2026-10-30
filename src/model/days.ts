@@ -75,13 +75,35 @@ export function eventDays(event: CalendarEvent, zone: string): Day[] {
   return Array.from({ length: count }, (_, index) => addDays(first, index));
 }
 
-/** Returns an all-day event's first and last day; a timed event's first and last in `zone`. */
-export function eventSpan(event: CalendarEvent, zone: string): { first: Day; last: Day } {
+/**
+ * How an event is on a day: all day; within the day; from a time on its first of several days;
+ * through the whole of a day between; until a time on its last day.
+ */
+export type EventSpan = "allDay" | "within" | "from" | "through" | "until";
+
+/** Returns how an event is on one of its days, in a time zone. */
+export function spanOn(event: CalendarEvent, day: Day, zone: string): EventSpan {
+  if (event.all_day) return "allDay";
   const days = eventDays(event, zone);
-  return {
-    first: days[0] ?? event.start.slice(0, 10),
-    last: days[days.length - 1] ?? event.start.slice(0, 10),
-  };
+  if (days.length <= 1) return "within";
+  if (day === days[0]) return "from";
+  return day === days[days.length - 1] ? "until" : "through";
+}
+
+/** Tells whether an event lasts the whole of a day: all day, or a day it runs through. */
+export function isWholeDay(event: CalendarEvent, day: Day, zone: string): boolean {
+  const span = spanOn(event, day, zone);
+  return span === "allDay" || span === "through";
+}
+
+/**
+ * Returns a holiday's own first and last day, even beyond the range; `day`, a day it covers,
+ * where its dates cannot be read.
+ */
+export function holidaySpan(event: CalendarEvent, day: Day): { first: Day; last: Day } {
+  const first = isDay(event.start) ? event.start : day;
+  const last = isDay(event.end) && event.end > first ? addDays(event.end, -1) : first;
+  return { first, last };
 }
 
 function startTime(item: { start: string }): number {

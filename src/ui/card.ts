@@ -10,7 +10,7 @@ import { html, LitElement, nothing, type TemplateResult } from "lit";
 
 import { viewContext, type ViewContext } from "../core/context.ts";
 import { rememberLanguage } from "../core/memory.ts";
-import type { StoreSnapshot } from "../core/store.ts";
+import { storeFor, type StoreSnapshot } from "../core/store.ts";
 import type { ChildKey, HomeAssistant } from "../core/types.ts";
 import type { Hold } from "../model/child.ts";
 import { heldFocus, IDLE_RESET_MS, type Focus } from "../model/focus.ts";
@@ -45,7 +45,23 @@ export interface CardState {
   togglePlan(key: string): void;
 }
 
-const INTERACTIONS = ["pointerdown", "keydown", "wheel"] as const;
+// A screen reader, voice control or find-in-page opens a disclosure with a bare click or none.
+const INTERACTIONS = ["pointerdown", "keydown", "wheel", "click", "focusin"] as const;
+
+/** How long a stub waits for the children to be listed for the editor. */
+export const STUB_WAIT_MS = 3_000;
+
+/**
+ * Remembers the language and lists the children for the editor through the page's store, and
+ * returns a card's stub: only its type, so that the defaults follow later versions.
+ */
+export async function stub(type: string, hass?: HomeAssistant): Promise<{ type: string }> {
+  if (hass) {
+    rememberLanguage(hass.language);
+    await storeFor(hass).whenListed(STUB_WAIT_MS);
+  }
+  return { type: `custom:${type}` };
+}
 
 /** The base of the three card elements. */
 export abstract class AulaCard<Config extends CardConfigBase, View extends CardViewBase>
@@ -62,6 +78,7 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
   private readonly opened = new Map<string, boolean>();
   private readonly cut = new Map<string, boolean>();
   private lastSize: number | undefined;
+  private resized: ResizeObserver | undefined;
 
   constructor() {
     super();
@@ -125,11 +142,13 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     this.renderRoot.addEventListener("scroll", this.touched, { capture: true, passive: true });
   }
 
-  /** Stops tracking touches. */
+  /** Stops tracking touches and sizes. */
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     for (const type of INTERACTIONS) this.removeEventListener(type, this.touched);
     this.renderRoot.removeEventListener("scroll", this.touched, { capture: true });
+    this.resized?.disconnect();
+    this.resized = undefined;
   }
 
   private readonly touched = (): void => {
@@ -165,6 +184,7 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     return (event) => {
       const open = (event.currentTarget as HTMLDetailsElement).open;
       if (open === this.isOpen(key, fallback)) return;
+      this.lastInteraction = Date.now();
       this.opened.set(key, open);
       this.requestUpdate();
     };
@@ -177,14 +197,24 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
 
   /** Opens or closes a plan block. */
   togglePlan(key: string): void {
+    this.lastInteraction = Date.now();
     this.opened.set(key, !(this.opened.get(key) ?? false));
     this.requestUpdate();
   }
 
-  /** Measures which plan blocks cut a note short, so that "Vis mere" shows only then. */
+  /**
+   * Measures which plan blocks cut a note short, so that "Vis mere" shows only then: after each
+   * render, and when a block's width changes, as when the card is turned or shown.
+   */
   protected override updated(): void {
     let changed = false;
+    if (typeof ResizeObserver === "function") {
+      this.resized ??= new ResizeObserver(() => {
+        this.requestUpdate();
+      });
+    }
     for (const block of this.renderRoot.querySelectorAll<HTMLElement>("[data-plan]")) {
+      this.resized?.observe(block);
       if (block.classList.contains("open")) continue;
       const key = block.dataset.plan ?? "";
       const cut = [...block.querySelectorAll<HTMLElement>(".plan-text")].some(
@@ -219,13 +249,21 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     const top = html`${children.refreshing ? refreshing(t) : nothing}${
       children.error === undefined ? nothing : apiError(children.error, t)
     }`;
-    if (children.list.length === 0) return html`${top}${alert("info", t("noChildren"))}`;
-    const view = this.view(snapshot, config, ctx, this.hold);
-    this.lastSize = view.size;
-    return html`${top}${view.missing.map((id) => alert("warning", t("childNotFound", { id })))}${this.content(
-      view,
-      config,
-      ctx,
-    )}`;
+    // An empty list is retried for a while, as Home Assistant answers one while it starts.
+    if (children.list.length === 0) {
+      return children.refreshing ? loading(t) : html`${top}${alert("info", t("noChildren"))}`;
+    }
+    // On a wall nobody may be near to reload: data the card cannot show is said, not a blank.
+    try {
+      const view = this.view(snapshot, config, ctx, this.hold);
+      this.lastSize = view.size;
+      return html`${top}${view.missing.map((id) => alert("warning", t("childNotFound", { id })))}${this.content(
+        view,
+        config,
+        ctx,
+      )}`;
+    } catch (error) {
+      return alert("error", t("errorGeneric", { message: String(error) }));
+    }
   }
 }

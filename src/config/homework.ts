@@ -15,12 +15,13 @@ export const HOMEWORK_CARD = "aula-connect-homework-card";
 export type HomeworkCardConfig = CommonConfig;
 
 /**
- * Checks a homework card's configuration and fills in its defaults.
+ * Checks a homework card's configuration and fills in its defaults; `lenient` leaves out the
+ * rows the editor is still filling in.
  *
  * @throws Error naming the first invalid key.
  */
-export function resolveHomeworkConfig(config: unknown): HomeworkCardConfig {
-  return resolveCommon(configRecord(config));
+export function resolveHomeworkConfig(config: unknown, lenient = false): HomeworkCardConfig {
+  return resolveCommon(configRecord(config), lenient);
 }
 
 /** Returns the homework card's form. */

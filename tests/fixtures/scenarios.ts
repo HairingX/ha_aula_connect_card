@@ -5,7 +5,7 @@
  * @packageDocumentation
  */
 
-import type { Child, DayRange, WeekData } from "../../src/core/types.ts";
+import type { Child, DayRange, Task, WeekData } from "../../src/core/types.ts";
 import { oskarData } from "./oskar.ts";
 import {
   allDay,
@@ -137,7 +137,206 @@ export const SCENARIOS: readonly Scenario[] = [
     "2026-10-26",
     [IDA, OSKAR_ELSEWHERE],
   ),
+  scenario(
+    "fri-1400-noplan",
+    "Friday 14:00: next week's plan is not in Aula yet",
+    "2026-10-30",
+    "14:00",
+    fortnight("2026-10-26", noPlanFrom("2026-11-02"), noPlanFrom("2026-11-02")),
+  ),
+  scenario(
+    "sun-1800-noplan",
+    "Sunday 18:00: Monday's week plan is not in Aula yet",
+    "2026-11-01",
+    "18:00",
+    fortnight("2026-10-26", noPlanFrom("2026-11-02"), noPlanFrom("2026-11-02")),
+  ),
+  scenario(
+    "thu-1930-stress",
+    "Thursday 19:30: long names, many notes, abbreviations",
+    "2026-10-29",
+    "19:30",
+    fortnight("2026-10-26", stress),
+  ),
+  scenario(
+    "fri-1400-longholiday",
+    "Friday 14:00: a holiday with a long name next week",
+    "2026-10-30",
+    "14:00",
+    fortnight("2026-10-26", (data) => {
+      const closed = without(data, "2026-11-02", "2026-11-04");
+      return {
+        ...closed,
+        events: [
+          ...closed.events,
+          allDay(
+            "lh",
+            "Kristi himmelfartsferie og planlægningsdage",
+            "holiday",
+            "2026-11-02",
+            "2026-11-04",
+          ),
+        ],
+      };
+    }),
+  ),
+  scenario(
+    "sat-1000-lesson",
+    "Saturday 10:00, with a lesson that Saturday",
+    "2026-10-31",
+    "10:00",
+    fortnight("2026-10-26", (data) => ({
+      ...data,
+      lessons: [
+        ...data.lessons,
+        {
+          id: "sat",
+          start: local("2026-10-31", "09:00"),
+          end: local("2026-10-31", "12:00"),
+          title: "IDR",
+          teachers: ["Jonas Berg Vestergaard"],
+          location: "HAL - Idrætshal",
+          status: null,
+        },
+      ],
+    })),
+  ),
+  scenario(
+    "sat-1000-birthday",
+    "Saturday 10:00: a birthday and a scout trip over the weekend",
+    "2026-10-31",
+    "10:00",
+    fortnight("2026-10-26", (data) => ({
+      ...data,
+      birthdays: [...data.birthdays, { date: "2026-10-31", name: "Karl" }],
+      events: [...data.events, allDay("we", "Spejdertur", "event", "2026-10-31", "2026-11-01")],
+    })),
+  ),
+  scenario(
+    "tue-1930-camp",
+    "Tuesday 19:30: a camp from Tuesday 08:00 to Thursday 14:00",
+    "2026-11-03",
+    "19:30",
+    fortnight("2026-11-02", (data) => {
+      const away = without(data, "2026-11-03", "2026-11-05");
+      return {
+        ...away,
+        events: [
+          ...away.events,
+          {
+            id: "camp",
+            start: local("2026-11-03", "08:00"),
+            end: local("2026-11-05", "14:00"),
+            all_day: false,
+            title: "Lejrskole i Thy",
+            type: "excursion",
+            location: "Thy Lejren",
+          },
+        ],
+      };
+    }),
+    "2026-11-02",
+  ),
 ];
+
+function note(date: string, id: number, type: string, subject: string, content: string): Task {
+  return { id, date, type, title: null, content, subject, group: "3.B", author: "Karen Lund" };
+}
+
+/** Removes the notes from `first` on: a week plan not yet in Aula. */
+function noPlanFrom(first: string): (data: WeekData) => WeekData {
+  return (data) => ({ ...data, tasks: data.tasks.filter((task) => task.date < first) });
+}
+
+// Friday 30 October with long names, many notes, a long link and abbreviations in the notes.
+function stress(data: WeekData): WeekData {
+  const fri = "2026-10-30";
+  return {
+    ...data,
+    lessons: data.lessons
+      .filter((lesson) => !lesson.start.startsWith(fri))
+      .concat([
+        {
+          id: "s1",
+          start: local(fri, "08:00"),
+          end: local(fri, "09:30"),
+          title: "UUV",
+          teachers: ["Karen Lund"],
+          location: "Fællesrummet ved indskolingen (bygning C, 1. sal)",
+          status: "substitute",
+        },
+        {
+          id: "s2",
+          start: local(fri, "10:05"),
+          end: local(fri, "11:35"),
+          title: "HÅN",
+          teachers: ["Lars Krogh"],
+          location: "Sløjd",
+          status: "Flyttet til lokale 117 pga. vandskade",
+        },
+        {
+          id: "s3",
+          start: local(fri, "12:10"),
+          end: local(fri, "13:40"),
+          title: "3.B Kristendomskundskab og filosofi",
+          teachers: ["Pia Sand"],
+          location: "B12",
+          status: null,
+        },
+      ]),
+    tasks: data.tasks
+      .filter((task) => task.date !== fri)
+      .concat([
+        note(
+          fri,
+          201,
+          "task",
+          "Understøttende undervisning",
+          "Læs s. 38+39 i læsebogen. Husk at læse 20 min hver dag – skriv det i læselogbogen.",
+        ),
+        note(
+          fri,
+          202,
+          "task",
+          "Håndværk og design",
+          "Se videoen før timen: https://www.example.com/meebook/forloeb/haandvaerk-og-design/uge-44/video-om-sikkerhed-ved-hobbykniven-og-stiksaven",
+        ),
+        note(
+          fri,
+          203,
+          "task",
+          "Matematik",
+          "Opgave 1–4 s. 12. Medbring lommeregner kl. 8.15 til prøven.",
+        ),
+        note(fri, 204, "task", "Engelsk", "Learn the words for the test. Remember your PE kit."),
+        note(
+          fri,
+          205,
+          "comment",
+          "Dansk",
+          "Vi læser højt, f.eks. fra kapitel 5, og taler om bl.a. personerne. Vi skal have besøg med forfatteren kl. 10.",
+        ),
+        note(
+          fri,
+          206,
+          "comment",
+          "Historie",
+          "Vi ser filmen. Husk madpakke – vi spiser i klassen. Tag gerne en pude med.",
+        ),
+      ]),
+    events: data.events.concat([
+      {
+        id: "x1",
+        start: fri,
+        end: "2026-10-31",
+        all_day: true,
+        title: "Halloween-fest for hele indskolingen i multisalen (udklædning valgfri)",
+        type: "event",
+        location: "Multisalen",
+      },
+    ]),
+  };
+}
 
 function holidayOskar(monday: string): WeekData {
   const data = without(oskarData(monday), "2026-10-10", "2026-10-18");

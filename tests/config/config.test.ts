@@ -87,8 +87,8 @@ describe("checking a configuration", () => {
     [{ children: ["Ida"] }, 'children: "Ida" is not a child id'],
     [{ weeks: 3 }, "weeks: must be 1 or 2, not 3"],
     [{ size: "huge" }, "size: must be normal or large"],
-    [{ switch_time: "25:00" }, 'switch_time: must be a time such as "12:00"'],
-    [{ switch_time: true }, 'switch_time: must be a time such as "12:00"'],
+    [{ switch_time: "25:00" }, 'switch_time: "25:00" is not a time; write it as "12:00"'],
+    [{ switch_time: true }, "switch_time: true is not a time"],
     [{ order: "timetable" }, "order: must be a list of blocks"],
     [
       { order: ["timetable", "pack", "lunch"] },
@@ -153,20 +153,67 @@ describe("the switch time", () => {
     [null, 720],
     ["", 720],
     ["12:00", 720],
+    ["12.00", 720],
     ["9:05", 545],
     ["12:00:30", 720],
     ["00:00", null],
     ["00:00:00", null],
     [0, null],
+    [12, 720],
+    [23, 1380],
+    [60, 60],
     [720, 720],
-    [43_200, 720],
     [1439, 1439],
+    [3600, 60],
+    [43_200, 720],
+    [86_399, 1439],
   ])("reads %j as %j", (value, minutes) => {
     expect(parseSwitchTime(value)).toBe(minutes);
   });
 
-  it.each([["12:60"], ["24:00"], ["noon"], [86_400], [-1], [12.5]])("refuses %j", (value) => {
-    expect(() => parseSwitchTime(value)).toThrow('switch_time: must be a time such as "12:00"');
+  it.each([["12:60"], ["24:00"], ["noon"], [24], [59], [1440], [3599], [86_400], [-1], [12.5]])(
+    "refuses %j, saying how to write a time",
+    (value) => {
+      expect(() => parseSwitchTime(value)).toThrow(
+        `switch_time: ${JSON.stringify(value)} is not a time; write it as "12:00", or a whole hour such as 12`,
+      );
+    },
+  );
+});
+
+describe("rows the editor is still filling in", () => {
+  const unfinished = {
+    packing: [
+      { subject: "Idræt", items: [] },
+      { subject: "", items: ["Tøj"] },
+      { subject: "Svømning", items: ["Badetøj"] },
+    ],
+    subject_names: [{ aula: "UUV" }, { name: "Bevægelse" }, { aula: "IDR", name: "Idræt" }],
+  };
+
+  it("are left out for the editor, which stays", () => {
+    expect(resolveDayConfig(unfinished, true)).toMatchObject({
+      packing: [{ subject: "Svømning", items: ["Badetøj"] }],
+      subjectNames: [{ aula: "IDR", name: "Idræt" }],
+    });
+    expect(() => {
+      dayConfigForm().assertConfig(unfinished);
+    }).not.toThrow();
+  });
+
+  it("are said by the card itself, with what they lack", () => {
+    expect(() => resolveDayConfig({ packing: unfinished.packing })).toThrow(
+      "packing[0].items: must name at least one thing",
+    );
+    expect(() => resolveDayConfig({ subject_names: unfinished.subject_names })).toThrow(
+      "subject_names[0].name: must be a name",
+    );
+  });
+
+  it("still refuse what is not a row", () => {
+    expect(() => resolveDayConfig({ packing: ["Idræt"] }, true)).toThrow(
+      "packing[0]: must be a mapping",
+    );
   });
 });
 
@@ -201,10 +248,13 @@ describe("the editor", () => {
     ]);
   });
 
-  it("lists the children the cards have seen, or takes ids typed in", () => {
+  it("lists the children the cards have seen by their ids as YAML has them, or takes ids typed in", () => {
     expect(dayConfigForm().schema[0]).toMatchObject({
       selector: { select: { mode: "dropdown", custom_value: true, options: [] } },
     });
+    expect(() => {
+      dayConfigForm().assertConfig({ children: ["1001"] });
+    }).not.toThrow();
     rememberChildren(CHILDREN);
     expect(dayConfigForm().schema[0]).toMatchObject({
       selector: {
@@ -212,11 +262,31 @@ describe("the editor", () => {
           mode: "list",
           custom_value: false,
           options: [
-            { value: "1001", label: "Ida · Bakkedal Skole" },
-            { value: "1002", label: "Oskar · Bakkedal Skole" },
+            { value: 1001, label: "Ida · Bakkedal Skole" },
+            { value: 1002, label: "Oskar · Bakkedal Skole" },
           ],
         },
       },
+    });
+  });
+
+  it("shows only what it can show as the card does, and says how to write the rest", () => {
+    rememberChildren(CHILDREN);
+    const form = weekConfigForm();
+    expect(() => {
+      form.assertConfig({ children: [1001], weeks: 1, switch_time: "07:30" });
+    }).not.toThrow();
+    expect(() => {
+      form.assertConfig({ children: ["1001"] });
+    }).toThrow("children: write the child ids as numbers, such as [1001], to choose here");
+    expect(() => {
+      form.assertConfig({ weeks: "2" });
+    }).toThrow("weeks: write 1 or 2 without quotes to choose here");
+    expect(() => {
+      form.assertConfig({ switch_time: 720 });
+    }).toThrow('switch_time: write the time as "12:00" to set it here');
+    expect(form.schema[1]).toMatchObject({
+      selector: { select: { options: [{ value: 1 }, { value: 2 }] } },
     });
   });
 
@@ -231,33 +301,57 @@ describe("the editor", () => {
 
   it("shows the blocks on by default, and 0.0.2's switch only where it is set", () => {
     const show = dayConfigForm().schema.find((item) => item.name === "show");
+    const hidden = (name: string) => ({
+      condition: "or",
+      conditions: [
+        { field: "tasks", operator: "not_eq", value: false },
+        { field: name, operator: "exists" },
+      ],
+    });
     expect(show).toMatchObject({
       type: "expandable",
       flatten: false,
       schema: [
-        ...ALL.map((name) => ({ name, default: true, selector: { boolean: {} } })),
+        ...ALL.map((name) => ({
+          name,
+          default: true,
+          selector: { boolean: {} },
+          ...(name === "homework" || name === "plan" ? { visible: hidden(name) } : {}),
+        })),
         { name: "tasks", visible: { field: "tasks", operator: "exists" } },
       ],
     });
   });
 
+  it("moves blocks, but not birthdays, which the header says", () => {
+    const order = dayConfigForm().schema.find((item) => item.name === "order");
+    expect(JSON.stringify(order)).not.toContain('"birthdays"');
+  });
+
   it("labels and explains the fields in Danish and English", () => {
     rememberLanguage("da");
     const da = weekConfigForm();
-    expect(da.computeLabel({ name: "order" })).toBe("Vis først");
+    expect(da.computeLabel({ name: "order" })).toBe("Flyt en blok øverst");
+    expect(da.computeHelper({ name: "order" })).toContain(
+      "Resten følger standardrækkefølgen: Lektier, Husk, Skema, Dagens plan, Begivenheder.",
+    );
     expect(da.computeLabel({ name: "timetable" })).toBe("Skema");
     expect(da.computeLabel({ name: "tasks" })).toBe("Lektier og noter (tidligere indstilling)");
     expect(da.computeLabel({ name: "packing" })).toBe("");
     expect(da.computeLabel({ name: "unknown" })).toBeUndefined();
     expect(da.computeHelper({ name: "switch_time" })).toBe(
-      "Før dette klokkeslæt vises i dag. Standard 12.00; 00.00 viser i dag hele dagen.",
+      "Tomt felt = 12.00. Før dette klokkeslæt vises i dag; 00.00 viser i dag hele dagen.",
     );
-    expect(da.computeHelper({ name: "weeks" })).toBeUndefined();
+    expect(da.computeHelper({ name: "weeks" })).toBe("Standard: to uger.");
+    expect(da.computeHelper({ name: "size" })).toBe("Standard: normal.");
+    expect(da.schema.find((item) => item.name === "show")).toMatchObject({
+      title: "Vis og skjul blokke",
+    });
     rememberLanguage("en");
     const en = weekConfigForm();
     expect(en.computeLabel({ name: "switch_time" })).toBe("Show the next school day from");
     expect(en.schema.find((item) => item.name === "packing_group")).toMatchObject({
-      title: "Remember list",
+      title: "Things to bring",
     });
   });
 

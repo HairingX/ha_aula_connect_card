@@ -5,9 +5,9 @@
  * @packageDocumentation
  */
 
-import { addDays, isDay, isWeekend } from "../core/dates.ts";
+import { addDays, isWeekend } from "../core/dates.ts";
 import type { Birthday, CalendarEvent, Day } from "../core/types.ts";
-import { holidayOf, type DayView } from "./days.ts";
+import { holidayOf, holidaySpan, type DayView } from "./days.ts";
 import type { Focus } from "./focus.ts";
 
 /** Something on a weekend day. */
@@ -37,18 +37,16 @@ export type BridgeRow =
       readonly days: readonly Day[];
     };
 
-function holidayDates(event: CalendarEvent, day: Day): { first: Day; last: Day } {
-  const first = isDay(event.start) ? event.start : day;
-  const last = isDay(event.end) && event.end > first ? addDays(event.end, -1) : first;
-  return { first, last };
-}
-
 /**
  * Returns the bridge rows for the days the focus passed over, in date order. Today counts only
- * when a holiday covers it: the rest of today has its own row. A weekend with nothing on it gets
- * no row; everyone knows what a weekend is.
+ * when a holiday covers it: the rest of today has its own row, and an event `named` there gets
+ * no later row. A weekend with nothing on it gets no row; everyone knows what a weekend is.
  */
-export function bridgeRows(days: readonly DayView[], focus: Focus): BridgeRow[] {
+export function bridgeRows(
+  days: readonly DayView[],
+  focus: Focus,
+  named: ReadonlySet<CalendarEvent["id"]> = new Set(),
+): BridgeRow[] {
   const byDay = new Map(days.map((view) => [view.day, view]));
   const rows: BridgeRow[] = [];
   for (const day of focus.skipped) {
@@ -61,20 +59,26 @@ export function bridgeRows(days: readonly DayView[], focus: Focus): BridgeRow[] 
       if (last?.kind === "holiday" && last.event.id === holiday.id) {
         rows[rows.length - 1] = { ...last, days: [...last.days, day] };
       } else
-        rows.push({ kind: "holiday", event: holiday, ...holidayDates(holiday, day), days: [day] });
+        rows.push({ kind: "holiday", event: holiday, ...holidaySpan(holiday, day), days: [day] });
     } else if (day === focus.today) {
       continue;
     } else if (isWeekend(day)) {
+      const joined = last?.kind === "weekend" && follows ? last : undefined;
+      // An event over both days of a weekend is one item.
+      const seen = new Set(joined?.items.map((item) => item.kind === "event" && item.event.id));
       const items: BridgeItem[] = [
-        ...view.events.map((event) => ({ kind: "event" as const, event, day })),
+        ...view.events
+          .filter((event) => !named.has(event.id) && !seen.has(event.id))
+          .map((event) => ({ kind: "event" as const, event, day })),
         ...view.birthdays.map((birthday) => ({ kind: "birthday" as const, birthday, day })),
       ];
-      if (items.length === 0) continue;
-      if (last?.kind === "weekend" && follows) {
+      const continues = view.events.some((event) => seen.has(event.id));
+      if (items.length === 0 && !continues) continue;
+      if (joined) {
         rows[rows.length - 1] = {
-          ...last,
-          days: [...last.days, day],
-          items: [...last.items, ...items],
+          ...joined,
+          days: [...joined.days, day],
+          items: [...joined.items, ...items],
         };
       } else rows.push({ kind: "weekend", days: [day], items });
     } else if (last?.kind === "empty" && follows) {

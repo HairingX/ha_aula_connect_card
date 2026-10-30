@@ -1,25 +1,25 @@
 /**
- * The week card's view: each child's weeks day by day, with the days before today folded, the
- * focus day open, and a week whose school days are over collapsed.
+ * The week card's view: each child's weeks day by day, with the days that are over folded, the
+ * focus day open, and the weekend one row.
  *
  * @packageDocumentation
  */
 
 import type { ViewContext } from "../core/context.ts";
-import { addDays, isWeekend, startOfWeek, weekNumber } from "../core/dates.ts";
+import { addDays, isWeekend, startOfWeek, weekday, weekNumber } from "../core/dates.ts";
 import type { StoreSnapshot } from "../core/store.ts";
 import type { CalendarEvent, Child, Day } from "../core/types.ts";
 import {
   dayContent,
   planBlocks,
-  visibleChips,
+  visibleFacts,
   type BlockPlan,
-  type Chip,
   type DayContent,
+  type Fact,
 } from "./blocks.ts";
 import { childBases, dayIn, type ChildBasis, type ChildState, type Hold } from "./child.ts";
 import type { DayViewOptions } from "./day-view.ts";
-import { holidayOf, type DayView } from "./days.ts";
+import { holidayOf, holidaySpan, type DayView } from "./days.ts";
 import type { Focus } from "./focus.ts";
 import { todayRest } from "./today.ts";
 
@@ -37,41 +37,65 @@ export interface DayRowView {
   readonly content: DayContent;
   /** Its blocks, when opened. */
   readonly plan: BlockPlan;
-  /** Its chips. */
-  readonly chips: readonly Chip[];
+  /** Its events lasting the whole day, and birthdays. */
+  readonly facts: readonly Fact[];
   /** "I dag" or "I morgen" on its row. */
   readonly relation: "today" | "tomorrow" | undefined;
   /** Whether the day is over. */
   readonly past: boolean;
 }
 
+/** Which days a fold of the days that are over holds, when they make a whole. */
+export type FoldSpan = "weekdays" | "toSaturday" | "week";
+
 /** A row of a week. */
 export type WeekRow =
   | {
-      /** The days before today, folded into one row. */
+      /** The days that are over, folded into one row. */
       readonly kind: "earlier";
+      /** The days. */
       readonly days: readonly DayRowView[];
-      /** Whether they are every weekday of the week. */
-      readonly weekdays: boolean;
+      /** Whether they are Monday to Friday, to Saturday, or the whole week. */
+      readonly span: FoldSpan | undefined;
     }
   | {
       /** Today, once the focus has moved on, while school or an event is still to come. */
       readonly kind: "today";
+      /** The day. */
       readonly row: DayRowView;
+      /** When school ends, while it has not. */
       readonly ends: string | undefined;
     }
-  | { readonly kind: "focus"; readonly row: DayRowView; readonly focus: Focus }
-  | { readonly kind: "day"; readonly row: DayRowView }
   | {
-      /** Saturday and Sunday, when either has something on. */
+      /** The focus day, open. */
+      readonly kind: "focus";
+      /** The day. */
+      readonly row: DayRowView;
+      /** The focus. */
+      readonly focus: Focus;
+    }
+  | {
+      /** A day still to come, closed. */
+      readonly kind: "day";
+      /** The day. */
+      readonly row: DayRowView;
+    }
+  | {
+      /** Saturday and Sunday still to come, when either has something on. */
       readonly kind: "weekend";
+      /** The days with something on. */
       readonly days: readonly DayRowView[];
+      /** Whether one of them is today, with something still on. */
+      readonly today: boolean;
     }
   | {
       /** The days one holiday covers without lessons. */
       readonly kind: "holiday";
+      /** The holiday. */
       readonly event: CalendarEvent;
+      /** Its own first day. */
       readonly first: Day;
+      /** Its own last day. */
       readonly last: Day;
     };
 
@@ -83,10 +107,12 @@ export interface WeekSection {
   readonly number: number;
   /** This week or next. */
   readonly relation: "this" | "next";
+  /** Whether the data does not cover it yet: it is loading, not empty. */
+  readonly loading: boolean;
   /** Its rows, in date order after the folded days. */
   readonly rows: readonly WeekRow[];
-  /** Whether nothing of it is to come but its weekend: the week is collapsed. */
-  readonly collapsed: boolean;
+  /** Its number, when its week plan is not in Aula yet and no open day says so. */
+  readonly notYet: number | undefined;
 }
 
 /** A child's weeks. */
@@ -113,10 +139,12 @@ export interface WeekCardView {
   readonly size: number;
 }
 
-function holidayDates(event: CalendarEvent, fallback: Day): { first: Day; last: Day } {
-  const first = /^\d{4}-\d{2}-\d{2}$/.test(event.start) ? event.start : fallback;
-  const end = /^\d{4}-\d{2}-\d{2}$/.test(event.end) ? addDays(event.end, -1) : first;
-  return { first, last: end < first ? first : end };
+function span(days: readonly DayRowView[], weekdays: number): FoldSpan | undefined {
+  const weekend = days.filter((row) => isWeekend(row.day));
+  if (days.length - weekend.length < weekdays) return undefined;
+  if (weekend.length === 0) return "weekdays";
+  if (weekend.length === 2) return "week";
+  return weekday(weekend[0]?.day ?? "") === 6 ? "toSaturday" : undefined;
 }
 
 function week(
@@ -125,16 +153,24 @@ function week(
   options: WeekViewOptions,
   ctx: ViewContext,
 ): WeekSection {
-  const { focus } = basis;
+  const { focus, rules } = basis;
   const today = ctx.today;
   const views = basis.days.filter((view) => startOfWeek(view.day) === start);
+  const section = {
+    start,
+    number: weekNumber(start),
+    relation: start === startOfWeek(today) ? ("this" as const) : ("next" as const),
+  };
+  if (views.some((view) => !view.known)) {
+    return { ...section, loading: true, rows: [], notYet: undefined };
+  }
   const row = (view: DayView): DayRowView => {
-    const content = dayContent(view, basis.rules, ctx.now, view.day === today);
+    const content = dayContent(view, rules, ctx.now, view.day === today);
     return {
       day: view.day,
       content,
       plan: planBlocks(content, options.blocks),
-      chips: visibleChips(content, options.blocks),
+      facts: visibleFacts(content, options.blocks),
       relation:
         view.day === today ? "today" : view.day === addDays(today, 1) ? "tomorrow" : undefined,
       past: view.day < today,
@@ -151,46 +187,53 @@ function week(
   const todayView = dayIn(basis, today);
   const left =
     focus.day !== today && todayView?.known && !isWeekend(today) && !holidays.has(today)
-      ? todayRest(todayView, ctx.now)
+      ? todayRest(todayView, ctx.now, ctx.zone)
       : undefined;
   const earlier: DayRowView[] = [];
   const rows: WeekRow[] = [];
   const weekend: DayRowView[] = [];
+  let weekendToday = false;
   let lastHoliday: CalendarEvent | undefined;
   for (const view of views) {
     const holiday = holidays.get(view.day);
     if (holiday && !over(holiday)) {
       if (lastHoliday?.id !== holiday.id) {
-        rows.push({ kind: "holiday", event: holiday, ...holidayDates(holiday, view.day) });
+        rows.push({ kind: "holiday", event: holiday, ...holidaySpan(holiday, view.day) });
       }
       lastHoliday = holiday;
       continue;
     }
     lastHoliday = undefined;
-    if (isWeekend(view.day)) {
-      if (view.events.length > 0 || (basis.rules.weekPlan && view.birthdays.length > 0)) {
-        weekend.push(row(view));
+    if (view.day === focus.day) {
+      rows.push({ kind: "focus", row: row(view), focus });
+    } else if (isWeekend(view.day)) {
+      // A weekend day with nothing on it is left out; one that is over joins the fold.
+      const item = row(view);
+      const timed = item.plan.blocks.some((block) => block.id === "events");
+      if (item.facts.length === 0 && !timed) continue;
+      const current =
+        view.day === today && todayRest(view, ctx.now, ctx.zone, item.facts) !== undefined;
+      if (view.day < today || (view.day === today && !current)) earlier.push(item);
+      else {
+        weekend.push(item);
+        weekendToday ||= current;
       }
-    } else if (view.day === focus.day) rows.push({ kind: "focus", row: row(view), focus });
-    else if (view.day === today && left)
+    } else if (view.day === today && left) {
       rows.push({ kind: "today", row: row(view), ends: left.ends });
-    else if (view.day <= today) earlier.push(row(view));
+    } else if (view.day <= today) earlier.push(row(view));
     else rows.push({ kind: "day", row: row(view) });
   }
-  if (weekend.length > 0) rows.push({ kind: "weekend", days: weekend });
+  if (weekend.length > 0) rows.push({ kind: "weekend", days: weekend, today: weekendToday });
   const weekdays = views.filter((view) => !isWeekend(view.day)).length;
-  const result: WeekRow[] =
-    earlier.length > 0
-      ? [{ kind: "earlier", days: earlier, weekdays: earlier.length === weekdays }, ...rows]
-      : rows;
+  const focused = focus.day !== undefined && startOfWeek(focus.day) === start;
   return {
-    start,
-    number: weekNumber(start),
-    relation: start === startOfWeek(today) ? "this" : "next",
-    rows: result,
-    collapsed: !rows.some(
-      (item) => item.kind === "focus" || item.kind === "today" || item.kind === "day",
-    ),
+    ...section,
+    loading: false,
+    rows:
+      earlier.length > 0
+        ? [{ kind: "earlier", days: earlier, span: span(earlier, weekdays) }, ...rows]
+        : rows,
+    notYet: rules.planMissing.has(start) && !focused ? section.number : undefined,
   };
 }
 

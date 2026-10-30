@@ -19,10 +19,9 @@ import {
 } from "../config/homework.ts";
 import type { Hold } from "../model/child.ts";
 import { homeworkCardView, type HomeworkCardView } from "../model/homework-view.ts";
-import { AulaCard } from "../ui/card.ts";
+import { AulaCard, stub } from "../ui/card.ts";
 import { renderHomework } from "../ui/homework.ts";
 import { base, blocks, homeworkStyles } from "../ui/styles.ts";
-import { stub } from "./day-card.ts";
 
 /** The homework card. */
 export class AulaConnectHomeworkCard extends AulaCard<HomeworkCardConfig, HomeworkCardView> {
@@ -39,9 +38,9 @@ export class AulaConnectHomeworkCard extends AulaCard<HomeworkCardConfig, Homewo
     return stub(HOMEWORK_CARD, hass);
   }
 
-  /** Returns the card's size in a sections view: a section column wide, at least. */
-  getGridOptions(): { columns: number; rows: string; min_columns: number; min_rows: number } {
-    return { columns: 12, rows: "auto", min_columns: 12, min_rows: 3 };
+  /** Returns the card's size in a sections view: the section's whole width, for its columns. */
+  getGridOptions(): { columns: string; rows: string; min_columns: number; min_rows: number } {
+    return { columns: "full", rows: "auto", min_columns: 12, min_rows: 3 };
   }
 
   protected override resolve(raw: unknown): HomeworkCardConfig {

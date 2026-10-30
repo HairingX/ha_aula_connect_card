@@ -7,10 +7,18 @@
 
 import { selectChildren } from "../core/children.ts";
 import type { ViewContext } from "../core/context.ts";
+import { startOfWeek } from "../core/dates.ts";
 import type { StoreSnapshot } from "../core/store.ts";
-import { childKey, type Child, type ChildKey } from "../core/types.ts";
+import {
+  childKey,
+  type Child,
+  type ChildKey,
+  type Day,
+  type DayRange,
+  type WeekData,
+} from "../core/types.ts";
 import type { ContentRules } from "./blocks.ts";
-import { buildDays, type DayView } from "./days.ts";
+import { buildDays, isSchoolDay, isTimetabled, type DayView } from "./days.ts";
 import { chooseFocus, type Focus } from "./focus.ts";
 import type { PackRule } from "./pack.ts";
 import { subjectNamer, type SubjectName, type SubjectNamer } from "./subjects.ts";
@@ -69,6 +77,43 @@ function namerOf(names: readonly SubjectName[]): SubjectNamer {
   return namer;
 }
 
+const built = new WeakMap<WeekData, { key: string; days: DayView[] }>();
+
+// Data is replaced, never changed, so one child's days are built once for every card and tick.
+function daysOf(data: WeekData | undefined, range: DayRange, zone: string): DayView[] {
+  if (!data) return buildDays(data, range, zone);
+  const key = `${range.start}|${range.end}|${zone}`;
+  const cached = built.get(data);
+  if (cached?.key === key) return cached.days;
+  const days = buildDays(data, range, zone);
+  built.set(data, { key, days });
+  return days;
+}
+
+/**
+ * Returns the Mondays of the weeks whose week plan is not in Aula yet: a week the data covers,
+ * with a school day, and no note on any of its days. A week without school expects no plan.
+ */
+export function missingPlans(days: readonly DayView[], weekPlan: boolean): Set<Day> {
+  const missing = new Set<Day>();
+  if (!weekPlan) return missing;
+  const timetabled = isTimetabled(days);
+  const weeks = new Map<Day, DayView[]>();
+  for (const view of days) {
+    if (!view.known) continue;
+    const week = startOfWeek(view.day);
+    weeks.set(week, [...(weeks.get(week) ?? []), view]);
+  }
+  for (const [week, views] of weeks) {
+    if (
+      views.some((view) => isSchoolDay(view, timetabled)) &&
+      views.every((view) => view.notes.length === 0)
+    )
+      missing.add(week);
+  }
+  return missing;
+}
+
 /** Returns the children a card shows, each with its days and focus, and the ids not found. */
 export function childBases(
   snapshot: StoreSnapshot,
@@ -81,11 +126,12 @@ export function childBases(
   const bases = shown.map((child): ChildBasis => {
     const key = childKey(child);
     const entry = snapshot.data.get(key);
-    const days = buildDays(entry?.data, snapshot.range, ctx.zone);
+    const days = daysOf(entry?.data, snapshot.range, ctx.zone);
     const focus = hold(
       key,
       chooseFocus({ today: ctx.today, minute: ctx.minute, switchAt: options.switchAt, days }),
     );
+    const weekPlan = entry?.data?.week_plan ?? true;
     let state: ChildState;
     if (entry?.data === undefined) {
       state =
@@ -98,7 +144,14 @@ export function childBases(
       state,
       days,
       focus,
-      rules: { namer, packing: options.packing, weekPlan: entry?.data?.week_plan ?? true },
+      rules: {
+        namer,
+        packing: options.packing,
+        weekPlan,
+        timetabled: isTimetabled(days),
+        planMissing: missingPlans(days, weekPlan),
+        zone: ctx.zone,
+      },
     };
   });
   return { bases, missing };

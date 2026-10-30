@@ -3,14 +3,24 @@ import { defineConfig } from "vitest/config";
 
 const version = process.env.CARD_VERSION ?? "0.0.0";
 
-/** Returns CSS without its comments and the whitespace it needs only to be read. */
+/**
+ * Returns CSS without its comments and the whitespace it needs only to be read. Quoted strings,
+ * such as a generated ", ", are kept as they are.
+ */
 export function minifyCss(css: string): string {
   return css
     .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\s+/g, " ")
-    .replace(/\s*([{};,])\s*/g, "$1")
-    .replace(/:\s+/g, ":")
-    .replace(/;}/g, "}")
+    .split(/("[^"]*")/)
+    .map((part, index) =>
+      index % 2 === 1
+        ? part
+        : part
+            .replace(/\s+/g, " ")
+            .replace(/\s*([{};,])\s*/g, "$1")
+            .replace(/:\s+/g, ":")
+            .replace(/;}/g, "}"),
+    )
+    .join("")
     .trim();
 }
 

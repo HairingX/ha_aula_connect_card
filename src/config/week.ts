@@ -26,13 +26,14 @@ export interface WeekCardConfig extends CommonConfig, BlocksConfig {
 }
 
 /**
- * Checks a week card's configuration and fills in its defaults.
+ * Checks a week card's configuration and fills in its defaults; `lenient` leaves out the
+ * rows the editor is still filling in.
  *
  * @throws Error naming the first invalid key.
  */
-export function resolveWeekConfig(config: unknown): WeekCardConfig {
+export function resolveWeekConfig(config: unknown, lenient = false): WeekCardConfig {
   const raw = configRecord(config);
-  return { ...resolveCommon(raw), ...resolveBlocks(raw), weeks: parseWeeks(raw.weeks) };
+  return { ...resolveCommon(raw, lenient), ...resolveBlocks(raw), weeks: parseWeeks(raw.weeks) };
 }
 
 /** Returns the week card's form. */

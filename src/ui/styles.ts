@@ -89,6 +89,7 @@ export const base = css`
   h2,
   h3,
   h4,
+  h5,
   p {
     margin: 0;
     font: inherit;
@@ -119,15 +120,17 @@ export const base = css`
     clip-path: inset(50%);
     white-space: nowrap;
   }
+  /* The text colour: the primary colour is too faint a ring on light themes with a light one. */
   :focus-visible {
-    outline: 2px solid var(--primary-color, #009ac7);
+    outline: 2px solid var(--aula-text);
     outline-offset: -2px;
   }
-  .quiet {
+  .quiet,
+  .empty,
+  .not-yet {
     color: var(--aula-text-2);
   }
 
-  /* Loading, refreshing and errors. */
   .status {
     display: flex;
     align-items: center;
@@ -174,38 +177,68 @@ export const base = css`
     color: var(--aula-warning);
   }
 
-  /* Children: side by side when each gets its minimum, else stacked with a line between. */
-  /* The frame is the container: a container query cannot style the container itself. */
+  /* A container query cannot style its container, so the frame is one and the grid within. */
   .kids {
     container: aula-children / inline-size;
   }
   .children {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--aula-space-6);
+    grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr));
+    gap: var(--aula-space-6) var(--aula-space-8);
   }
   .child {
     container: aula-child / inline-size;
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-4);
     min-width: 0;
   }
   .children > .child + .child {
-    border-top: 1px solid var(--aula-line);
-    padding-top: var(--aula-space-6);
+    border-top: var(--stacked, 1px solid var(--aula-line));
+    padding-top: var(--stacked-gap, var(--aula-space-6));
   }
   .children > .child + .child::before {
     content: "";
-    display: none;
+    display: var(--beside, none);
     position: absolute;
     top: 0;
     bottom: 0;
     inset-inline-start: calc(var(--aula-space-8) / -2);
     border-inline-start: 1px solid var(--aula-line);
   }
-  .child {
-    position: relative;
+  @container aula-children (min-width: 592px) {
+    .aula:not(.large) .kids-2 {
+      --cols: 2;
+      --stacked: 0;
+      --stacked-gap: 0;
+      --beside: block;
+    }
+  }
+  @container aula-children (min-width: 712px) {
+    .aula.large .kids-2,
+    .aula:not(.large) .wide-2 {
+      --cols: 2;
+      --stacked: 0;
+      --stacked-gap: 0;
+      --beside: block;
+    }
+  }
+  @container aula-children (min-width: 872px) {
+    .aula.large .wide-2 {
+      --cols: 2;
+      --stacked: 0;
+      --stacked-gap: 0;
+      --beside: block;
+    }
+  }
+  @container aula-children (min-width: 904px) {
+    .aula:not(.large) .kids-3 {
+      --cols: 3;
+      --stacked: 0;
+      --stacked-gap: 0;
+      --beside: block;
+    }
   }
 
   .stack {
@@ -214,7 +247,32 @@ export const base = css`
     gap: var(--aula-space-4);
   }
 
-  /* The who line: the child's initial, name, and what the card is. */
+  /* Parts of a line; a dot belongs to the part after it and is cut off at a line's start. */
+  .segs {
+    display: block;
+    overflow: hidden;
+    min-width: 0;
+  }
+  .segs-in {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    margin-inline-start: -1em;
+  }
+  .seg {
+    margin-inline-start: 1em;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .seg + .seg::before {
+    content: "·";
+    content: "·" / "";
+    display: inline-block;
+    width: 1em;
+    margin-inline-start: -1em;
+    text-align: center;
+  }
+
   .who {
     display: flex;
     align-items: center;
@@ -238,15 +296,8 @@ export const base = css`
   .who-meta {
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
-    overflow-wrap: anywhere;
-  }
-  .who-end {
-    margin-inline-start: auto;
-    padding-inline-start: var(--aula-space-2);
-    text-align: end;
   }
 
-  /* Labels: Home Assistant's dense ha-label, never focusable. */
   .label {
     display: inline-flex;
     align-items: center;
@@ -280,23 +331,29 @@ export const base = css`
     background: var(--aula-accent);
   }
 
-  /* Chips: a day's all-day events and birthdays, at a glance. */
-  .chip {
+  /* Facts: words with an icon, like the hours; nothing about them looks as if it could be tapped. */
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--aula-space-1) var(--aula-space-4);
+  }
+  .fact,
+  .hours {
     display: inline-flex;
     align-items: center;
-    gap: calc(6px * var(--aula-scale));
-    min-height: calc(28px * var(--aula-scale));
-    padding: 0 calc(10px * var(--aula-scale));
-    border-radius: var(--aula-radius);
-    background: var(--aula-fill-strong);
+    gap: var(--aula-space-1);
     font-weight: var(--aula-medium);
     overflow-wrap: anywhere;
   }
-  .chip ha-icon {
+  .fact ha-icon,
+  .hours ha-icon {
     --mdc-icon-size: calc(16px * var(--aula-scale));
   }
+  .hours {
+    white-space: nowrap;
+  }
 
-  /* Disclosures: native details, the whole row the target. */
   details > summary {
     list-style: none;
     cursor: pointer;
@@ -307,23 +364,30 @@ export const base = css`
     display: none;
   }
   .chevron {
-    --mdc-icon-size: calc(24px * var(--aula-scale));
+    --mdc-icon-size: calc(20px * var(--aula-scale));
     transition: transform var(--ha-animation-duration-fast, 150ms) cubic-bezier(0.4, 0, 0.2, 1);
   }
   details[open] > summary .chevron,
   .more[aria-expanded="true"] .chevron {
     transform: rotate(180deg);
   }
+  /* A row's text lines up with the headers; its fill reaches into the card's padding. */
   .fold > summary {
     display: flex;
     align-items: center;
     gap: var(--aula-space-2);
     min-height: var(--aula-target);
     padding: 0 var(--aula-space-3);
+    margin-inline: calc(-1 * var(--aula-space-3));
     color: var(--aula-text-2);
   }
   .fold > summary .chevron {
     margin-inline-start: auto;
+  }
+  @container aula (min-width: 600px) {
+    .fold > summary .chevron {
+      margin-inline-start: 0;
+    }
   }
   @media (hover: hover) {
     details > summary:hover,
@@ -345,53 +409,52 @@ export const base = css`
   }
 `;
 
-/** The day's header, its blocks, and the rows above it. */
+/** The day's header, its blocks with a part per child, and the rows above it. */
 export const blocks = css`
-  /* The rest of today and the days passed over: a four-slot line each, no box, no tap. */
   .above {
     display: flex;
     flex-direction: column;
+    margin-bottom: var(--aula-space-2);
   }
   .bridge {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--aula-space-2);
     min-height: calc(32px * var(--aula-scale));
     min-width: 0;
+    color: var(--aula-text-2);
+  }
+  .bridge > * {
+    padding-top: calc(7px * var(--aula-scale));
   }
   .bridge-label {
-    flex: none;
+    flex: 0 1 auto;
+    min-width: 0;
     font-weight: var(--aula-medium);
+    overflow-wrap: anywhere;
   }
+  .bridge.alone .bridge-label,
   .bridge-text {
     flex: 1;
     min-width: 0;
-    color: var(--aula-text-2);
-    overflow-wrap: anywhere;
   }
   .bridge-end {
     flex: none;
     margin-inline-start: auto;
-    color: var(--aula-text-2);
     font-variant-numeric: tabular-nums;
-  }
-  .bridge-more,
-  .none {
-    color: var(--aula-text-2);
-    padding: var(--aula-space-1) 0;
+    white-space: nowrap;
   }
   .bridge-more {
+    color: var(--aula-text-2);
+    padding: var(--aula-space-1) 0;
     padding-inline-start: calc(var(--aula-icon) + var(--aula-space-2));
   }
-  .none {
-    line-height: var(--aula-paragraph);
-  }
 
-  /* The header: which day, the largest text on the card. */
   .hero {
     display: flex;
     align-items: flex-start;
     gap: var(--aula-space-3);
+    margin-bottom: var(--aula-space-2);
   }
   .tile {
     position: relative;
@@ -406,6 +469,7 @@ export const blocks = css`
     border-radius: var(--aula-radius-lg);
     background: var(--aula-fill-muted);
     overflow: hidden;
+    --mdc-icon-size: calc(28px * var(--aula-scale));
   }
   .tile.today::before {
     content: "";
@@ -443,38 +507,10 @@ export const blocks = css`
     font-size: var(--aula-font-2xl);
     font-weight: var(--aula-normal);
     letter-spacing: -0.012em;
+    overflow-wrap: anywhere;
   }
   .date-line {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0 var(--aula-space-1);
     color: var(--aula-text-2);
-  }
-  .date-line ha-icon {
-    --mdc-icon-size: calc(14px * var(--aula-scale));
-  }
-  .next {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--aula-space-1);
-    white-space: nowrap;
-  }
-  .facts {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--aula-space-2);
-  }
-  .hours {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--aula-space-1);
-    font-weight: var(--aula-medium);
-    white-space: nowrap;
-  }
-  .hours ha-icon {
-    --mdc-icon-size: calc(16px * var(--aula-scale));
   }
   @container aula (min-width: 600px) {
     .hero .title {
@@ -493,9 +529,28 @@ export const blocks = css`
       font-size: var(--aula-font-2xl);
     }
   }
+  /* The wall: what the morning asks is read from across a kitchen; the rest is read up close. */
+  .aula.large .hero .title {
+    font-size: calc(var(--ha-font-size-4xl, 32px) * 1.75);
+    font-weight: var(--aula-medium);
+  }
+  .aula.large .tile {
+    width: 96px;
+    height: 104px;
+  }
+  .aula.large .tile .number {
+    font-size: calc(var(--ha-font-size-2xl, 24px) * 1.5);
+  }
+  .aula.large .hours {
+    flex-basis: 100%;
+    font-size: calc(var(--ha-font-size-2xl, 24px) * 1.5);
+  }
+  .aula.large .hours ha-icon {
+    --mdc-icon-size: 0.8em;
+  }
 
-  /* Blocks: 24 apart, no dividers. */
-  .blocks {
+  .blocks,
+  .day-blocks {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-6);
@@ -511,34 +566,93 @@ export const blocks = css`
     align-items: center;
     gap: var(--aula-space-2);
     min-height: calc(24px * var(--aula-scale));
+    font-size: var(--aula-font-l);
     font-weight: var(--aula-medium);
+    --mdc-icon-size: calc(20px * var(--aula-scale));
   }
-  .block-meta {
-    margin-inline-start: auto;
-    color: var(--aula-text-2);
-    font-size: var(--aula-font-s);
-    font-weight: var(--aula-normal);
-    font-variant-numeric: tabular-nums;
+  /* A block's parts: one column per child, the same in every block, so that they line up. */
+  .cols {
+    display: var(--grid, flex);
+    flex-direction: column;
+    grid-template-columns: repeat(var(--n, 1), minmax(0, 1fr));
+    gap: var(--aula-space-4) var(--aula-space-8);
   }
-  .empty {
-    color: var(--aula-text-2);
+  .cols > * {
+    grid-column: var(--col);
+    min-width: 0;
   }
-
-  /* Homework: the one boxed content, never clamped. */
-  .homework {
+  .part {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-2);
+  }
+  .part-who {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-2);
+    font-weight: var(--aula-medium);
+  }
+  .part-who .avatar {
+    width: calc(20px * var(--aula-scale));
+    height: calc(20px * var(--aula-scale));
+  }
+  @container aula-child (min-width: 592px) {
+    .aula:not(.large) .n-2 .cols {
+      --grid: grid;
+      --n: 2;
+    }
+    .aula:not(.large) .n-2 .part-who {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
+  @container aula-child (min-width: 712px) {
+    .aula.large .n-2 .cols {
+      --grid: grid;
+      --n: 2;
+    }
+    .aula.large .n-2 .part-who {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
+  @container aula-child (min-width: 904px) {
+    .aula:not(.large) .n-3 .cols {
+      --grid: grid;
+      --n: 3;
+    }
+    .aula:not(.large) .n-3 .part-who {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+  }
+
+  /* Homework: one surface for a day's notes, a quiet line between them, never clamped. */
+  .homework {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--aula-line);
+    border-radius: var(--aula-radius);
+    background: var(--aula-fill-faint);
   }
   .hw {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-1);
     padding: var(--aula-space-3);
-    border: 1px solid var(--aula-line);
-    border-radius: var(--aula-radius);
-    background: var(--aula-fill-faint);
     min-width: 0;
+  }
+  .hw + .hw {
+    border-top: 1px solid var(--aula-line);
   }
   .hw-head {
     display: flex;
@@ -555,23 +669,27 @@ export const blocks = css`
     overflow-wrap: anywhere;
   }
 
-  /* Husk: rows, the thing first, where it comes from at the end. */
+  /* Husk: which subjects, then each thing, where it comes from beneath it. */
   .pack {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-2);
   }
+  .pack-subjects {
+    line-height: var(--aula-paragraph);
+  }
   .pack-row {
     display: flex;
-    align-items: baseline;
-    gap: var(--aula-space-3);
+    flex-direction: column;
+    gap: 2px;
   }
   .pack-what {
-    flex: 1;
-    min-width: 0;
     font-weight: var(--aula-medium);
     line-height: var(--aula-paragraph);
     overflow-wrap: anywhere;
+  }
+  .pack-item + .pack-item::before {
+    content: ", ";
   }
   .pack-row.quote .pack-what {
     font-weight: var(--aula-normal);
@@ -581,14 +699,20 @@ export const blocks = css`
     overflow: hidden;
   }
   .pack-source {
-    flex: none;
-    max-width: 45%;
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
-    text-align: end;
+  }
+  .aula.large .pack-row:not(.quote) .pack-what {
+    font-size: calc(var(--ha-font-size-xl, 20px) * 1.5);
+    line-height: var(--aula-condensed);
+  }
+  .aula.large .pack-item {
+    display: block;
+  }
+  .aula.large .pack-item + .pack-item::before {
+    content: none;
   }
 
-  /* The timetable: start over end, a rule, the subject and its labels. */
   .lessons {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
@@ -646,8 +770,13 @@ export const blocks = css`
     overflow-wrap: anywhere;
   }
   .lesson.past .lesson-time,
-  .lesson.past .subject {
+  .lesson.past .subject,
+  .lesson.cancelled .lesson-time,
+  .lesson.cancelled .subject {
     color: var(--aula-text-2);
+  }
+  .lesson.cancelled .subject {
+    text-decoration: line-through;
   }
   .break-main {
     grid-column: 2;
@@ -660,7 +789,6 @@ export const blocks = css`
     text-decoration: none;
   }
 
-  /* The plan: open text with a side rule, in the secondary colour, clamped. */
   .plan {
     display: flex;
     flex-direction: column;
@@ -710,7 +838,6 @@ export const blocks = css`
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Events and birthdays: icon rows, the time at the end. */
   .items {
     display: flex;
     flex-direction: column;
@@ -724,7 +851,6 @@ export const blocks = css`
   .item-text {
     flex: 1;
     min-width: 0;
-    line-height: var(--aula-condensed);
     padding-top: 1px;
     overflow-wrap: anywhere;
   }
@@ -735,187 +861,147 @@ export const blocks = css`
     white-space: nowrap;
     padding-top: 2px;
   }
+  /* On a wide card the time follows its event rather than sitting far from it. */
+  @container aula (min-width: 600px) {
+    .item-text {
+      flex: 0 1 auto;
+    }
+    .item-time::before {
+      content: "· ";
+    }
+  }
 `;
 
 /** The school day card. */
 export const dayStyles = css`
-  .day-blocks > .block {
-    margin-bottom: var(--aula-space-6);
+  .strip {
+    --mdc-icon-size: 16px;
   }
-  .day-blocks > .block:last-child {
-    margin-bottom: 0;
-  }
-  .child-row {
+  .kid {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--aula-space-1) var(--aula-space-3);
+  }
+  .kid-who {
+    display: flex;
+    align-items: center;
     gap: var(--aula-space-2);
+    flex: 1;
+    min-width: 0;
   }
-  .child-row .who-name {
+  .kid-name {
     font-size: var(--aula-font-l);
-  }
-  .child-row .hours {
     font-weight: var(--aula-medium);
   }
-  /* Blocks run in columns, top to bottom, left then right; the order is the DOM's. */
+  .kid > .facts,
+  .kid > .alert {
+    flex-basis: 100%;
+  }
+  .single .day-blocks {
+    display: block;
+  }
+  .single .day-blocks > .block {
+    break-inside: avoid;
+    margin-bottom: var(--aula-space-6);
+  }
+  .single .day-blocks > .block:last-child {
+    margin-bottom: 0;
+  }
+  /* One child's blocks run in columns, top to bottom, left then right, in the DOM's order. */
   @container aula-child (min-width: 600px) {
-    .aula:not(.large) .day-blocks {
+    .aula:not(.large) .single .day-blocks {
+      columns: 2;
+      column-gap: var(--aula-space-8);
+    }
+  }
+  @container aula-child (min-width: 720px) {
+    .aula.large .single .day-blocks {
       columns: 2;
       column-gap: var(--aula-space-8);
     }
   }
   @container aula-child (min-width: 900px) {
-    .aula:not(.large) .day-blocks {
+    .aula:not(.large) .single .day-blocks {
       columns: 3;
-    }
-    .aula.large .day-blocks {
-      columns: 2;
-      column-gap: var(--aula-space-8);
     }
   }
   @container aula-child (min-width: 1350px) {
-    .aula.large .day-blocks {
+    .aula.large .single .day-blocks {
       columns: 3;
-    }
-  }
-  /* A margin at the foot of a column is cut by the break, so the columns' tops align. */
-  .day-blocks > .block {
-    break-inside: avoid;
-  }
-  /* Children side by side when each gets 280 px (340 large). */
-  @container aula-children (min-width: 592px) {
-    .aula:not(.large) .kids-2 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      column-gap: var(--aula-space-8);
-    }
-    .aula:not(.large) .kids-2 > .child + .child {
-      border-top: 0;
-      padding-top: 0;
-    }
-    .aula:not(.large) .kids-2 > .child + .child::before {
-      display: block;
-    }
-  }
-  @container aula-children (min-width: 712px) {
-    .aula.large .kids-2 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      column-gap: var(--aula-space-8);
-    }
-    .aula.large .kids-2 > .child + .child {
-      border-top: 0;
-      padding-top: 0;
-    }
-    .aula.large .kids-2 > .child + .child::before {
-      display: block;
-    }
-  }
-  @container aula-children (min-width: 904px) {
-    .aula:not(.large) .kids-3 {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      column-gap: var(--aula-space-8);
-    }
-    .aula:not(.large) .kids-3 > .child + .child {
-      border-top: 0;
-      padding-top: 0;
-    }
-    .aula:not(.large) .kids-3 > .child + .child::before {
-      display: block;
     }
   }
 `;
 
 /** The homework card. */
 export const homeworkStyles = css`
-  .groups {
-    display: flex;
-    flex-direction: column;
+  .homework-card {
+    container: aula-child / inline-size;
+    gap: var(--aula-space-6);
   }
-  .group {
+  .title-who .avatar,
+  .strip .avatar {
+    width: calc(32px * var(--aula-scale));
+    height: calc(32px * var(--aula-scale));
+    font-size: var(--aula-font-s);
+  }
+  .title-who .who-name,
+  .strip .who-name {
+    font-size: var(--aula-font-2xl);
+    font-weight: var(--aula-normal);
+    letter-spacing: -0.012em;
+  }
+  .homework-card > .strip {
+    display: none;
+  }
+  .hw-day {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-2);
-    padding: var(--aula-space-4) 0;
     min-width: 0;
   }
-  .group:first-child {
-    padding-top: 0;
-  }
-  .group + .group {
-    border-top: 1px solid var(--aula-line);
-  }
-  .group-head {
+  .day-head {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    justify-content: space-between;
-    gap: var(--aula-space-2);
+    gap: 0 var(--aula-space-3);
   }
-  .group-title {
+  .day-title {
     font-size: var(--aula-font-l);
     font-weight: var(--aula-medium);
   }
-  .group-date {
+  .hw-day.focus .day-title {
+    font-size: var(--aula-font-xl);
+  }
+  .day-head ha-icon {
+    align-self: center;
+  }
+  .day-date {
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
-    text-align: end;
   }
-  .earlier .group-title {
+  .earlier .day-title {
     color: var(--aula-text-2);
   }
-  .not-yet {
-    color: var(--aula-text-2);
-    padding: var(--aula-space-2) 0;
+  .earlier-days {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-6);
+    padding-top: var(--aula-space-2);
   }
-  @container aula-child (min-width: 600px) {
-    .groups {
+  @container aula-child (min-width: 592px) {
+    .aula:not(.large) .n-2 > .strip {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      column-gap: var(--aula-space-8);
-      align-items: start;
-    }
-    .group:nth-child(2) {
-      padding-top: 0;
-    }
-    .group + .group {
-      border-top: 0;
     }
   }
-  /* Children side by side when each gets 280 px (340 large). */
-  @container aula-children (min-width: 592px) {
-    .aula:not(.large) .kids-2 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      column-gap: var(--aula-space-8);
-    }
-    .aula:not(.large) .kids-2 > .child + .child {
-      border-top: 0;
-      padding-top: 0;
-    }
-    .aula:not(.large) .kids-2 > .child + .child::before {
-      display: block;
+  @container aula-child (min-width: 712px) {
+    .aula.large .n-2 > .strip {
+      display: grid;
     }
   }
-  @container aula-children (min-width: 712px) {
-    .aula.large .kids-2 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      column-gap: var(--aula-space-8);
-    }
-    .aula.large .kids-2 > .child + .child {
-      border-top: 0;
-      padding-top: 0;
-    }
-    .aula.large .kids-2 > .child + .child::before {
-      display: block;
-    }
-  }
-  @container aula-children (min-width: 904px) {
-    .aula:not(.large) .kids-3 {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      column-gap: var(--aula-space-8);
-    }
-    .aula:not(.large) .kids-3 > .child + .child {
-      border-top: 0;
-      padding-top: 0;
-    }
-    .aula:not(.large) .kids-3 > .child + .child::before {
-      display: block;
+  @container aula-child (min-width: 904px) {
+    .aula:not(.large) .n-3 > .strip {
+      display: grid;
     }
   }
 `;
@@ -923,8 +1009,8 @@ export const homeworkStyles = css`
 /** The week card. */
 export const weekStyles = css`
   .weeks {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
     gap: var(--aula-space-6);
   }
   .week-head {
@@ -934,15 +1020,14 @@ export const weekStyles = css`
     gap: var(--aula-space-2);
     margin-bottom: var(--aula-space-2);
     color: var(--aula-text-2);
-    font-size: var(--aula-font-s);
-    font-weight: var(--aula-bold);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    font-weight: var(--aula-medium);
   }
   .week-dates {
+    font-size: var(--aula-font-s);
     font-weight: var(--aula-normal);
-    text-transform: none;
-    letter-spacing: 0;
+  }
+  .not-yet {
+    padding-bottom: var(--aula-space-2);
   }
   .rows > li + li {
     border-top: 1px solid var(--aula-line);
@@ -954,6 +1039,10 @@ export const weekStyles = css`
     min-height: var(--aula-target);
     padding: var(--aula-space-2) var(--aula-space-3);
     box-sizing: border-box;
+  }
+  .day-row:not(.focus-day) > summary,
+  .holiday-row {
+    margin-inline: calc(-1 * var(--aula-space-3));
   }
   .daycol {
     flex: none;
@@ -979,10 +1068,22 @@ export const weekStyles = css`
   }
   .line-1 {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: var(--aula-space-1) var(--aula-space-2);
+    gap: var(--aula-space-2);
     font-variant-numeric: tabular-nums;
+  }
+  .line-1 .hours {
+    font-weight: var(--aula-normal);
+  }
+  .line-1 .hours ha-icon {
+    display: none;
+  }
+  .relation {
+    margin-inline-start: auto;
+  }
+  .weekend-name,
+  .holiday-name {
+    font-weight: var(--aula-medium);
   }
   .line-2 {
     display: flex;
@@ -991,10 +1092,8 @@ export const weekStyles = css`
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
   }
-  .line-2 > span {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--aula-space-1);
+  .line-2 .fact {
+    font-weight: var(--aula-normal);
   }
   .line-2 ha-icon {
     --mdc-icon-size: calc(14px * var(--aula-scale));
@@ -1026,11 +1125,9 @@ export const weekStyles = css`
     min-height: var(--aula-target);
     padding: var(--aula-space-2) var(--aula-space-3);
   }
-  .holiday-name {
-    font-weight: var(--aula-medium);
-  }
-  /* The open day: a quiet container, its homework on the card's own surface. */
+  /* The open day: a quiet container, laid out as the day card is when it is wide enough. */
   .focus-day {
+    container: aula-open / inline-size;
     margin: var(--aula-space-2) 0;
     border-radius: var(--aula-radius);
     background: var(--aula-fill-faint);
@@ -1041,7 +1138,7 @@ export const weekStyles = css`
     gap: var(--aula-space-3);
     padding: var(--aula-space-3);
   }
-  .focus-day .open-title {
+  .open-title {
     font-size: var(--aula-font-l);
     font-weight: var(--aula-medium);
   }
@@ -1057,44 +1154,34 @@ export const weekStyles = css`
   .day-row:not(.focus-day) > .day-body {
     padding-top: var(--aula-space-2);
   }
-  .focus-day .hw {
+  .focus-day .homework {
     background: var(--aula-surface);
+  }
+  .weekend-day + .weekend-day {
+    margin-top: var(--aula-space-6);
+  }
+  .weekend-title {
+    margin-bottom: var(--aula-space-2);
+    font-size: var(--aula-font-l);
+    font-weight: var(--aula-medium);
+  }
+  .weekend-item {
+    display: inline-flex;
+    align-items: center;
   }
   .rows > li:has(> .focus-day) + li,
   .rows > li + li:has(> .focus-day) {
     border-top-color: transparent;
   }
-  @container aula-child (min-width: 600px) {
-    .weeks.side {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      column-gap: var(--aula-space-8);
-    }
-  }
-  /* Children side by side when each gets 340 px (420 large). */
-  @container aula-children (min-width: 712px) {
-    .aula:not(.large) .kids-2 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      column-gap: var(--aula-space-8);
-    }
-    .aula:not(.large) .kids-2 > .child + .child {
-      border-top: 0;
-      padding-top: 0;
-    }
-    .aula:not(.large) .kids-2 > .child + .child::before {
+  @container aula-open (min-width: 600px) {
+    .focus-day .blocks {
       display: block;
-    }
-  }
-  @container aula-children (min-width: 872px) {
-    .aula.large .kids-2 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      columns: 2;
       column-gap: var(--aula-space-8);
     }
-    .aula.large .kids-2 > .child + .child {
-      border-top: 0;
-      padding-top: 0;
-    }
-    .aula.large .kids-2 > .child + .child::before {
-      display: block;
+    .focus-day .blocks > .block {
+      break-inside: avoid;
+      margin-bottom: var(--aula-space-6);
     }
   }
 `;

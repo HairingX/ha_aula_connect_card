@@ -20,13 +20,14 @@ export const DAY_CARD = "aula-connect-day-card";
 export interface DayCardConfig extends CommonConfig, BlocksConfig {}
 
 /**
- * Checks a school day card's configuration and fills in its defaults.
+ * Checks a school day card's configuration and fills in its defaults; `lenient` leaves out the
+ * rows the editor is still filling in.
  *
  * @throws Error naming the first invalid key.
  */
-export function resolveDayConfig(config: unknown): DayCardConfig {
+export function resolveDayConfig(config: unknown, lenient = false): DayCardConfig {
   const raw = configRecord(config);
-  return { ...resolveCommon(raw), ...resolveBlocks(raw) };
+  return { ...resolveCommon(raw, lenient), ...resolveBlocks(raw) };
 }
 
 /** Returns the school day card's form. */

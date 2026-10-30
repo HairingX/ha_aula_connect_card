@@ -194,6 +194,7 @@ export class AulaStore {
    * child's data: for the editor, which lists the children the cards have seen.
    */
   whenListed(timeout: number): Promise<void> {
+    if (this.list !== undefined) return Promise.resolve();
     return new Promise((resolve) => {
       const done = (): void => {
         clearTimeout(timer);
@@ -207,7 +208,6 @@ export class AulaStore {
           if (this.list !== undefined || this.listError !== undefined) done();
         },
       });
-      if (this.list !== undefined) done();
     });
   }
 

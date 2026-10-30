@@ -85,6 +85,8 @@ interface Shot {
   readonly tag?: string;
   /** Whether to check the wall screen's first glance: the header and the children's columns. */
   readonly glance?: boolean;
+  /** A selector in the card to click before the shot, such as a row to open. */
+  readonly click?: string;
 }
 
 // What a family would set up: the things to bring for sports and swimming.
@@ -177,6 +179,32 @@ const SETS: Record<string, () => Shot[]> = {
     shot("week", "sat-1000", 380),
     shot("week", "sat-1000", 800),
     shot("week", "thu-1000", 800, { theme: "dark", children: 2 }),
+  ],
+  // The cases the first review added: children on a phone, the wall and the kiosk, an unpublished
+  // week plan, a camp, a cancelled lesson, long names at the narrowest width, an opened weekend.
+  extra: () => [
+    shot("day", "thu-1930", 380, { children: 2 }),
+    shot("day", "sun-1800", 380, { children: 2 }),
+    shot("day", "fri-1240", 380, { children: 2 }),
+    shot("homework", "thu-1930", 380, { children: 2 }),
+    shot("homework", "sun-1800", 380, { children: 2 }),
+    shot("day", "thu-1930", 800, { large: true, children: 2 }),
+    shot("day", "thu-0715", 800, { large: true }),
+    shot("day", "thu-0715", 1216, { large: true, children: 2, glance: true }),
+    shot("day", "fri-1240", 800, { children: 2 }),
+    shot("day", "sun-1800-noplan", 380, { children: 2 }),
+    shot("week", "fri-1400-noplan", 380),
+    shot("day", "tue-1930-camp", 380, { locale: "en-US" }),
+    shot("day", "fri-1400-longholiday", 304),
+    shot("week", "fri-1400-longholiday", 304),
+    shot("day", "fri-1400-longholiday", 800, { children: 2 }),
+    shot("day", "thu-1930-stress", 304),
+    shot("day", "thu-1930-stress", 380, { large: true }),
+    shot("homework", "thu-1930-stress", 304, { locale: "en-US" }),
+    shot("week", "sat-1000-birthday", 380, { click: ".weekend-row > summary", tag: "open" }),
+    shot("week", "sat-1000-birthday", 380, { locale: "en-US" }),
+    shot("week", "sun-1800", 800),
+    shot("homework", "before-holiday", 800, { children: 2 }),
   ],
 };
 
@@ -315,15 +343,17 @@ const FIRST_SCREEN = 800 - 56;
 
 /**
  * Runs in the page: tells what is wrong with the first glance at a wall screen, if anything. The
- * header's title must be the largest text, and the header and each child's first block must
- * begin on the first screen.
+ * header's title must be the largest text, at least 56 px; each child's hours and things to bring
+ * must be on the first screen, at least 30 px; and the children must stand side by side.
  */
 function glance(arg: { tag: string; screen: number }): string[] {
   const root = document.querySelector(arg.tag)?.shadowRoot;
   if (!root) return ["no card"];
   const problems: string[] = [];
-  const title = root.querySelector(".hero .title");
+  const top = root.host.getBoundingClientRect().top;
   const size = (element: Element): number => parseFloat(getComputedStyle(element).fontSize);
+  const below = (element: Element): number => element.getBoundingClientRect().bottom - top;
+  const title = root.querySelector(".hero .title");
   const largest = Math.max(
     ...[...root.querySelectorAll("*")]
       .filter((element) => !title?.contains(element) && !element.closest(".sr"))
@@ -334,22 +364,32 @@ function glance(arg: { tag: string; screen: number }): string[] {
       )
       .map(size),
   );
-  if (!title || size(title) <= largest)
+  if (!title || size(title) < 56 || size(title) <= largest)
     problems.push(
       `the title is ${String(title && size(title))} px, other text ${String(largest)} px`,
     );
-  const top = root.host.getBoundingClientRect().top;
-  const hero = root.querySelector(".hero")?.getBoundingClientRect();
-  if (!hero || hero.bottom - top > arg.screen)
-    problems.push("the header is not on the first screen");
-  const children = [...root.querySelectorAll(".child")];
-  if (children.length < 2) problems.push("the children are not shown");
-  for (const child of children) {
-    const first = child.querySelector(".block")?.getBoundingClientRect();
-    if (!first || first.top - top > arg.screen)
-      problems.push("a child's first block is not on the first screen");
+  const hero = root.querySelector(".hero");
+  if (!hero || below(hero) > arg.screen) problems.push("the header is not on the first screen");
+  const hours = [...root.querySelectorAll(".hero .hours, .strip .hours")];
+  if (hours.length === 0) problems.push("no school hours are shown");
+  for (const item of hours) {
+    if (size(item) < 30 || below(item) > arg.screen)
+      problems.push(`hours of ${String(size(item))} px end ${String(below(item))} px down`);
   }
-  const tops = new Set(children.map((child) => Math.round(child.getBoundingClientRect().top)));
+  const husk = [...root.querySelectorAll('[data-block="pack"] .part')];
+  if (husk.length === 0) problems.push("Husk is not shown");
+  for (const part of husk) {
+    const things = [...part.querySelectorAll(".pack-row:not(.quote) .pack-what")];
+    const first = things[0] ?? part;
+    if (below(first) > arg.screen)
+      problems.push(`a child's Husk ends ${String(below(first))} px down`);
+    for (const item of things) {
+      if (size(item) < 30) problems.push(`a thing to bring is ${String(size(item))} px`);
+    }
+  }
+  const kids = [...root.querySelectorAll(".strip .kid")];
+  if (kids.length < 2) problems.push("the children are not shown");
+  const tops = new Set(kids.map((kid) => Math.round(kid.getBoundingClientRect().top)));
   if (tops.size !== 1) problems.push("the children are not side by side");
   return problems;
 }
@@ -426,6 +466,18 @@ for (const item of shots) {
     null,
   )) as string[];
   if (errors.length > 0) throw new Error(`${name(item)}: ${errors.join("; ")}`);
+  if (item.click !== undefined) {
+    await tab.evaluate(
+      async ({ selector, target }) => {
+        const card = document.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>(
+          selector,
+        );
+        card?.shadowRoot?.querySelector<HTMLElement>(target)?.click();
+        await card?.updateComplete;
+      },
+      { selector: tag, target: item.click },
+    );
+  }
   if (item.glance === true) {
     const problems = (await tab.evaluate(glance, { tag, screen: FIRST_SCREEN })) as string[];
     if (problems.length > 0) throw new Error(`${name(item)}: ${problems.join("; ")}`);
