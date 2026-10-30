@@ -78,7 +78,6 @@ function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardStat
           [
             {
               content,
-              quotes: plan.quotes,
               subjects: plan.subjects,
               allDay: plan.allDay,
               timed: plan.timed,

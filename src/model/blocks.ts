@@ -24,7 +24,7 @@ import {
   type LessonTime,
 } from "./lessons.ts";
 import { inTimetableOrder, isHomework, noteView, type NoteView } from "./notes.ts";
-import { packRows, quotes, type PackRow, type PackRule, type Quote } from "./pack.ts";
+import { packRows, type PackRow, type PackRule } from "./pack.ts";
 import type { SubjectLabel, SubjectNamer } from "./subjects.ts";
 
 /** The blocks, in their default order. */
@@ -143,8 +143,6 @@ export interface DayContent {
   readonly plan: readonly NoteView[];
   /** The configured things to bring. */
   readonly pack: readonly PackRow[];
-  /** The week plan's reminders, quoted. */
-  readonly quotes: readonly Quote[];
   /** The events at a time of the day, in the order they begin. */
   readonly timed: readonly TimedEvent[];
   /** The events lasting the whole day, holidays first, then the birthdays. */
@@ -211,13 +209,11 @@ export function dayContent(
           cancelled: isCancelled(entry.block.lesson),
         },
   );
-  const lessonKeys = view.lessons.map((lesson) => namer(lesson.title).key);
   const subjects = new Map<string, SubjectLabel>();
   for (const lesson of view.lessons) {
     const subject = namer(lesson.title);
     if (!isCancelled(lesson) && !subjects.has(subject.key)) subjects.set(subject.key, subject);
   }
-  const notes = weekPlan ? view.notes.map((note) => noteView(note, namer)) : [];
   const whole = view.events.filter((event) => isWholeDay(event, view.day, zone));
   return {
     view,
@@ -231,7 +227,6 @@ export function dayContent(
     homework: homeworkOf(view, rules),
     plan: commentsOf(view, rules),
     pack: packRows(view.lessons, rules.packing, namer),
-    quotes: quotes(notes, lessonKeys),
     timed: view.events
       .filter((event) => !whole.includes(event))
       .map((event) => ({ event, span: spanOn(event, view.day, zone) })),
@@ -258,12 +253,10 @@ export interface PlannedBlock {
   readonly empty: EmptyKind | undefined;
 }
 
-/** The blocks a day shows, and its quotes. */
+/** The blocks a day shows, and what Husk and the timetable add to them. */
 export interface BlockPlan {
   /** The blocks, in the configured order, without those that have nothing to show. */
   readonly blocks: readonly PlannedBlock[];
-  /** The quotes Husk shows: none while both homework and the plan are hidden. */
-  readonly quotes: readonly Quote[];
   /** The subjects Husk names: none while the timetable, which lists them, is shown. */
   readonly subjects: readonly SubjectLabel[];
   /** The events lasting the whole day the timetable shows first; none while events are hidden. */
@@ -288,8 +281,6 @@ function homeworkEmpty(content: DayContent): EmptyKind | undefined {
  * nor birthdays are a block of their own.
  */
 export function planBlocks(content: DayContent, blocks: readonly BlockId[]): BlockPlan {
-  const quoted =
-    blocks.includes("task") || blocks.includes("comment") ? content.quotes : ([] as const);
   const subjects = blocks.includes("timetable") ? [] : content.subjects;
   const events = blocks.includes("events");
   const allDay = events
@@ -300,7 +291,7 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
   const timed = events ? content.timed : [];
   const has: Record<BlockId, boolean> = {
     task: content.homework.length > 0,
-    pack: subjects.length > 0 || content.pack.length > 0 || quoted.length > 0,
+    pack: subjects.length > 0 || content.pack.length > 0,
     timetable: content.timetable.length > 0 || allDay.length > 0 || timed.length > 0,
     comment: content.plan.length > 0,
     events: false,
@@ -322,7 +313,6 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
   }
   return {
     blocks: planned,
-    quotes: quoted,
     subjects,
     allDay,
     timed,

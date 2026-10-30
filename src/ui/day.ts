@@ -264,7 +264,6 @@ function blocks(group: DayGroup, day: Day, ctx: ViewContext, state: CardState): 
         block.id,
         block.parts.map((part, index) => ({
           content: part.content,
-          quotes: part.plan.quotes,
           subjects: part.plan.subjects,
           allDay: part.plan.allDay,
           timed: part.plan.timed,

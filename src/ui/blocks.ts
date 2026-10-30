@@ -23,7 +23,6 @@ import {
 } from "../model/blocks.ts";
 import type { CalendarEvent } from "../core/types.ts";
 import type { NoteView } from "../model/notes.ts";
-import type { Quote } from "../model/pack.ts";
 import type { SubjectLabel } from "../model/subjects.ts";
 import type { CardState } from "./card.ts";
 import {
@@ -45,8 +44,6 @@ import {
 export interface Part {
   /** What the child's day holds. */
   readonly content: DayContent;
-  /** The child's quotes for Husk. */
-  readonly quotes: readonly Quote[];
   /** The subjects Husk names: none beside the timetable. */
   readonly subjects: readonly SubjectLabel[];
   /** The events lasting the whole day, first in the timetable. */
@@ -148,7 +145,7 @@ export function emptyText(
 }
 
 function pack(part: Part, ctx: ViewContext): TemplateResult {
-  const { content, quotes, subjects } = part;
+  const { content, subjects } = part;
   return html`<ul class="pack">
     ${
       subjects.length > 0
@@ -165,19 +162,6 @@ function pack(part: Part, ctx: ViewContext): TemplateResult {
             >${row.items.map((item) => html`<span class="pack-item">${aula(item, ctx)}</span>`)}</span
           >
           <span class="pack-source">${aula(row.subject.name, ctx)}</span>
-        </li>`,
-    )}
-    ${quotes.map(
-      (quote) =>
-        html`<li class="pack-row quote">
-          <q class="pack-what">${aula(quote.text, ctx)}</q>
-          <span class="pack-source"
-            >${
-              quote.subject
-                ? ctx.t("weekPlanSource", { subject: quote.subject.name })
-                : ctx.t("weekPlan")
-            }</span
-          >
         </li>`,
     )}
   </ul>`;
