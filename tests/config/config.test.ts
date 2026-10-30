@@ -37,7 +37,13 @@ describe("the week card's configuration", () => {
   });
 
   it("keeps the children, shown in the order given", () => {
-    expect(resolveWeekConfig({ children: [1002, "1001"] }).children).toEqual([1002, 1001]);
+    expect(resolveWeekConfig({ children: [1002, 1001] }).children).toEqual([1002, 1001]);
+  });
+
+  it("refuses a child id written as text", () => {
+    expect(() => resolveWeekConfig({ children: ["1001"] })).toThrow(
+      new Error('children: "1001" is not a child id, which is a number such as 1001'),
+    );
   });
 
   it("takes weeks: 1 and 2, as numbers or text", () => {
@@ -73,7 +79,7 @@ describe("checking a configuration", () => {
   it.each<[unknown, string]>([
     [null, "The configuration must be a mapping"],
     [{ children: "1001" }, "children: must be a list of child ids"],
-    [{ children: ["Ida"] }, 'children: "Ida" is not a child id'],
+    [{ children: ["Ida"] }, 'children: "Ida" is not a child id, which is a number such as 1001'],
     [{ weeks: 3 }, "weeks: must be 1 or 2, not 3"],
     [{ size: "huge" }, "size: must be normal or large"],
     [{ switch_time: "25:00" }, 'switch_time: "25:00" is not a time; write it as "12:00"'],
@@ -314,19 +320,18 @@ describe("the editor", () => {
     ]);
   });
 
-  it("lists the children the cards have seen by their ids as YAML has them, or takes ids typed in", () => {
-    expect(dayConfigForm().schema[0]).toMatchObject({
-      selector: { select: { mode: "dropdown", custom_value: true, options: [] } },
+  it("lists the children the cards have seen, by their ids as YAML has them, and nothing else", () => {
+    expect(dayConfigForm().schema[0]).toEqual({
+      name: "children",
+      selector: { select: { multiple: true, mode: "list", options: [] } },
     });
-    expect(() => {
-      dayConfigForm().assertConfig({ children: ["1001"] });
-    }).not.toThrow();
     rememberChildren(CHILDREN);
-    expect(dayConfigForm().schema[0]).toMatchObject({
+    expect(dayConfigForm().schema[0]).toEqual({
+      name: "children",
       selector: {
         select: {
+          multiple: true,
           mode: "list",
-          custom_value: false,
           options: [
             { value: 1001, label: "Ida · Bakkedal Skole" },
             { value: 1002, label: "Oskar · Bakkedal Skole" },
@@ -392,7 +397,7 @@ describe("the editor", () => {
     }).not.toThrow();
     expect(() => {
       form.assertConfig({ children: ["1001"] });
-    }).toThrow("children: write the child ids as numbers, such as [1001], to choose here");
+    }).toThrow('children: "1001" is not a child id, which is a number such as 1001');
     expect(() => {
       form.assertConfig({ switch_time: 720 });
     }).toThrow('switch_time: write the time as "12:00" to set it here');

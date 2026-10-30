@@ -70,14 +70,15 @@ export function configRecord(config: unknown): Record<string, unknown> {
   return config;
 }
 
-/** Reads `children`: child ids, as numbers or digits. */
+/** Reads `children`: child ids, which are numbers. */
 export function parseChildren(value: unknown): number[] {
   return list(value, "children", "child ids").map((item) => {
-    const id = typeof item === "string" && /^\d+$/.test(item.trim()) ? Number(item.trim()) : item;
-    if (typeof id !== "number" || !Number.isSafeInteger(id) || id < 0) {
-      throw new Error(`children: ${JSON.stringify(item)} is not a child id`);
+    if (typeof item !== "number" || !Number.isSafeInteger(item) || item < 0) {
+      throw new Error(
+        `children: ${JSON.stringify(item)} is not a child id, which is a number such as 1001`,
+      );
     }
-    return id;
+    return item;
   });
 }
 
