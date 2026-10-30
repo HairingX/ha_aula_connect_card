@@ -33,7 +33,12 @@ export interface WeekCardConfig extends CommonConfig, BlocksConfig {
  */
 export function resolveWeekConfig(config: unknown, lenient = false): WeekCardConfig {
   const raw = configRecord(config);
-  return { ...resolveCommon(raw, lenient), ...resolveBlocks(raw), weeks: parseWeeks(raw.weeks) };
+  const common = resolveCommon(raw, lenient);
+  return {
+    ...common,
+    ...resolveBlocks(raw, common.size === "large"),
+    weeks: parseWeeks(raw.weeks),
+  };
 }
 
 /** Returns the week card's form. */
@@ -44,6 +49,8 @@ export function weekConfigForm(): ConfigForm {
       "weeks",
       "order",
       "show",
+      "timetable",
+      "info_lines",
       "switch_time",
       "size",
       "packing_group",

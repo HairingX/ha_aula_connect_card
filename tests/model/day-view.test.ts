@@ -273,7 +273,7 @@ describe("several children", () => {
 describe("the school day's blocks", () => {
   it("say homework is not shown without a week plan, and leave birthdays out", () => {
     const item = group("no-week-plan");
-    expect(blocks(item)).toEqual(["homework: noWeekPlan", "pack: content", "timetable: content"]);
+    expect(blocks(item)).toEqual(["homework: noWeekPlan", "timetable: content"]);
     expect(named(item.facts)).toEqual(["Skolefoto"]);
   });
 

@@ -98,8 +98,8 @@ const PACKING = [
   { subject: "Svømning", items: ["Badetøj", "Håndklæde"] },
 ];
 
-// The README's wall screen: large, with what to bring first and then the homework.
-const WALL = { large: true, glance: true, config: { order: ["pack", "homework"] } } as const;
+// The README's wall screen: the day card, large, with nothing else to set.
+const WALL = { large: true, glance: true } as const;
 
 function shot(
   card: Shot["card"],
@@ -152,7 +152,6 @@ const SETS: Record<string, () => Shot[]> = {
     ]),
     shot("day", "thu-0715", 800, { ...WALL, children: 2 }),
     shot("day", "thu-0715", 800, { ...WALL, children: 2, theme: "dark" }),
-    shot("day", "thu-0715", 800, { large: true, children: 2, tag: "default-order" }),
     shot("day", "thu-1930", 380, { config: { order: ["timetable"] }, tag: "order-timetable" }),
     shot("week", "thu-1930", 380, {
       config: {
@@ -203,10 +202,11 @@ const SETS: Record<string, () => Shot[]> = {
     shot("day", "thu-0715", 1216, { ...WALL, children: 2 }),
     shot("day", "thu-0715", 1216, { ...WALL, locale: "en-US", children: 2 }),
     shot("day", "thu-0715-3child", 1216, { ...WALL, children: 3 }),
+    shot("day", "thu-0715", 800, { ...WALL, locale: "en-US", children: 2 }),
     shot("day", "thu-1930", 800, {
       ...WALL,
       children: 2,
-      config: { ...WALL.config, packing: [] },
+      config: { packing: [] },
       tag: "nopacking",
     }),
     shot("day", "thu-1930-reminders", 800, { ...WALL, children: 2 }),
@@ -229,6 +229,16 @@ const SETS: Record<string, () => Shot[]> = {
     shot("week", "sat-1000-birthday", 380, { click: ".weekend-row > summary", tag: "open" }),
     shot("week", "sat-1000-birthday", 380, { locale: "en-US" }),
     shot("week", "thu-1930", 380, { click: ".day-row:not(.focus-day) > summary", tag: "open" }),
+    shot("day", "thu-1930", 380, {
+      click: '[data-block="timetable"] .more',
+      tag: "timetable-open",
+    }),
+    shot("week", "thu-1010", 380, {
+      click: '[data-block="timetable"] .more',
+      tag: "timetable-open",
+    }),
+    shot("day", "thu-1930-longplan", 380),
+    shot("day", "thu-1930-longplan", 380, { click: ".plan .more", tag: "plan-open" }),
     shot("week", "thu-1930-satlesson", 380),
     shot("week", "before-holiday", 380),
     shot("week", "sun-1800", 800),
@@ -410,7 +420,7 @@ function glance(arg: { tag: string; screen: number }): string[] {
   for (const part of husk) {
     const things = [...part.querySelectorAll(".pack-what")];
     const subjects = part.querySelector(".pack-subjects");
-    const first = things[0] ?? subjects ?? part;
+    const first = things[0] ?? subjects ?? part.querySelector(".empty") ?? part;
     if (below(first) > arg.screen)
       problems.push(`a child's Husk ends ${String(below(first))} px down`);
     for (const item of things) {

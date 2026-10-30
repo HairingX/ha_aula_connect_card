@@ -321,6 +321,25 @@ describe("a shared screen", () => {
     expect(text(card, ".title")).toBe("I morgen,");
   });
 
+  it("folds the timetable again when the day shown moves on", async () => {
+    const halfPast = new Date(local("2026-10-29", "11:59")).getTime() + 30_000;
+    const { card } = await mount(
+      "aula-connect-day-card",
+      "thu-1200",
+      { children: [1001] },
+      undefined,
+      new Date(halfPast).toISOString(),
+    );
+    const more = (): HTMLButtonElement =>
+      present(card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'));
+    more().click();
+    await card.updateComplete;
+    expect(more().getAttribute("aria-expanded")).toBe("true");
+    await vi.advanceTimersByTimeAsync(90_050);
+    expect(text(card, ".title")).toBe("I morgen,");
+    expect(more().getAttribute("aria-expanded")).toBe("false");
+  });
+
   it("closes what was opened after ten minutes without a touch, but not on new data", async () => {
     const { card, hass } = await mount("aula-connect-card", "thu-1000", { children: [1001] });
     const friday = (): HTMLDetailsElement =>

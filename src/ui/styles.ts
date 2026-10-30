@@ -614,20 +614,20 @@ export const blocks = css`
     flex-direction: column;
     gap: var(--aula-space-2);
   }
-  /* In columns the children's rows head the parts: their headings are for screen readers. */
+  /* Every part names its child, so that whose it is never rests on a column's place. */
   .part-who {
     display: flex;
     align-items: center;
     gap: var(--aula-space-2);
     font-weight: var(--aula-medium);
-    position: var(--aula-who, static);
-    clip-path: var(--aula-who-clip, none);
   }
   /* A child with nothing says so on one line, after its name. */
   .part.is-empty {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: baseline;
+    /* Stretched to its row beside a longer part, its sentence still follows the name. */
+    align-content: flex-start;
     column-gap: var(--aula-space-2);
   }
   .part-who .avatar {
@@ -638,41 +638,29 @@ export const blocks = css`
     .normal .n-2 .cols {
       --aula-grid: grid;
       --aula-n: 2;
-      --aula-who: absolute;
-      --aula-who-clip: inset(50%);
     }
   }
   @container child (min-width: 712px) {
     .large .n-2 .cols {
       --aula-grid: grid;
       --aula-n: 2;
-      --aula-who: absolute;
-      --aula-who-clip: inset(50%);
     }
   }
   @container child (min-width: 904px) {
     .normal .n-3 .cols {
       --aula-grid: grid;
       --aula-n: 3;
-      --aula-who: absolute;
-      --aula-who-clip: inset(50%);
     }
   }
   @container child (min-width: 1100px) {
     .large .n-3 .cols {
       --aula-grid: grid;
       --aula-n: 3;
-      --aula-who: absolute;
-      --aula-who-clip: inset(50%);
     }
   }
-  /* Children in two rows keep their names on their parts, which fill the rows in order. */
+  /* Children in two rows fill them in order. */
   .tworow .cols > * {
     grid-column: auto;
-  }
-  .tworow .part-who {
-    position: static;
-    clip-path: none;
   }
 
   /* Never clamped: homework is what the family acts on. */
@@ -771,6 +759,18 @@ export const blocks = css`
     grid-template-columns: subgrid;
     column-gap: var(--aula-space-3);
   }
+  /* Folded, a line is the subject and when it begins, the times in a column after the names. */
+  .lessons.folded {
+    grid-template-columns: minmax(0, max-content) 1fr;
+    row-gap: var(--aula-space-1);
+  }
+  .folded .lesson {
+    align-items: baseline;
+  }
+  .folded time {
+    color: var(--aula-text-2);
+    white-space: nowrap;
+  }
   .lesson-time {
     display: flex;
     flex-direction: column;
@@ -855,14 +855,12 @@ export const blocks = css`
     line-height: var(--aula-paragraph);
     white-space: pre-line;
     overflow-wrap: anywhere;
+  }
+  .plan-text.clamp {
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: var(--lines);
     overflow: hidden;
-  }
-  .plan.open .plan-text {
-    display: block;
-    -webkit-line-clamp: unset;
   }
   .more {
     display: flex;
@@ -870,7 +868,8 @@ export const blocks = css`
     gap: var(--aula-space-1);
     min-height: var(--aula-target);
     padding: 0 var(--aula-space-3);
-    margin: 0 calc(-1 * var(--aula-space-3));
+    /* The target stays 48 px; the space below its words is no wider than between blocks. */
+    margin: 0 calc(-1 * var(--aula-space-3)) calc(-1 * var(--aula-space-3));
     border: 0;
     border-radius: var(--aula-radius);
     background: none;

@@ -102,6 +102,7 @@ const TEXTS = {
   weekPlan: ["week plan", "ugeplan"],
   showMore: ["Show more", "Vis mere"],
   showLess: ["Show less", "Vis mindre"],
+  showTimetable: ["Show full timetable", "Vis hele skemaet"],
   allDay: ["All day", "Hele dagen"],
   birthdayOf: ["{name}'s birthday", "{name} har fødselsdag"],
   // The homework card
@@ -136,11 +137,23 @@ const TEXTS = {
   editorChildrenHelper: ["None selected shows every child.", "Ingen valgt viser alle børn."],
   editorOrder: ["Move a block to the top", "Flyt en blok øverst"],
   editorOrderHelper: [
-    "Chosen blocks come first, in the order shown here – drag to move them. The rest follow the standard order: Homework, Remember, Timetable, Plan for the day, Events.",
-    "Valgte blokke vises øverst i den rækkefølge, de står her – træk for at flytte. Resten følger standardrækkefølgen: Lektier, Husk, Skema, Dagens plan, Begivenheder.",
+    "Chosen blocks come first, in the order shown here – drag to move them. The rest follow the standard order: Homework, Remember, Timetable, Plan for the day, Events; with large text, Remember first.",
+    "Valgte blokke vises øverst i den rækkefølge, de står her – træk for at flytte. Resten følger standardrækkefølgen: Lektier, Husk, Skema, Dagens plan, Begivenheder; med stor tekst Husk først.",
   ],
   editorShow: ["Show or hide blocks", "Vis og skjul blokke"],
   editorTasks: ["Homework and notes (earlier setting)", "Lektier og noter (tidligere indstilling)"],
+  editorTimetable: ["Timetable view", "Skemaets visning"],
+  editorTimetableHelper: ["Default: compact.", "Standard: kort."],
+  editorTimetableCompact: ["Compact – subjects and start times", "Kort – fag og starttider"],
+  editorTimetableFull: [
+    "Full – end times, rooms and breaks",
+    "Fuldt – sluttider, lokaler og frikvarterer",
+  ],
+  editorInfoLines: ["Lines of a plan note before Show more", "Linjer i dagens plan før Vis mere"],
+  editorInfoLinesHelper: [
+    "Default: 6. 0 shows every note whole.",
+    "Standard: 6. 0 viser altid hele teksten.",
+  ],
   editorSwitch: ["Show the next school day from", "Vis næste skoledag fra kl."],
   editorSwitchHelper: [
     "Empty = 12:00 PM (noon). Before this time the card shows today; 12:00 AM shows today all day.",

@@ -25,6 +25,10 @@ export interface CommonConfig {
   readonly subjectNames: readonly SubjectName[];
   /** The things to bring when a subject is on the timetable. */
   readonly packing: readonly PackRule[];
+  /** Whether the timetable opens folded to its subjects and their start times, or in full. */
+  readonly timetable: "compact" | "full";
+  /** The lines of a note of the plan shown before "Vis mere"; 0 shows every note whole. */
+  readonly infoLines: number;
 }
 
 /** The keys of a card that shows a day's blocks. */
@@ -36,6 +40,9 @@ export interface BlocksConfig {
   /** The blocks shown, in order. */
   readonly blocks: readonly BlockId[];
 }
+
+/** The lines of a plan's note shown before "Vis mere" when none is configured. */
+export const DEFAULT_INFO_LINES = 6;
 
 /** Tells whether a value is a mapping, as YAML writes one. */
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -106,6 +113,26 @@ export function parseSize(value: unknown): "normal" | "large" {
   if (absent(value)) return "normal";
   if (value !== "normal" && value !== "large") throw new Error("size: must be normal or large");
   return value;
+}
+
+/** Reads `timetable`: compact or full. */
+export function parseTimetable(value: unknown): "compact" | "full" {
+  if (absent(value)) return "compact";
+  if (value !== "compact" && value !== "full")
+    throw new Error("timetable: must be compact or full");
+  return value;
+}
+
+/** Reads `info_lines`: a whole number from 0 to 50, as a number or text. */
+export function parseInfoLines(value: unknown): number {
+  if (absent(value)) return DEFAULT_INFO_LINES;
+  const number = typeof value === "string" ? Number(value) : value;
+  if (typeof number !== "number" || !Number.isInteger(number) || number < 0 || number > 50) {
+    throw new Error(
+      `info_lines: must be a whole number from 0 to 50, not ${JSON.stringify(value)}`,
+    );
+  }
+  return number;
 }
 
 /** Reads `weeks`: 1 or 2, as a number or text. */
@@ -224,12 +251,14 @@ export function resolveCommon(config: Record<string, unknown>, lenient = false):
     size: parseSize(config.size),
     subjectNames: parseSubjectNames(config.subject_names, lenient),
     packing: parsePacking(config.packing, lenient),
+    timetable: parseTimetable(config.timetable),
+    infoLines: parseInfoLines(config.info_lines),
   };
 }
 
-/** Reads `order` and `show`, and the blocks they give. */
-export function resolveBlocks(config: Record<string, unknown>): BlocksConfig {
+/** Reads `order` and `show`, and the blocks they give, in a wall screen's order when `wall`. */
+export function resolveBlocks(config: Record<string, unknown>, wall: boolean): BlocksConfig {
   const order = parseOrder(config.order);
   const show = parseShow(config.show);
-  return { order, show, blocks: orderBlocks(order, show) };
+  return { order, show, blocks: orderBlocks(order, show, wall) };
 }

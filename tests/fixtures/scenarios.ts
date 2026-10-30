@@ -275,6 +275,22 @@ export const SCENARIOS: readonly Scenario[] = [
     fortnight("2026-10-26", reminders),
   ),
   scenario(
+    "thu-1930-longplan",
+    "Thursday 19:30: a plan for Friday of fifty lines",
+    "2026-10-29",
+    "19:30",
+    fortnight("2026-10-26", (data) => ({
+      ...data,
+      tasks: [
+        ...data.tasks,
+        {
+          ...note("2026-10-30", 221, "comment", "Historie", LONG_PLAN),
+          title: "Tur til skoven",
+        },
+      ],
+    })),
+  ),
+  scenario(
     "before-weekday-holiday",
     "Friday 9 October 14:00: a holiday entered Monday to Friday",
     "2026-10-09",
@@ -363,6 +379,23 @@ export const SCENARIOS: readonly Scenario[] = [
     "2026-11-02",
   ),
 ];
+
+// A teacher's letter of fifty lines, as some write for a day out.
+const LONG_PLAN = Array.from(
+  { length: 50 },
+  (_, index) =>
+    `${String(index + 1)}. ${
+      [
+        "Vi mødes i klassen kl. 8.00 og går samlet til bussen.",
+        "Turen går til skoven ved søen, hvor vi arbejder med vikingetiden.",
+        "Eleverne arbejder i grupper på fire og skifter post hver halve time.",
+        "Vi spiser frokost sammen ved shelterne.",
+        "Der er tre voksne med hele dagen.",
+        "Vi er tilbage ved skolen kl. 14.00.",
+        "Skriv til mig i Aula, hvis jeres barn ikke kan deltage.",
+      ][index % 7] ?? ""
+    }`,
+).join("\n");
 
 function saturdayLesson(data: WeekData): WeekData {
   return {

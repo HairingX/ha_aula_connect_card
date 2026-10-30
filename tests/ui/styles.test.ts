@@ -77,9 +77,10 @@ describe("the wall screen", () => {
 describe("what is never cut", () => {
   it("clamps no quote of the week plan, only the plan's notes behind Vis mere", () => {
     const clamped = ALL.flatMap(rules)
-      .filter((rule) => rule.declarations.some((item) => item.includes("line-clamp: 2")))
+      .filter((rule) => rule.declarations.some((item) => item.includes("line-clamp")))
       .flatMap((rule) => rule.selectors);
-    expect(clamped).toEqual([".plan-text"]);
+    expect(clamped).toEqual([".plan-text.clamp"]);
+    expect(declared(blocks, ".plan-text.clamp")).toContain("-webkit-line-clamp: var(--lines)");
   });
 
   it("keeps a time span on one line, and wraps a long subject's label", () => {

@@ -88,6 +88,8 @@ export type Hero =
       readonly kind: "day";
       /** The focus. */
       readonly focus: Focus;
+      /** The day. */
+      readonly day: Day;
     }
   | {
       /** A holiday up to the last day the data covers. */
@@ -131,6 +133,10 @@ export interface DayChildView {
 export interface BlockPart {
   /** The child. */
   readonly child: DayChildView;
+  /** What the child's day holds. */
+  readonly content: DayContent;
+  /** The child's day's blocks. */
+  readonly plan: BlockPlan;
   /** Why the part says it has nothing; "none" for the block's own sentence, as for no events. */
   readonly empty: EmptyKind | "none" | undefined;
 }
@@ -300,9 +306,9 @@ export function noSchoolHero(basis: ChildBasis, horizon: Day): NoSchoolHero {
 export function heroKey(hero: Hero): string {
   switch (hero.kind) {
     case "day":
-      return `${hero.focus.day ?? ""}|${hero.focus.reason}`;
+      return `${hero.day}|${hero.focus.reason}`;
     case "holiday":
-      return `holiday|${String(hero.event.id)}|${hero.resumes ?? ""}`;
+      return `holiday|${String(hero.event.id)}|${String(hero.resumes)}`;
     case "none":
       return `none|${hero.horizon}`;
   }
@@ -312,7 +318,7 @@ function heroOf(basis: ChildBasis): Hero {
   const { focus } = basis;
   return focus.day === undefined
     ? noSchoolHero(basis, focus.horizon ?? focus.today)
-    : { kind: "day", focus };
+    : { kind: "day", focus, day: focus.day };
 }
 
 function childView(basis: ChildBasis, options: DayViewOptions, ctx: ViewContext): DayChildView {
@@ -331,6 +337,9 @@ function childView(basis: ChildBasis, options: DayViewOptions, ctx: ViewContext)
   };
 }
 
+/** A child whose day's blocks are planned, as every child of a group with a school day is. */
+type Planned = DayChildView & { readonly content: DayContent; readonly plan: BlockPlan };
+
 function group(bases: readonly ChildBasis[], options: DayViewOptions, ctx: ViewContext): DayGroup {
   const children = bases.map((basis) => childView(basis, options, ctx));
   const [first] = bases;
@@ -338,31 +347,39 @@ function group(bases: readonly ChildBasis[], options: DayViewOptions, ctx: ViewC
     return { children, hero: undefined, above: undefined, facts: [], blocks: [] };
   }
   const hero = heroOf(first);
-  const common = (children[0]?.facts ?? []).filter((fact) =>
-    children.every((child) => child.facts.some((other) => factKey(other) === factKey(fact))),
-  );
+  // The facts every child has are the header's; each child's row keeps its own.
+  const common = children
+    .map((child) => child.facts)
+    .reduce((all, facts) =>
+      all.filter((fact) => facts.some((other) => factKey(other) === factKey(fact))),
+    );
   const shared = new Set(common.map(factKey));
-  const own =
-    children.length > 1
-      ? children.map((child) => ({
-          ...child,
-          facts: child.facts.filter((fact) => !shared.has(factKey(fact))),
-        }))
-      : children.map((child) => ({ ...child, facts: [] }));
+  const own = children.map((child): DayChildView => ({
+    ...child,
+    facts: child.facts.filter((fact) => !shared.has(factKey(fact))),
+  }));
+  const planned = own.filter(
+    (child): child is Planned => child.content !== undefined && child.plan !== undefined,
+  );
   const blocks = options.blocks
-    .filter((id) => own.some((child) => child.plan?.blocks.some((block) => block.id === id)))
+    .filter((id) => planned.some((child) => child.plan.blocks.some((block) => block.id === id)))
     .map((id) => ({
       id,
-      parts: own.map((child) => {
-        const planned = child.plan?.blocks.find((block) => block.id === id);
-        return { child, empty: planned ? planned.empty : ("none" as const) };
+      parts: planned.map((child) => {
+        const block = child.plan.blocks.find((item) => item.id === id);
+        return {
+          child,
+          content: child.content,
+          plan: child.plan,
+          empty: block ? block.empty : ("none" as const),
+        };
       }),
     }));
   return {
     children: own,
     hero,
     above: above(bases, ctx, options.blocks, hero),
-    facts: children.length > 1 ? common : (children[0]?.facts ?? []),
+    facts: common,
     blocks,
   };
 }

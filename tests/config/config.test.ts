@@ -27,6 +27,8 @@ describe("0.0.2's week card configurations", () => {
       size: "normal",
       subjectNames: [],
       packing: [],
+      timetable: "compact",
+      infoLines: 6,
       order: [],
       show: {},
       blocks: ALL,
@@ -143,7 +145,68 @@ describe("checking a configuration", () => {
       switchAt: 450,
       size: "large",
     });
-    expect(resolveDayConfig(shared).blocks).toEqual(ALL);
+    expect(resolveDayConfig(shared).blocks).toEqual([
+      "pack",
+      "homework",
+      "timetable",
+      "plan",
+      "events",
+      "birthdays",
+    ]);
+  });
+
+  it("puts Husk first on a wall screen, unless order says otherwise", () => {
+    expect(resolveDayConfig({ size: "large" }).blocks.slice(0, 2)).toEqual(["pack", "homework"]);
+    expect(resolveWeekConfig({ size: "large" }).blocks.slice(0, 2)).toEqual(["pack", "homework"]);
+    expect(resolveDayConfig({ size: "large", order: ["homework"] }).blocks.slice(0, 2)).toEqual([
+      "homework",
+      "pack",
+    ]);
+    expect(resolveDayConfig({}).blocks.slice(0, 2)).toEqual(["homework", "pack"]);
+  });
+});
+
+describe("the folded timetable and plan", () => {
+  it("fold the timetable and the plan's notes after six lines, unless told otherwise", () => {
+    expect(resolveDayConfig({})).toMatchObject({ timetable: "compact", infoLines: 6 });
+    expect(resolveDayConfig({ timetable: "full", info_lines: 0 })).toMatchObject({
+      timetable: "full",
+      infoLines: 0,
+    });
+    expect(resolveWeekConfig({ timetable: "compact", info_lines: "10" })).toMatchObject({
+      timetable: "compact",
+      infoLines: 10,
+    });
+  });
+
+  it.each([
+    [{ timetable: "short" }, "timetable: must be compact or full"],
+    [{ info_lines: 51 }, "info_lines: must be a whole number from 0 to 50, not 51"],
+    [{ info_lines: -1 }, "info_lines: must be a whole number from 0 to 50, not -1"],
+    [{ info_lines: 2.5 }, "info_lines: must be a whole number from 0 to 50, not 2.5"],
+    [{ info_lines: "six" }, 'info_lines: must be a whole number from 0 to 50, not "six"'],
+    [{ info_lines: true }, "info_lines: must be a whole number from 0 to 50, not true"],
+  ])("refuses %j", (config, message) => {
+    expect(() => resolveDayConfig(config)).toThrow(new Error(message));
+  });
+
+  it("are chosen in the editor, the timetable from a list and the lines as a number", () => {
+    rememberLanguage("en");
+    const schema = dayConfigForm().schema;
+    expect(schema.find((item) => item.name === "timetable")).toMatchObject({
+      selector: {
+        select: {
+          mode: "list",
+          options: [
+            { value: "compact", label: "Compact – subjects and start times" },
+            { value: "full", label: "Full – end times, rooms and breaks" },
+          ],
+        },
+      },
+    });
+    expect(schema.find((item) => item.name === "info_lines")).toMatchObject({
+      selector: { number: { min: 0, max: 50, mode: "box" } },
+    });
   });
 });
 
@@ -237,6 +300,8 @@ describe("the editor", () => {
       "children",
       "order",
       "show",
+      "timetable",
+      "info_lines",
       "switch_time",
       "size",
       "packing_group",
@@ -247,6 +312,8 @@ describe("the editor", () => {
       "weeks",
       "order",
       "show",
+      "timetable",
+      "info_lines",
       "switch_time",
       "size",
       "packing_group",
@@ -348,9 +415,21 @@ describe("the editor", () => {
     const da = weekConfigForm();
     expect(da.computeLabel({ name: "order" })).toBe("Flyt en blok øverst");
     expect(da.computeHelper({ name: "order" })).toContain(
-      "Resten følger standardrækkefølgen: Lektier, Husk, Skema, Dagens plan, Begivenheder.",
+      "Resten følger standardrækkefølgen: Lektier, Husk, Skema, Dagens plan, Begivenheder; med stor tekst Husk først.",
     );
-    expect(da.computeLabel({ name: "timetable" })).toBe("Skema");
+    expect(da.computeLabel({ name: "timetable", selector: { boolean: {} } })).toBe("Skema");
+    expect(da.computeLabel({ name: "timetable", selector: { select: {} } })).toBe(
+      "Skemaets visning",
+    );
+    expect(da.computeLabel({ name: "tasks", selector: { boolean: {} } })).toBe(
+      "Lektier og noter (tidligere indstilling)",
+    );
+    expect(da.computeLabel({ name: "info_lines" })).toBe("Linjer i dagens plan før Vis mere");
+    expect(da.computeHelper({ name: "timetable" })).toBe("Standard: kort.");
+    expect(da.computeHelper({ name: "info_lines" })).toBe(
+      "Standard: 6. 0 viser altid hele teksten.",
+    );
+    expect(da.computeHelper({ name: "show" })).toBeUndefined();
     expect(da.computeLabel({ name: "tasks" })).toBe("Lektier og noter (tidligere indstilling)");
     expect(da.computeLabel({ name: "packing" })).toBe("");
     expect(da.computeLabel({ name: "unknown" })).toBeUndefined();

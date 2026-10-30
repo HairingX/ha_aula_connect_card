@@ -23,6 +23,18 @@ export interface CardConfigBase {
   readonly children: readonly number[];
   /** `large` for a wall screen. */
   readonly size: "normal" | "large";
+  /** Whether the timetable opens folded to its subjects and their start times, or in full. */
+  readonly timetable: "compact" | "full";
+  /** The lines of a note of the plan shown before "Vis mere"; 0 shows every note whole. */
+  readonly infoLines: number;
+}
+
+/** How a day's timetable and plan are folded. */
+export interface Folding {
+  /** Whether the timetable opens in full rather than folded to subjects and start times. */
+  readonly full: boolean;
+  /** The lines of a note of the plan shown before "Vis mere"; 0 shows every note whole. */
+  readonly lines: number;
 }
 
 /** What the base element reads from every card's view. */
@@ -35,14 +47,16 @@ export interface CardViewBase {
 
 /** What a card's template asks the element: what is open, and what is cut short. */
 export interface CardState {
+  /** How the configuration folds a day's timetable and plan. */
+  readonly folding: Folding;
   /** Tells whether a disclosure is open: as the user left it, else `fallback`. */
   isOpen(key: string, fallback: boolean): boolean;
   /** Returns the `toggle` handler of a disclosure, which keeps the state the user chose. */
   toggled(key: string, fallback: boolean): (event: Event) => void;
-  /** Tells whether a plan block is open, and whether a note in it is cut short. */
-  plan(key: string): { open: boolean; cut: boolean };
-  /** Opens or closes a plan block. */
-  togglePlan(key: string): void;
+  /** Opens or closes what a button discloses, from `fallback` until the user chose. */
+  toggle(key: string, fallback: boolean): void;
+  /** Tells whether a text marked `data-cut` with the key is cut short where it is folded. */
+  cut(key: string): boolean;
 }
 
 // A screen reader, voice control or find-in-page opens a disclosure with a bare click or none.
@@ -174,6 +188,11 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     if (now.getTime() - this.#lastInteraction >= IDLE_RESET_MS) this.#opened.clear();
   }
 
+  /** How the configuration folds a day's timetable and plan. */
+  get folding(): Folding {
+    return { full: this.config?.timetable === "full", lines: Number(this.config?.infoLines) };
+  }
+
   /** Tells whether a disclosure is open: as the user left it, else `fallback`. */
   isOpen(key: string, fallback: boolean): boolean {
     return this.#opened.get(key) ?? fallback;
@@ -190,21 +209,22 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     };
   }
 
-  /** Tells whether a plan block is open, and whether a note in it is cut short. */
-  plan(key: string): { open: boolean; cut: boolean } {
-    return { open: this.#opened.get(key) ?? false, cut: this.#cut.get(key) ?? false };
-  }
-
-  /** Opens or closes a plan block. */
-  togglePlan(key: string): void {
+  /** Opens or closes what a button discloses, from `fallback` until the user chose. */
+  toggle(key: string, fallback: boolean): void {
     this.#lastInteraction = Date.now();
-    this.#opened.set(key, !(this.#opened.get(key) ?? false));
+    this.#opened.set(key, !this.isOpen(key, fallback));
     this.requestUpdate();
   }
 
+  /** Tells whether a text marked `data-cut` with the key is cut short where it is folded. */
+  cut(key: string): boolean {
+    return this.#cut.get(key) ?? false;
+  }
+
   /**
-   * Measures which plan blocks cut a note short, so that "Vis mere" shows only then: after each
-   * render, and when a block's width changes, as when the card is turned or shown.
+   * Measures which folded texts are cut short, so that "Vis mere" shows only then: after each
+   * render, and when a text's width changes, as when the card is turned or shown. An unfolded
+   * text keeps what was measured while it was folded.
    */
   protected override updated(): void {
     let changed = false;
@@ -213,14 +233,11 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
         this.requestUpdate();
       });
     }
-    for (const block of this.renderRoot.querySelectorAll<HTMLElement>("[data-plan]")) {
-      this.#resized?.observe(block);
-      if (block.classList.contains("open")) continue;
-      const key = block.dataset.plan ?? "";
-      const cut = [...block.querySelectorAll<HTMLElement>(".plan-text")].some(
-        (text) => text.scrollHeight > text.clientHeight + 1,
-      );
-      if (cut !== (this.#cut.get(key) ?? false)) {
+    for (const text of this.renderRoot.querySelectorAll<HTMLElement>(".clamp[data-cut]")) {
+      this.#resized?.observe(text);
+      const key = String(text.dataset.cut);
+      const cut = text.scrollHeight > text.clientHeight + 1;
+      if (cut !== this.cut(key)) {
         this.#cut.set(key, cut);
         changed = true;
       }

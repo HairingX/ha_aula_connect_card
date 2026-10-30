@@ -27,13 +27,24 @@ export interface DayCardConfig extends CommonConfig, BlocksConfig {}
  */
 export function resolveDayConfig(config: unknown, lenient = false): DayCardConfig {
   const raw = configRecord(config);
-  return { ...resolveCommon(raw, lenient), ...resolveBlocks(raw) };
+  const common = resolveCommon(raw, lenient);
+  return { ...common, ...resolveBlocks(raw, common.size === "large") };
 }
 
 /** Returns the school day card's form. */
 export function dayConfigForm(): ConfigForm {
   return configForm(
-    ["children", "order", "show", "switch_time", "size", "packing_group", "subject_names_group"],
+    [
+      "children",
+      "order",
+      "show",
+      "timetable",
+      "info_lines",
+      "switch_time",
+      "size",
+      "packing_group",
+      "subject_names_group",
+    ],
     resolveDayConfig,
   );
 }

@@ -12,7 +12,7 @@ import { html, nothing, type TemplateResult } from "lit";
 import type { ViewContext } from "../core/context.ts";
 import { capitalize, formatDay, formatDayRange, formatWeekday } from "../core/dates.ts";
 import { glue } from "../core/text.ts";
-import { childKey, type Child } from "../core/types.ts";
+import { childKey, type Child, type Day } from "../core/types.ts";
 import type { BridgeRow } from "../model/bridges.ts";
 import type { AboveRows, DayCardView, DayChildView, DayGroup, Hero } from "../model/day-view.ts";
 import type { Fact } from "../model/blocks.ts";
@@ -182,9 +182,9 @@ function hero(
   let title: TemplateResult;
   switch (item.kind) {
     case "day": {
-      const { day, reason } = item.focus;
-      mark = tile(day ?? ctx.today, ctx, reason === "today");
-      title = heading(day ?? ctx.today, reason, ctx);
+      const { reason } = item.focus;
+      mark = tile(item.day, ctx, reason === "today");
+      title = heading(item.day, reason, ctx);
       break;
     }
     case "holiday":
@@ -249,29 +249,24 @@ function strip(group: DayGroup, view: DayCardView, ctx: ViewContext): TemplateRe
   </ul>`;
 }
 
-function blocks(group: DayGroup, ctx: ViewContext, state: CardState): TemplateResult {
+function blocks(group: DayGroup, day: Day, ctx: ViewContext, state: CardState): TemplateResult {
   if (group.blocks.length === 0) return html`<p class="empty">${ctx.t("nothingThisDay")}</p>`;
   const several = group.children.length > 1;
   return html`<div class="day-blocks">
     ${group.blocks.map((block) =>
       renderBlock(
         block.id,
-        block.parts.flatMap((part, index) =>
-          part.child.content
-            ? [
-                {
-                  content: part.child.content,
-                  quotes: part.child.plan?.quotes ?? [],
-                  empty: part.empty,
-                  child: several ? part.child.child : undefined,
-                  key: childKey(part.child.child),
-                  col: index + 1,
-                },
-              ]
-            : [],
-        ),
+        block.parts.map((part, index) => ({
+          content: part.content,
+          quotes: part.plan.quotes,
+          subjects: part.plan.subjects,
+          empty: part.empty,
+          child: several ? part.child.child : undefined,
+          key: childKey(part.child.child),
+          col: index + 1,
+        })),
         ctx,
-        { detailed: false, level: 3, state },
+        { day, detailed: false, level: 3, state },
       ),
     )}
   </div>`;
@@ -296,7 +291,7 @@ function group(
         ? html`${item.above ? aboveRows(item.above, ctx, count > 1) : nothing}
           ${hero(item.hero, item.facts, one?.content?.hours, ctx, several ? one?.child : undefined)}
           ${count > 1 ? strip(item, view, ctx) : nothing}
-          ${item.hero.kind === "day" ? blocks(item, ctx, state) : nothing}`
+          ${item.hero.kind === "day" ? blocks(item, item.hero.day, ctx, state) : nothing}`
         : nothing
     }
   </div>`;

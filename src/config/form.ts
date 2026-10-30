@@ -51,7 +51,10 @@ export interface ConfigForm {
   /** The form's fields, top to bottom. */
   readonly schema: readonly FormSchema[];
   /** Returns a field's label; Home Assistant's own when undefined. */
-  readonly computeLabel: (schema: { name: string }) => string | undefined;
+  readonly computeLabel: (schema: {
+    name: string;
+    selector?: Readonly<Record<string, unknown>>;
+  }) => string | undefined;
   /** Returns a field's help text, if any; an expandable's becomes a paragraph in it. */
   readonly computeHelper: (schema: { name: string }) => string | undefined;
   /** Throws for a configuration the form cannot edit, with the reason: the card's own check. */
@@ -72,8 +75,9 @@ const LABELS: Readonly<Record<string, TextKey | "">> = {
   children: "editorChildren",
   weeks: "editorWeeks",
   order: "editorOrder",
-  ...BLOCK_LABELS,
   tasks: "editorTasks",
+  timetable: "editorTimetable",
+  info_lines: "editorInfoLines",
   switch_time: "editorSwitch",
   size: "editorSize",
   // Inside their groups, whose titles name them.
@@ -85,6 +89,8 @@ const HELPERS: Readonly<Record<string, TextKey>> = {
   children: "editorChildrenHelper",
   weeks: "editorWeeksHelper",
   order: "editorOrderHelper",
+  timetable: "editorTimetableHelper",
+  info_lines: "editorInfoLinesHelper",
   switch_time: "editorSwitchHelper",
   size: "editorSizeHelper",
   packing_group: "editorPackingHelper",
@@ -107,6 +113,8 @@ export type FieldName =
   | "weeks"
   | "order"
   | "show"
+  | "timetable"
+  | "info_lines"
   | "switch_time"
   | "size"
   | "packing_group"
@@ -182,6 +190,19 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
         },
       ],
     },
+    timetable: {
+      name: "timetable",
+      selector: {
+        select: {
+          mode: "list",
+          options: [
+            { value: "compact", label: t("editorTimetableCompact") },
+            { value: "full", label: t("editorTimetableFull") },
+          ],
+        },
+      },
+    },
+    info_lines: { name: "info_lines", selector: { number: { min: 0, max: 50, mode: "box" } } },
     switch_time: { name: "switch_time", selector: { time: { no_second: true } } },
     size: {
       name: "size",
@@ -290,8 +311,13 @@ export function configForm(
   return {
     schema: names.map((name) => all[name]),
     computeLabel: (schema) => {
-      const key = LABELS[schema.name];
-      return key === undefined ? undefined : key === "" ? "" : t(key);
+      // A block's switch shares its name with a field of its own, such as the timetable's.
+      const block = schema.selector && "boolean" in schema.selector;
+      const key = block
+        ? (BLOCK_LABELS as Readonly<Record<string, TextKey | undefined>>)[schema.name]
+        : undefined;
+      const label = key ?? LABELS[schema.name];
+      return label === undefined ? undefined : label === "" ? "" : t(label);
     },
     computeHelper: (schema) => {
       const key = HELPERS[schema.name];

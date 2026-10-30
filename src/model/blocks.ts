@@ -46,11 +46,12 @@ export function isShown(id: BlockId, show: ShowConfig): boolean {
 
 /**
  * Returns the blocks to show, in order: those `order` names first, in its order, then the rest in
- * the default order, without the hidden ones. An empty `order` is the default order.
+ * the default order, without the hidden ones. An empty `order` is the default order. On a wall
+ * screen the default order starts with Husk, which is read from across the room.
  */
-export function orderBlocks(order: readonly BlockId[], show: ShowConfig): BlockId[] {
-  return [...order, ...DEFAULT_ORDER.filter((id) => !order.includes(id))].filter((id) =>
-    isShown(id, show),
+export function orderBlocks(order: readonly BlockId[], show: ShowConfig, wall = false): BlockId[] {
+  return [...new Set([...order, ...(wall ? (["pack"] as const) : []), ...DEFAULT_ORDER])].filter(
+    (id) => isShown(id, show),
   );
 }
 
@@ -67,22 +68,25 @@ export type LessonStatus =
       readonly text: string;
     };
 
+/** A row of a day's timetable with lessons: one, or back-to-back ones that are the same. */
+export interface LessonRow {
+  /** A block of lessons. */
+  readonly kind: "lesson";
+  /** The lessons. */
+  readonly block: LessonBlock;
+  /** Their subject, named. */
+  readonly subject: SubjectLabel;
+  /** Where the lessons are in time; undefined on a day that is not today. */
+  readonly time: LessonTime | undefined;
+  /** A change Aula reports, such as a substitute. */
+  readonly status: LessonStatus | undefined;
+  /** Whether they are cancelled: they count for no school hours. */
+  readonly cancelled: boolean;
+}
+
 /** A row of a day's timetable: a block of lessons, or a break. */
 export type TimetableRow =
-  | {
-      /** A block of lessons. */
-      readonly kind: "lesson";
-      /** The lessons. */
-      readonly block: LessonBlock;
-      /** Their subject, named. */
-      readonly subject: SubjectLabel;
-      /** Where the lessons are in time; undefined on a day that is not today. */
-      readonly time: LessonTime | undefined;
-      /** A change Aula reports, such as a substitute. */
-      readonly status: LessonStatus | undefined;
-      /** Whether they are cancelled: they count for no school hours. */
-      readonly cancelled: boolean;
-    }
+  | LessonRow
   | {
       /** A break between lessons. */
       readonly kind: "break";
@@ -254,6 +258,8 @@ export interface BlockPlan {
   readonly blocks: readonly PlannedBlock[];
   /** The quotes Husk shows: none while both homework and the plan are hidden. */
   readonly quotes: readonly Quote[];
+  /** The subjects Husk names: none while the timetable, which lists them, is shown. */
+  readonly subjects: readonly SubjectLabel[];
   /** Whether no block has anything: the day says "Intet i Aula for denne dag." */
   readonly nothing: boolean;
 }
@@ -273,9 +279,10 @@ function homeworkEmpty(content: DayContent): EmptyKind | undefined {
 export function planBlocks(content: DayContent, blocks: readonly BlockId[]): BlockPlan {
   const quoted =
     blocks.includes("homework") || blocks.includes("plan") ? content.quotes : ([] as const);
+  const subjects = blocks.includes("timetable") ? [] : content.subjects;
   const has: Record<BlockId, boolean> = {
     homework: content.homework.length > 0,
-    pack: content.subjects.length > 0 || content.pack.length > 0 || quoted.length > 0,
+    pack: subjects.length > 0 || content.pack.length > 0 || quoted.length > 0,
     timetable: content.timetable.length > 0,
     plan: content.plan.length > 0,
     events: content.timed.length > 0,
@@ -295,7 +302,24 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
     if (has[id]) planned.push({ id, empty: undefined });
     else if (empty) planned.push({ id, empty });
   }
-  return { blocks: planned, quotes: quoted, nothing: planned.length === 0 };
+  return { blocks: planned, quotes: quoted, subjects, nothing: planned.length === 0 };
+}
+
+/**
+ * Returns the folded timetable: a line for each subject in the order it comes, its lessons in a
+ * row taken as one from the start of the first, across a break; the breaks are left out. A
+ * lesson whose status differs from the one before it has a line of its own, as it is news.
+ */
+export function foldTimetable(rows: readonly TimetableRow[]): LessonRow[] {
+  const lessons = rows.filter((row) => row.kind === "lesson");
+  return lessons.filter((row, index) => {
+    const before = lessons[index - 1];
+    return (
+      before?.subject.key !== row.subject.key ||
+      before.cancelled !== row.cancelled ||
+      JSON.stringify(before.status) !== JSON.stringify(row.status)
+    );
+  });
 }
 
 /** Returns a day's facts, without those of a hidden block. */

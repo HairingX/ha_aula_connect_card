@@ -88,6 +88,7 @@ function blocks(
             {
               content,
               quotes: plan.quotes,
+              subjects: plan.subjects,
               empty: block.empty,
               child: undefined,
               key: childKey(child),
@@ -95,7 +96,7 @@ function blocks(
             },
           ],
           ctx,
-          { detailed: true, level: 5, state },
+          { day: row.day, detailed: true, level: 5, state },
         ),
       )}
     </div>`;
