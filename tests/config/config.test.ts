@@ -63,7 +63,7 @@ describe("the week card's configuration", () => {
   it("refuses show.tasks, naming the blocks", () => {
     expect(() => resolveWeekConfig({ show: { tasks: false } })).toThrow(
       new Error(
-        'show: unknown block "tasks"; the blocks are homework, pack, timetable, plan, events, birthdays',
+        'show: unknown block "tasks"; the blocks are task, pack, timetable, comment, events, birthdays',
       ),
     );
   });
@@ -87,12 +87,12 @@ describe("checking a configuration", () => {
     [{ order: "timetable" }, "order: must be a list of blocks"],
     [
       { order: ["timetable", "pack", "lunch"] },
-      'order[2]: unknown block "lunch"; the blocks are homework, pack, timetable, plan, events, birthdays',
+      'order[2]: unknown block "lunch"; the blocks are task, pack, timetable, comment, events, birthdays',
     ],
     [{ show: [] }, "show: must be a mapping of blocks to true or false"],
     [
       { show: { notes: false } },
-      'show: unknown block "notes"; the blocks are homework, pack, timetable, plan, events, birthdays',
+      'show: unknown block "notes"; the blocks are task, pack, timetable, comment, events, birthdays',
     ],
     [{ show: { timetable: "no" } }, "show.timetable: must be true or false"],
     [{ packing: [{ subject: "Idræt" }] }, "packing[0].items: must name at least one thing"],
@@ -156,6 +156,23 @@ describe("checking a configuration", () => {
       "pack",
     ]);
     expect(resolveDayConfig({}).blocks.slice(0, 2)).toEqual(["task", "pack"]);
+  });
+});
+
+describe("the week plan card's notes", () => {
+  it.each<[unknown, string]>([
+    [undefined, "tasks"],
+    ["", "tasks"],
+    ["comments", "comments"],
+    ["all", "all"],
+  ])("are %j: %s", (notes, shown) => {
+    expect(resolveWeekplanConfig({ notes }).notes).toBe(shown);
+  });
+
+  it("refuse anything but tasks, comments or all", () => {
+    expect(() => resolveWeekplanConfig({ notes: "important" })).toThrow(
+      "notes: must be tasks, comments or all",
+    );
   });
 });
 
@@ -314,6 +331,8 @@ describe("the editor", () => {
     ]);
     expect(names(weekplanConfigForm().schema)).toEqual([
       "children",
+      "notes",
+      "info_lines",
       "switch_time",
       "size",
       "subject_names_group",
@@ -382,6 +401,7 @@ describe("the editor", () => {
       "weeks",
       "timetable",
       "size",
+      "notes",
       "size",
     ]);
     for (const list of lists) {
@@ -436,13 +456,13 @@ describe("the editor", () => {
     const da = weekConfigForm();
     expect(da.computeLabel({ name: "order" })).toBe("Flyt en blok øverst");
     expect(da.computeHelper({ name: "order" })).toContain(
-      "Resten følger standardrækkefølgen: Lektier, Husk, Skema, Dagens plan, Begivenheder; med stor tekst Husk først.",
+      "Resten følger standardrækkefølgen: Vigtigt, Husk, Skema, Noter; med stor tekst Husk først.",
     );
     expect(da.computeLabel({ name: "timetable", selector: { boolean: {} } })).toBe("Skema");
     expect(da.computeLabel({ name: "timetable", selector: { select: {} } })).toBe(
       "Skemaets visning",
     );
-    expect(da.computeLabel({ name: "info_lines" })).toBe("Linjer i dagens plan før Vis mere");
+    expect(da.computeLabel({ name: "info_lines" })).toBe("Linjer i en note før Vis mere");
     expect(da.computeHelper({ name: "timetable", selector: { select: {} } })).toBe(
       "Standard: kort.",
     );

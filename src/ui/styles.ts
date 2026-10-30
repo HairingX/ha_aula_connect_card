@@ -922,6 +922,15 @@ export const blocks = css`
     flex: none;
     align-self: center;
   }
+  .event-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .event-place {
+    display: block;
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+  }
   .event-when {
     color: var(--aula-text-2);
     white-space: nowrap;

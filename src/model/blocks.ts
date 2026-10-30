@@ -334,8 +334,7 @@ export function foldTimetable(rows: readonly TimetableRow[]): LessonRow[] {
     if (row.kind === "lesson") {
       const joins =
         before?.kind === "lesson" &&
-        last !== undefined &&
-        last.subject.key === row.subject.key &&
+        last?.subject.key === row.subject.key &&
         last.cancelled === row.cancelled &&
         JSON.stringify(last.status) === JSON.stringify(row.status);
       if (joins)

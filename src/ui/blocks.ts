@@ -226,9 +226,9 @@ function lessonRow(row: TimetableRow, ctx: ViewContext, detailed: boolean): Temp
   </li>`;
 }
 
-// An event that began on an earlier day comes first; one that lasts the day is no time of day.
+// An event that began on an earlier day comes first.
 function startOf(item: TimedEvent): string {
-  return item.span === "within" || item.span === "from" ? item.event.start : "";
+  return item.span === "until" ? "" : item.event.start;
 }
 
 /**
@@ -243,60 +243,53 @@ function timeline<Row extends TimetableRow>(
   ctx: ViewContext,
 ): unknown[] {
   const event = (item: TimedEvent): TemplateResult => eventRow(item, ctx, full);
-  const whole = part.timed.filter(
-    (item) => item.span !== "within" && item.span !== "from" && item.span !== "until",
-  );
-  const timed = part.timed
-    .filter((item) => !whole.includes(item))
-    .sort((a, b) => startOf(a).localeCompare(startOf(b)));
-  const lines: unknown[] = [
-    ...part.allDay.map((item) => allDayRow(item, ctx, full)),
-    ...whole.map((item) => allDayRow(item.event, ctx, full)),
-  ];
-  let next = 0;
-  for (const item of rows) {
-    const start = item.kind === "lesson" ? item.block.start : item.start;
-    while (next < timed.length && startOf(timed[next] as TimedEvent) <= start) {
-      lines.push(event(timed[next] as TimedEvent));
-      next += 1;
+  const timed = [...part.timed].sort((a, b) => startOf(a).localeCompare(startOf(b)));
+  const lines: unknown[] = part.allDay.map((item) => allDayRow(item, ctx, full));
+  const before = (start: string): void => {
+    for (let first = timed[0]; first !== undefined && startOf(first) <= start; first = timed[0]) {
+      lines.push(event(first));
+      timed.shift();
     }
+  };
+  for (const item of rows) {
+    before(item.kind === "lesson" ? item.block.start : item.start);
     lines.push(row(item));
   }
-  for (const item of timed.slice(next)) lines.push(event(item));
+  lines.push(...timed.map(event));
   return lines;
 }
 
-function allDayRow(item: CalendarEvent, ctx: ViewContext, full: boolean): TemplateResult {
-  const head = html`<span class="lesson-head"
-    >${icon(eventIcon(item.type))}${aula(item.title, ctx)}</span
+// An event's title, with its place on a line under it.
+function eventText(event: CalendarEvent, ctx: ViewContext): TemplateResult {
+  const place = event.location?.trim();
+  return html`<span class="lesson-head"
+    >${icon(eventIcon(event.type))}<span class="event-text"
+      >${aula(event.title, ctx)}${
+        place ? html`<span class="event-place">${aula(place, ctx)}</span>` : nothing
+      }</span
+    ></span
   >`;
+}
+
+function allDayRow(item: CalendarEvent, ctx: ViewContext, full: boolean): TemplateResult {
   return full
     ? html`<li class="lesson event-row all-day">
         <span class="lesson-time">${ctx.t("allDay")}</span>
-        <span class="lesson-main">${head}</span>
+        <span class="lesson-main">${eventText(item, ctx)}</span>
       </li>`
     : html`<li class="lesson event-row all-day">
-        ${head}<span class="event-when">${ctx.t("allDay")}</span>
+        ${eventText(item, ctx)}<span class="event-when">${ctx.t("allDay")}</span>
       </li>`;
 }
 
 function eventRow(item: TimedEvent, ctx: ViewContext, full: boolean): TemplateResult {
-  const place = item.event.location?.trim();
   return full
     ? html`<li class="lesson event-row">
         <span class="lesson-time">${eventWhen(item, ctx)}</span>
-        <span class="lesson-main">
-          <span class="lesson-head"
-            >${icon(eventIcon(item.event.type))}${aula(item.event.title, ctx)}</span
-          >
-          ${place ? html`<span class="lesson-meta">${aula(place, ctx)}</span>` : nothing}
-        </span>
+        <span class="lesson-main">${eventText(item.event, ctx)}</span>
       </li>`
     : html`<li class="lesson event-row">
-        <span class="lesson-head"
-          >${icon(eventIcon(item.event.type))}${aula(item.event.title, ctx)}</span
-        >
-        <span class="event-when">${eventWhen(item, ctx)}</span>
+        ${eventText(item.event, ctx)}<span class="event-when">${eventWhen(item, ctx)}</span>
       </li>`;
 }
 

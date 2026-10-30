@@ -66,7 +66,7 @@ function dayColumn(day: string, ctx: ViewContext): TemplateResult {
 function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardState): unknown {
   const { content, plan } = row;
   const header = row.facts.filter((fact) => fact.kind === "birthday" || isHolidayEvent(fact.event));
-  const shown = factStack(header, `${childKey(child)}|facts|${row.day}`, ctx, state);
+  const shown = factStack(header, ctx);
   if (plan.nothing) {
     return header.length > 0 ? shown : html`<p class="empty">${ctx.t("nothingThisDay")}</p>`;
   }

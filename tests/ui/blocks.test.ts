@@ -26,13 +26,12 @@ function shown(notes: Parameters<typeof homeworkList>[0]): HTMLElement {
 
 describe("a block a child has nothing for", () => {
   it("says so in the block's own words", () => {
-    const drawn = BLOCKS.filter((id) => id !== "birthdays");
+    const drawn = BLOCKS.filter((id) => id !== "birthdays" && id !== "events");
     expect(drawn.map((id) => emptyText(id, "none", content, ctx))).toEqual([
-      "Ingen lektier i ugeplanen.",
+      "Intet i ugeplanen.",
       "Intet ekstra at huske.",
       "Intet skema i Aula.",
       "Intet i ugeplanen.",
-      "Ingen begivenheder.",
     ]);
   });
 });

@@ -91,7 +91,7 @@ describe("registration", () => {
       [
         "aula-connect-weekplan-card",
         true,
-        "https://github.com/HairingX/ha_aula_connect_card#homework-card",
+        "https://github.com/HairingX/ha_aula_connect_card#week-plan-card",
       ],
       [
         "aula-connect-week-card",
@@ -254,9 +254,9 @@ describe("before there is anything to show", () => {
 describe("the cards", () => {
   it("show tomorrow in the evening, named three ways", async () => {
     const { card } = await mount("aula-connect-day-card", "thu-1930", { children: [1001] });
-    expect(spoken(card, "h2")).toBe("I morgen, fredag 30. oktober, næste skoledag");
+    expect(spoken(card, "h2")).toBe("I morgen, 30. oktober");
     expect(card.shadowRoot?.querySelector(".tile.today")).toBeNull();
-    expect(text(card, "section")).toContain("Lektier til i morgen");
+    expect(text(card, "section")).toContain("Vigtigt");
   });
 
   it("collapse this week at the weekend", async () => {
@@ -265,9 +265,9 @@ describe("the cards", () => {
     expect(card.shadowRoot?.querySelector("details.focus-day")?.hasAttribute("open")).toBe(true);
   });
 
-  it("fold the earlier homework", async () => {
+  it("fold the earlier days", async () => {
     const { card } = await mount("aula-connect-weekplan-card", "thu-1530", { children: [1001] });
-    expect(text(card, ".fold > summary")).toBe("Tidligere lektier (3)");
+    expect(text(card, ".fold > summary")).toBe("Tidligere (3)");
   });
 
   it("size themselves for the masonry view and the sections grid", async () => {
@@ -447,10 +447,11 @@ describe("Home Assistant's state", () => {
 
   it("follows a new configuration on the same connection", async () => {
     const { card } = await mount("aula-connect-day-card", "thu-1930", { children: [1001] });
-    card.setConfig({ type: "custom:aula-connect-day-card", children: [1002] });
+    expect(card.shadowRoot?.querySelector(".kid-name, .who")).toBeNull();
+    card.setConfig({ type: "custom:aula-connect-day-card", children: [1001, 1002] });
     await settle();
     await card.updateComplete;
-    expect(text(card, ".who")).toContain("Oskar");
+    expect(text(card, ".strip")).toContain("Oskar");
   });
 
   it("measures what is folded where the browser cannot watch sizes", async () => {

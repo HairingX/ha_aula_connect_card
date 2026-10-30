@@ -143,20 +143,20 @@ describe("the rows above the school day's header", () => {
 });
 
 describe("the header", () => {
-  it("names a sports day without lessons as a fact, and says it has no timetable", () => {
+  it("names a sports day without lessons in the timetable, as a calendar does", () => {
     const item = group("motionsdag");
     expect(item.hero).toMatchObject({
       kind: "day",
       focus: { day: "2026-10-27", reason: "tomorrow" },
     });
-    expect(named(item.facts)).toEqual(["Motionsdag"]);
-    expect(blocks(item)).toEqual(["homework: noHomework", "timetable: noTimetable"]);
+    expect(named(item.facts)).toEqual([]);
+    expect(blocks(item)).toEqual(["task: noHomework", "timetable: content"]);
   });
 
-  it("says each fact once: whole-day events and birthdays in the header, no block for them", () => {
+  it("says birthdays in the header and events in the timetable, no block for either", () => {
     const item = group("thu-1930");
-    expect(named(item.facts)).toEqual(["Skolefoto", "Alma"]);
-    expect(item.blocks.map((block) => block.id)).toEqual(["task", "pack", "timetable", "comment"]);
+    expect(named(item.facts)).toEqual(["Alma"]);
+    expect(item.blocks.map((block) => block.id)).toEqual(["task", "timetable", "comment"]);
   });
 
   it("names the holiday ahead and the day school starts again", () => {
@@ -232,16 +232,16 @@ describe("several children", () => {
     const shown = view("thu-1930", { children: [] });
     expect(shown.groups).toHaveLength(1);
     const [item] = shown.groups;
-    expect(named(item?.facts ?? [])).toEqual(["Skolefoto"]);
+    expect(named(item?.facts ?? [])).toEqual([]);
     expect(item?.children.map((child) => named(child.facts))).toEqual([["Alma"], []]);
   });
 
   it("answer each block for every child in turn, saying when a child has nothing", () => {
     expect(blocks(group("thu-1930", { children: [] }))).toEqual([
-      "homework: content, noHomework",
-      "pack: content, content",
+      "task: content, noHomework",
+      "pack: none, content",
       "timetable: content, content",
-      "plan: content, content",
+      "comment: content, content",
     ]);
   });
 
@@ -297,18 +297,18 @@ describe("several children", () => {
       [1, "day"],
       [1, undefined],
     ]);
-    expect(named(shown.groups[0]?.facts ?? [])).toEqual(["Skolefoto", "Alma"]);
+    expect(named(shown.groups[0]?.facts ?? [])).toEqual(["Alma"]);
   });
 });
 
 describe("the school day's blocks", () => {
   it("say homework is not shown without a week plan, and leave birthdays out", () => {
     const item = group("no-week-plan");
-    expect(blocks(item)).toEqual(["homework: noWeekPlan", "timetable: content"]);
-    expect(named(item.facts)).toEqual(["Skolefoto"]);
+    expect(blocks(item)).toEqual(["task: noWeekPlan", "timetable: content"]);
+    expect(named(item.facts)).toEqual([]);
   });
 
-  it("put homework first, name the day's subjects, and quote the week plan's reminders", () => {
+  it("put what is marked first, and name the day's subjects", () => {
     const [child] = group("thu-1930").children;
     expect(child?.content?.subjects.map((subject) => subject.name)).toEqual([
       "Matematik",
@@ -316,14 +316,11 @@ describe("the school day's blocks", () => {
       "Engelsk",
       "Historie",
     ]);
-    expect(child?.plan?.quotes.map((quote) => quote.text)).toEqual([
-      "Husk madpakke – vi spiser i klassen.",
-    ]);
   });
 
   it("say the week plan is not in Aula yet instead of no homework", () => {
     const item = group("sun-1800-noplan");
-    expect(blocks(item)[0]).toBe("homework: planMissing");
+    expect(blocks(item)[0]).toBe("task: planMissing");
     expect(item.children[0]?.content?.planMissing).toBe(45);
   });
 
@@ -341,10 +338,11 @@ describe("the school day's blocks", () => {
     expect(cancelled?.kind === "lesson" && cancelled.subject.name).toBe("Klassens tid");
   });
 
-  it("show a camp's middle day in the header, and its first day by when it began", () => {
+  it("show a camp's middle day in the timetable, and its first day by when it began", () => {
     const item = group("tue-1930-camp");
     expect(item.hero).toMatchObject({ focus: { day: "2026-11-04", reason: "tomorrow" } });
-    expect(named(item.facts)).toEqual(["Lejrskole i Thy"]);
+    expect(named(item.facts)).toEqual([]);
+    expect(item.children[0]?.plan?.allDay.map((event) => event.title)).toEqual(["Lejrskole i Thy"]);
     expect(item.above?.events.map(({ item: entry }) => [entry.event.title, entry.span])).toEqual([
       ["Lejrskole i Thy", "from"],
     ]);

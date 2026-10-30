@@ -7,6 +7,7 @@ import {
   orderBlocks,
   planBlocks,
   type BlockId,
+  type LessonRow,
   type ShowConfig,
   type TimetableRow,
 } from "../../src/model/blocks.ts";
@@ -52,28 +53,46 @@ describe("the folded timetable", () => {
   const lines = (day: number, change = (rows: TimetableRow[]) => rows): string[] =>
     foldTimetable(
       change([...dayContent(present(days[day]), rules, new Date(item.clock), false).timetable]),
-    ).map((row) => `${row.subject.name} ${row.block.start.slice(11, 16)}`);
+    ).map(
+      (row) =>
+        `${row.subject.name} ${row.block.start.slice(11, 16)}–${row.block.end.slice(11, 16)}`,
+    );
 
-  it("gives each subject a line from when it begins, its lessons in a row as one across a break", () => {
-    expect(lines(4)).toEqual(["Matematik 08:00", "Dansk 08:45", "Engelsk 10:50", "Historie 12:10"]);
-    expect(lines(3)).toEqual(["Idræt 08:00", "Dansk 10:05", "Engelsk 12:10"]);
+  it("gives each lesson a line from its start to its end, so the breaks show between the times", () => {
+    expect(lines(4)).toEqual([
+      "Matematik 08:00–08:45",
+      "Dansk 08:45–09:30",
+      "Dansk 10:05–10:50",
+      "Engelsk 10:50–11:35",
+      "Historie 12:10–13:40",
+    ]);
+  });
+
+  // The first lesson becomes the second's subject, so that the two follow each other.
+  const joined = (change: (row: TimetableRow) => TimetableRow) =>
+    lines(4, (rows) =>
+      rows.map((row, index) => {
+        const second = rows[1];
+        if (index === 0 && row.kind === "lesson" && second?.kind === "lesson")
+          return { ...row, subject: second.subject };
+        return index === 1 ? change(row) : row;
+      }),
+    );
+
+  it("joins a subject's lessons with no break between them into one line", () => {
+    expect(joined((row) => row)).toEqual([
+      "Dansk 08:00–09:30",
+      "Dansk 10:05–10:50",
+      "Engelsk 10:50–11:35",
+      "Historie 12:10–13:40",
+    ]);
   });
 
   it("gives a lesson a line of its own when its status is news", () => {
-    expect(
-      lines(4, (rows) =>
-        rows.map((row, index) =>
-          row.kind === "lesson" && index === 3 ? { ...row, status: { kind: "substitute" } } : row,
-        ),
-      ),
-    ).toEqual(["Matematik 08:00", "Dansk 08:45", "Dansk 10:05", "Engelsk 10:50", "Historie 12:10"]);
-    expect(
-      lines(4, (rows) =>
-        rows.map((row, index) =>
-          row.kind === "lesson" && index === 3 ? { ...row, cancelled: true } : row,
-        ),
-      ),
-    ).toHaveLength(5);
+    const news = (status: Partial<LessonRow>) =>
+      joined((row) => (row.kind === "lesson" ? { ...row, ...status } : row));
+    expect(news({ status: { kind: "substitute" } })).toHaveLength(5);
+    expect(news({ cancelled: true })).toHaveLength(5);
   });
 });
 
@@ -94,11 +113,16 @@ describe("the subjects in Husk", () => {
     false,
   );
 
-  it("quote the week plan while homework or the plan is shown, as they are its notes", () => {
-    const shown = (blocks: BlockId[]): number => planBlocks(content, blocks).quotes.length;
-    expect(shown(["pack", "comment"])).toBe(1);
-    expect(shown(["pack", "task"])).toBe(1);
-    expect(shown(["pack", "timetable"])).toBe(0);
+  it("give the timetable the day's events while events are shown, as a calendar has them", () => {
+    const shown = (blocks: BlockId[]): number => {
+      const plan = planBlocks(content, blocks);
+      return plan.allDay.length + plan.timed.length;
+    };
+    expect(shown(["timetable", "events"])).toBeGreaterThan(0);
+    expect(shown(["timetable"])).toBe(0);
+    expect(planBlocks(content, ["timetable", "events"]).blocks.map((block) => block.id)).toEqual([
+      "timetable",
+    ]);
   });
 
   it("are named only while the timetable, which lists them, is hidden", () => {

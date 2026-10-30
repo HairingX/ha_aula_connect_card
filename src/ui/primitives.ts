@@ -187,36 +187,14 @@ export function counted(name: string, text: string): TemplateResult {
   return html`<span class="fact">${icon(name)}<span>${text}</span></span>`;
 }
 
-/** The whole-day events a day shows before the rest is a tap away. */
-const SHOWN_EVENTS = 3;
-
-/**
- * Shows a day's whole-day events a line each, and its birthdays as one line. Of four or more
- * events, three show and a button unfolds the rest, kept by `key`.
- */
-export function factStack(
-  items: readonly Fact[],
-  key: string,
-  ctx: ViewContext,
-  state: CardState,
-): unknown {
+/** Shows a day's whole-day events a line each, and its birthdays as one line. */
+export function factStack(items: readonly Fact[], ctx: ViewContext): unknown {
   const events = items.filter((item) => item.kind === "event");
   const people = items.flatMap((item) => (item.kind === "birthday" ? [item.birthday.name] : []));
-  const open = state.isOpen(key, false);
-  const folded = events.length > SHOWN_EVENTS;
   return items.length === 0
     ? nothing
     : html`<ul class="facts">
-        ${(folded && !open ? events.slice(0, SHOWN_EVENTS) : events).map(
-          (item) => html`<li>${fact(item, ctx)}</li>`,
-        )}
-        ${
-          folded
-            ? html`<li>
-                ${more(key, open, false, ctx.t("moreFacts", { n: events.length - SHOWN_EVENTS }), state, ctx)}
-              </li>`
-            : nothing
-        }
+        ${events.map((item) => html`<li>${fact(item, ctx)}</li>`)}
         ${
           people.length > 0
             ? html`<li>${counted("mdi:cake-variant-outline", birthdays(people, ctx))}</li>`

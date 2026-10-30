@@ -107,7 +107,6 @@ const TEXTS = {
     { one: "{n} birthday", other: "{n} birthdays" },
     { one: "{n} fødselsdag", other: "{n} fødselsdage" },
   ],
-  moreFacts: ["+{n} more", "+{n} mere"],
   // The week plan card
   weekShort: ["week {n}", "uge {n}"],
   weeksShort: ["weeks {from}–{to}", "uge {from}–{to}"],
