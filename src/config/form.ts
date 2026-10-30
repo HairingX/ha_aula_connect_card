@@ -135,7 +135,7 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
           multiple: true,
           mode: known ? "list" : "dropdown",
           custom_value: !known,
-          // Numbers, as YAML has them: Home Assistant ticks the option equal to the value.
+          // Numbers, as YAML has them: Home Assistant's checkboxes tick the option equal to it.
           options: children.map((child) => ({
             value: child.child_id,
             label: `${child.first_name} · ${child.institution_name}`,
@@ -148,9 +148,11 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
       selector: {
         select: {
           mode: "list",
+          // Text: Home Assistant's radio list turns the value into text before it ticks the option
+          // equal to it, and gives back text.
           options: [
-            { value: 1, label: t("editorWeeksOne") },
-            { value: 2, label: t("editorWeeksTwo") },
+            { value: "1", label: t("editorWeeksOne") },
+            { value: "2", label: t("editorWeeksTwo") },
           ],
         },
       },
@@ -280,16 +282,13 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
 }
 
 /**
- * Throws for what the form would show other than the card does: Home Assistant ticks only an
- * option equal to the value, and the time field shows only a time written as one.
+ * Throws for what the form would show other than the card does: Home Assistant's checkboxes tick
+ * only an option equal to the value, and its time field shows only a time written as one.
  */
 function assertShown(raw: Record<string, unknown>, known: boolean): void {
   const children = Array.isArray(raw.children) ? (raw.children as unknown[]) : [];
   if (known && children.some((id) => typeof id === "string")) {
     throw new Error("children: write the child ids as numbers, such as [1001], to choose here");
-  }
-  if (typeof raw.weeks === "string") {
-    throw new Error("weeks: write 1 or 2 without quotes to choose here");
   }
   // The time field shows only a time with its minutes.
   if (typeof raw.switch_time === "number" || /^\s*\d+\s*$/.test(String(raw.switch_time))) {
