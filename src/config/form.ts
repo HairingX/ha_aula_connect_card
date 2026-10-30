@@ -119,7 +119,6 @@ export type FieldName =
 
 function fields(t: Translate): Record<FieldName, FormSchema> {
   const children = knownChildren();
-  const known = children.length > 0;
   const namer = subjectNamer([]);
   const subjects = [
     ...new Set([...knownLessonTitles().map((title) => namer(title).name), ...knownNoteSubjects()]),
@@ -130,8 +129,7 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
       selector: {
         select: {
           multiple: true,
-          mode: known ? "list" : "dropdown",
-          custom_value: !known,
+          mode: "list",
           // Numbers, as YAML has them: Home Assistant's checkboxes tick the option equal to it.
           options: children.map((child) => ({
             value: child.child_id,
@@ -265,16 +263,8 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
   };
 }
 
-/**
- * Throws for what the form would show other than the card does: Home Assistant's checkboxes tick
- * only an option equal to the value, and its time field shows only a time written as one.
- */
-function assertShown(raw: Record<string, unknown>, known: boolean): void {
-  const children = Array.isArray(raw.children) ? (raw.children as unknown[]) : [];
-  if (known && children.some((id) => typeof id === "string")) {
-    throw new Error("children: write the child ids as numbers, such as [1001], to choose here");
-  }
-  // The time field shows only a time with its minutes.
+/** Throws for a time the form's time field cannot show, which shows only a time written as one. */
+function assertShown(raw: Record<string, unknown>): void {
   if (typeof raw.switch_time === "number" || /^\s*\d+\s*$/.test(String(raw.switch_time))) {
     throw new Error('switch_time: write the time as "12:00" to set it here');
   }
@@ -305,7 +295,7 @@ export function configForm(
     },
     assertConfig: (config) => {
       resolve(config, true);
-      assertShown(configRecord(config), knownChildren().length > 0);
+      assertShown(configRecord(config));
     },
   };
 }
