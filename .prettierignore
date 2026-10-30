@@ -1,6 +1,8 @@
 dist/
 coverage/
 package-lock.json
+# Home Assistant's own CSS, as its frontend writes it.
+scripts/ha-tokens.css
 # Kept word for word as HairingX/workflows' template has them.
 .github/
 CLAUDE.md

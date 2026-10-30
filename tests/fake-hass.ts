@@ -6,7 +6,7 @@
 
 import { vi } from "vitest";
 
-import type { Child, ConnectionEvent, HomeAssistant, Unsubscribe } from "../src/types";
+import type { Child, ConnectionEvent, HomeAssistant, Unsubscribe } from "../src/core/types.ts";
 
 /** A subscription the card made. */
 export interface FakeSubscription {
@@ -24,10 +24,12 @@ export interface FakeSubscription {
 export class FakeConnection {
   /** Every subscription made, in order. */
   readonly subscriptions: FakeSubscription[] = [];
-  /** The listeners of each connection event. */
-  readonly listeners = new Map<ConnectionEvent, Set<() => void>>();
+  /** The listeners of each connection event; one added twice is called twice, as Home Assistant's. */
+  readonly listeners = new Map<ConnectionEvent, (() => void)[]>();
   /** The error the next subscriptions are refused with, if any. */
   refuse: Error | undefined = undefined;
+  /** Answers each subscription, after a microtask, with what this gives for its message. */
+  respond: ((message: Record<string, unknown>) => unknown) | undefined = undefined;
 
   /** Records a subscription, or refuses it with `refuse`. */
   subscribeMessage(
@@ -38,24 +40,30 @@ export class FakeConnection {
     if (this.refuse !== undefined) return Promise.reject(this.refuse);
     const unsubscribe = vi.fn<Unsubscribe>(() => Promise.resolve());
     this.subscriptions.push({ message, options, callback, unsubscribe });
+    const respond = this.respond;
+    if (respond) {
+      queueMicrotask(() => {
+        callback(respond(message));
+      });
+    }
     return Promise.resolve(unsubscribe);
   }
 
   /** Adds a listener of a connection event. */
   addEventListener(event: ConnectionEvent, callback: () => void): void {
-    const set = this.listeners.get(event) ?? new Set();
-    set.add(callback);
-    this.listeners.set(event, set);
+    this.listeners.set(event, [...(this.listeners.get(event) ?? []), callback]);
   }
 
   /** Removes a listener of a connection event. */
   removeEventListener(event: ConnectionEvent, callback: () => void): void {
-    this.listeners.get(event)?.delete(callback);
+    const list = this.listeners.get(event) ?? [];
+    const index = list.indexOf(callback);
+    if (index >= 0) list.splice(index, 1);
   }
 
   /** Calls the listeners of a connection event. */
   emit(event: ConnectionEvent): void {
-    for (const callback of this.listeners.get(event) ?? []) callback();
+    for (const callback of [...(this.listeners.get(event) ?? [])]) callback();
   }
 
   /** The subscriptions not yet ended. */

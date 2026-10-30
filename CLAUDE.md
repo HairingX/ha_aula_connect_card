@@ -1,13 +1,23 @@
 # Conventions for this repository
 
-A Home Assistant dashboard card, installed through HACS, showing each child's week from the
-Aula Connect integration (`HairingX/ha_aula_connect`): the timetable, homework and things to
-remember from the school's week plan, other calendar events, and birthdays, for this week and
-next. It is read on a phone and on a shared wall screen, in Danish or English.
+Three Home Assistant dashboard cards in one bundle, installed through HACS, from the Aula Connect
+integration (`HairingX/ha_aula_connect`): the school day that matters now
+(`aula-connect-day-card`), the homework for the days ahead (`aula-connect-homework-card`), and the
+week day by day (`aula-connect-card`, whose 0.0.2 configurations keep working). They show the
+timetable, homework, the plan for the day and things to bring from the school's week plan, other
+calendar events, and birthdays, and are read on a phone and on a shared wall screen, in Danish or
+English. What each card shows and how it is set up: the README.
 
-## This card
+## These cards
 
-- It only shows. It never acts on Aula: no buttons that change anything, nothing marked read.
+- They only show. They never act on Aula: no buttons that change anything, nothing marked read;
+  a tap only opens and closes, and what is opened closes again by itself.
+- The day that matters is today until `switch_time` (noon), then the next school day; the cards
+  share one store and one clock per connection, in `src/core/`.
+- The layers stay apart: `src/model/` builds plain views from the store's data and imports no
+  lit; `src/ui/` renders them with lit's templates (`lit/html.js`) from a small custom element of
+  its own (`src/ui/card.ts`), as LitElement would cost the bundle more than it gives.
+- The bundle has a budget the build enforces (`vite.config.ts`); never raise it to fit a change.
 - Its data is the integration's websocket API, and nothing else:
   - `aula_connect/children` lists the children: `entry_id`, `child_id`, `first_name`, `name`,
     `institution_name`.
@@ -26,7 +36,9 @@ next. It is read on a phone and on a shared wall screen, in Danish or English.
 - The tests run the card against a fake `hass` and made-up data (`tests/fixtures/`): no real
   child, school, teacher or text from a real Aula account is ever committed.
 - The screenshots in `docs/` are made from the same made-up data: `npm run build`, then
-  `node scripts/screenshot.ts` (Playwright with Chromium, installed outside the repository).
+  `node scripts/screenshot.ts --set docs` (Playwright with Chromium, installed outside the
+  repository). Every shot is also a test of its layout, and the wall's of its first glance; the
+  other sets (`review`, `round`, `extra`) are written outside the repository with `--out`.
 
 <!-- BEGIN HairingX/workflows: shared; edit it there -->
 ## Shared by every card

@@ -1,0 +1,50 @@
+/**
+ * The school day card's configuration.
+ *
+ * @packageDocumentation
+ */
+
+import {
+  configRecord,
+  resolveBlocks,
+  resolveCommon,
+  type BlocksConfig,
+  type CommonConfig,
+} from "./common.ts";
+import { configForm, type ConfigForm } from "./form.ts";
+
+/** The school day card's element. */
+export const DAY_CARD = "aula-connect-day-card";
+
+/** The school day card's configuration, with its defaults filled in. */
+export interface DayCardConfig extends CommonConfig, BlocksConfig {}
+
+/**
+ * Checks a school day card's configuration and fills in its defaults; `lenient` leaves out the
+ * rows the editor is still filling in.
+ *
+ * @throws Error naming the first invalid key.
+ */
+export function resolveDayConfig(config: unknown, lenient = false): DayCardConfig {
+  const raw = configRecord(config);
+  const common = resolveCommon(raw, lenient);
+  return { ...common, ...resolveBlocks(raw, common.size === "large") };
+}
+
+/** Returns the school day card's form. */
+export function dayConfigForm(): ConfigForm {
+  return configForm(
+    [
+      "children",
+      "order",
+      "show",
+      "timetable",
+      "info_lines",
+      "switch_time",
+      "size",
+      "packing_group",
+      "subject_names_group",
+    ],
+    resolveDayConfig,
+  );
+}

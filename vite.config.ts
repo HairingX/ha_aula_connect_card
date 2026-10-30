@@ -1,21 +1,189 @@
+import { readFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
+
+import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 
 const version = process.env.CARD_VERSION ?? "0.0.0";
+
+/**
+ * Returns CSS without its comments and the whitespace it needs only to be read: around braces,
+ * semicolons, commas, a selector's combinators, and a multiplication or division, and the zero
+ * before a decimal point. Quoted strings, such as a generated ", ", are kept as they are, and so
+ * are the spaces around an addition or a subtraction, which calc() needs.
+ */
+export function minifyCss(css: string): string {
+  return css
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split(/("[^"]*")/)
+    .map((part, index) =>
+      index % 2 === 1
+        ? part
+        : part
+            .replace(/\s+/g, " ")
+            .replace(/\s*([{};,*/>])\s*/g, "$1")
+            .replace(/:\s+/g, ":")
+            .replace(/([^\w.-])0\.(\d)/g, "$1.$2")
+            // A selector's "+", before its block; calc() needs the spaces of its own.
+            .replace(/ \+ (?=[^{};]*\{)/g, "+")
+            .replace(/;}/g, "}"),
+    )
+    .join("")
+    .trim();
+}
+
+/**
+ * Returns CSS with the cards' own tokens, `--aula-*`, renamed to short names: the most used
+ * first. They are set and read only in the cards' styles, so a name never has to be read.
+ */
+export function shortenTokens(css: string): string {
+  const uses = new Map<string, number>();
+  for (const [name] of css.matchAll(/--aula-[\w-]+/g)) uses.set(name, (uses.get(name) ?? 0) + 1);
+  const names = new Map(
+    [...uses.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([name], index) => [name, `--_${index.toString(36)}`]),
+  );
+  return css.replace(/--aula-[\w-]+/g, (name) => names.get(name) ?? name);
+}
+
+/** Minifies the styles' `css` literals, which hold no expressions, and shortens their tokens. */
+function minifyStyles(): Plugin {
+  return {
+    name: "aula:minify-styles",
+    apply: "build",
+    transform(code, id) {
+      if (!id.endsWith("/src/ui/styles.ts")) return null;
+      return {
+        code: shortenTokens(
+          code.replace(/css`([^`]*)`/g, (_match, body: string) => `css\`${minifyCss(body)}\``),
+        ),
+        map: null,
+      };
+    },
+  };
+}
+
+/**
+ * Returns lit's templates in a minified bundle with their indentation collapsed, as a run of white
+ * space renders as one space, and without the space before a tag's ">". Only a line break followed
+ * by indentation is a template's: the minifier writes "\n" as a template literal holding a line
+ * break, which must stay; and minified code has no space before a ">" of its own.
+ */
+export function collapseTemplates(code: string): string {
+  return code.replace(/\n(?:[ \t]*\n)*[ \t]{2,}/g, " ").replace(/([\w"}]) +>/g, "$1>");
+}
+
+/** Collapses the white space of lit's templates in the bundle. */
+function collapse(): Plugin {
+  return {
+    name: "aula:collapse-templates",
+    apply: "build",
+    generateBundle(_options, bundle) {
+      for (const output of Object.values(bundle)) {
+        if (output.type === "chunk") output.code = collapseTemplates(output.code);
+      }
+    },
+  };
+}
+
+/**
+ * Returns the bundle with the texts' keys given short names, the most used the shortest. Only a
+ * camelCase key is renamed, as no data from Aula, class name or event type is one, and only
+ * where the bundle has it once as a property, the texts' own, and otherwise only as quoted
+ * strings: a key that is also a name in the code stays as it is.
+ */
+export function shortenTextKeys(code: string, keys: readonly string[]): string {
+  const word = (key: string): RegExp => new RegExp(`(?<![\\w$])${key}(?![\\w$])`, "g");
+  const count = (text: string, pattern: RegExp): number => [...text.matchAll(pattern)].length;
+  let result = code;
+  let next = 0;
+  const camel = keys.filter((key) => /[A-Z]/.test(key));
+  for (const key of camel.sort((a, b) => count(code, word(b)) - count(code, word(a)))) {
+    const quoted = count(result, new RegExp(`(["'\`])${key}\\1`, "g"));
+    const property = count(result, new RegExp(`(?<![\\w$."'\`])${key}:`, "g"));
+    if (property !== 1 || count(result, word(key)) !== quoted + 1) continue;
+    let short = `q${(next++).toString(36)}`;
+    while (result.includes(short)) short = `q${(next++).toString(36)}`;
+    result = result.replace(word(key), short);
+  }
+  return result;
+}
+
+/** Returns the keys of the texts' table. */
+function textKeys(): string[] {
+  const source = readFileSync("src/core/i18n.ts", "utf8");
+  const table = source.slice(source.indexOf("const TEXTS = {"), source.indexOf("\n} satisfies"));
+  return [...table.matchAll(/^ {2}(\w+):/gm)].map(([, key]) => String(key));
+}
+
+/** Gives the texts' keys short names in the bundle. */
+function shortKeys(): Plugin {
+  return {
+    name: "aula:short-keys",
+    apply: "build",
+    generateBundle(_options, bundle) {
+      const keys = textKeys();
+      for (const output of Object.values(bundle)) {
+        if (output.type === "chunk") output.code = shortenTextKeys(output.code, keys);
+      }
+    },
+  };
+}
+
+/** The most the bundle may weigh: as it is served, and gzipped at zlib's default level. */
+export interface Budget {
+  /** Bytes as served. */
+  readonly raw: number;
+  /** Bytes gzipped. */
+  readonly gzip: number;
+}
+
+/** The card's budget, in bytes; growth beyond it fails the build. */
+export const BUDGET: Budget = { raw: 108_000, gzip: 35_000 };
+
+/** Returns a line for each limit of the budget the code is over; none when it fits. */
+export function overBudget(code: string, budget: Budget): string[] {
+  const raw = Buffer.byteLength(code);
+  const gzip = gzipSync(code).length;
+  return [
+    ...(raw > budget.raw ? [`${String(raw)} bytes, over the budget of ${String(budget.raw)}`] : []),
+    ...(gzip > budget.gzip
+      ? [`${String(gzip)} bytes gzipped, over the budget of ${String(budget.gzip)}`]
+      : []),
+  ];
+}
+
+/** Fails the build when a chunk, as it is written, is over the budget. */
+function budget(limits: Budget): Plugin {
+  return {
+    name: "aula:budget",
+    apply: "build",
+    writeBundle(_options, bundle) {
+      for (const output of Object.values(bundle)) {
+        if (output.type !== "chunk") continue;
+        const problems = overBudget(output.code, limits);
+        if (problems.length > 0) this.error(`${output.fileName}: ${problems.join("; ")}`);
+      }
+    },
+  };
+}
 
 export default defineConfig({
   define: {
     __CARD_VERSION__: JSON.stringify(version),
   },
+  plugins: [minifyStyles(), collapse(), shortKeys(), budget(BUDGET)],
   build: {
     lib: {
-      entry: "src/aula-connect-card.ts",
+      entry: "src/index.ts",
       formats: ["es"],
       fileName: () => "aula-connect-card.js",
     },
     target: "es2022",
     // Vite keeps whitespace in a library's ES module for the bundlers that consume it; this one
     // is loaded by the browser as it is.
-    rolldownOptions: { output: { minify: true } },
+    rolldownOptions: { output: { minify: true, comments: false } },
     sourcemap: false,
     emptyOutDir: true,
   },
