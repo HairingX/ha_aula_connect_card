@@ -25,6 +25,8 @@ import type { Translate } from "../core/i18n.ts";
 import { glue } from "../core/text.ts";
 import type { Child, Day } from "../core/types.ts";
 import type { Fact, TimedEvent } from "../model/blocks.ts";
+import type { ChildState } from "../model/child.ts";
+import type { CardState } from "./card.ts";
 import type { FocusReason } from "../model/focus.ts";
 
 /** Shows an mdi icon, hidden from screen readers. */
@@ -43,6 +45,12 @@ export function alert(kind: "error" | "warning" | "info", message: string): Temp
 /** Shows an error from the API. */
 export function apiError(error: unknown, t: Translate): TemplateResult {
   return alert("error", errorText(error, t));
+}
+
+/** Shows what keeps a child's data from being shown, or comes with it; nothing when all is well. */
+export function childState(state: ChildState, t: Translate): TemplateResult | typeof nothing {
+  if (state.kind === "loading") return loading(t);
+  return state.error === undefined ? nothing : apiError(state.error, t);
 }
 
 /** Shows that data is on its way. */
@@ -165,20 +173,96 @@ export function fact(item: Fact, ctx: ViewContext, after: unknown = nothing): Te
   return html`<span class="fact"
     >${icon("mdi:cake-variant-outline")}<span
       ><span aria-hidden="true">${aula(name, ctx)}</span
-      ><span class="sr">${ctx.t("birthdayOf", { name })}</span>${after}</span
+      ><span class="sr">${birthdays([name], ctx)}</span>${after}</span
     ></span
   >`;
 }
 
-/** Shows facts side by side, heard with a pause between them. */
-export function facts(items: readonly unknown[], tag: "div" | "span" = "div"): unknown {
-  if (items.length === 0) return nothing;
-  const shown = items.map(
-    (item, index) => html`${index > 0 ? html`<span class="sr">, </span>` : nothing}${item}`,
-  );
-  return tag === "div"
-    ? html`<div class="facts">${shown}</div>`
-    : html`<span class="facts">${shown}</span>`;
+/** Returns a day's birthdays as one sentence: "Alma, Bo og Carl har fødselsdag". */
+export function birthdays(people: readonly string[], ctx: ViewContext): string {
+  return ctx.t("birthdayOf", { n: people.length, names: listOf(people, ctx) });
+}
+
+/** Shows a count of a kind of fact in a summary, as "2 begivenheder", with the kind's icon. */
+export function counted(name: string, text: string): TemplateResult {
+  return html`<span class="fact">${icon(name)}<span>${text}</span></span>`;
+}
+
+/** The whole-day events a day shows before the rest is a tap away. */
+const SHOWN_EVENTS = 3;
+
+/**
+ * Shows a day's whole-day events a line each, and its birthdays as one line. Of four or more
+ * events, three show and a button unfolds the rest, kept by `key`.
+ */
+export function factStack(
+  items: readonly Fact[],
+  key: string,
+  ctx: ViewContext,
+  state: CardState,
+): unknown {
+  const events = items.filter((item) => item.kind === "event");
+  const people = items.flatMap((item) => (item.kind === "birthday" ? [item.birthday.name] : []));
+  const open = state.isOpen(key, false);
+  const folded = events.length > SHOWN_EVENTS;
+  return items.length === 0
+    ? nothing
+    : html`<ul class="facts">
+        ${(folded && !open ? events.slice(0, SHOWN_EVENTS) : events).map(
+          (item) => html`<li>${fact(item, ctx)}</li>`,
+        )}
+        ${
+          folded
+            ? html`<li>
+                ${more(key, open, false, ctx.t("moreFacts", { n: events.length - SHOWN_EVENTS }), state, ctx)}
+              </li>`
+            : nothing
+        }
+        ${
+          people.length > 0
+            ? html`<li>${counted("mdi:cake-variant-outline", birthdays(people, ctx))}</li>`
+            : nothing
+        }
+      </ul>`;
+}
+
+/**
+ * Returns the parts a summary line gives a day's events and birthdays: each by itself when it
+ * is the only one of its kind, else how many there are, as "2 begivenheder", "3 fødselsdage".
+ */
+export function summed<T>(
+  items: readonly T[],
+  isEvent: (item: T) => boolean,
+  name: (item: T) => unknown,
+  ctx: ViewContext,
+): unknown[] {
+  const events = items.filter(isEvent);
+  const born = items.filter((item) => !isEvent(item));
+  return [
+    ...(events.length > 1 ? [ctx.t("eventCount", { n: events.length })] : events.map(name)),
+    ...(born.length > 1 ? [ctx.t("birthdayCount", { n: born.length })] : born.map(name)),
+  ];
+}
+
+/** Shows the button that unfolds or folds what is kept by `key`. */
+export function more(
+  key: string,
+  open: boolean,
+  fallback: boolean,
+  text: string,
+  state: CardState,
+  ctx: ViewContext,
+): TemplateResult {
+  return html`<button
+    class="more"
+    type="button"
+    aria-expanded=${open ? "true" : "false"}
+    @click=${() => {
+      state.toggle(key, fallback);
+    }}
+  >
+    ${open ? ctx.t("showLess") : text}${icon("mdi:chevron-down", "chevron")}
+  </button>`;
 }
 
 /**
@@ -303,14 +387,22 @@ export function who(child: Child, meta: readonly string[]): TemplateResult {
 
 const lists = new Map<string, Intl.ListFormat>();
 
-/** Returns names joined as a sentence: "Ida og Oskar", "Ida and Oskar". */
-export function names(children: readonly Child[], ctx: ViewContext): string {
+/** Returns words joined as a sentence: "Ida, Bo og Oskar", "Ida, Bo, and Oskar". */
+export function listOf(words: readonly string[], ctx: ViewContext): string {
   let list = lists.get(ctx.lang);
   if (!list) {
     list = new Intl.ListFormat(ctx.lang, { type: "conjunction" });
     lists.set(ctx.lang, list);
   }
-  return list.format(children.map((child) => child.first_name));
+  return list.format(words);
+}
+
+/** Returns children's names joined as a sentence: "Ida og Oskar", "Ida and Oskar". */
+export function names(children: readonly Child[], ctx: ViewContext): string {
+  return listOf(
+    children.map((child) => child.first_name),
+    ctx,
+  );
 }
 
 /** Returns a weekday's abbreviation as a word in a sentence: "lør." in Danish, "Sat" in English. */

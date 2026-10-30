@@ -26,14 +26,13 @@ import type {
 import { homeworkList, sameEmpty } from "./blocks.ts";
 import type { CardState } from "./card.ts";
 import {
-  apiError,
   aula,
   avatar,
+  childState,
   columns,
   dayTitle,
   headingOf,
   icon,
-  loading,
   names,
   segments,
   who,
@@ -176,12 +175,9 @@ export function renderHomework(
     }
     ${view.children.map((child) =>
       child.state.kind === "ready"
-        ? child.state.error === undefined
-          ? nothing
-          : apiError(child.state.error, t)
+        ? childState(child.state, t)
         : html`<div class="pending">
-            ${several ? who(child.child, []) : nothing}
-            ${child.state.kind === "loading" ? loading(t) : apiError(child.state.error, t)}
+            ${several ? who(child.child, []) : nothing}${childState(child.state, t)}
           </div>`,
     )}
     ${view.heroes.map((item) => heroLine(item, ctx))}

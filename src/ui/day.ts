@@ -14,26 +14,26 @@ import { capitalize, formatDay, formatDayRange, formatWeekday } from "../core/da
 import { glue } from "../core/text.ts";
 import { childKey, type Child, type Day } from "../core/types.ts";
 import type { BridgeRow } from "../model/bridges.ts";
-import type { AboveRows, DayCardView, DayChildView, DayGroup, Hero } from "../model/day-view.ts";
+import type { AboveRows, DayCardView, DayGroup, Hero } from "../model/day-view.ts";
 import type { Fact } from "../model/blocks.ts";
 import { isRunning } from "../model/today.ts";
 import { renderBlock } from "./blocks.ts";
 import type { CardState } from "./card.ts";
 import {
-  apiError,
   aula,
   avatar,
+  birthdays,
+  childState,
   columns,
   eventIcon,
   eventWhen,
-  fact,
-  facts as factList,
+  factStack,
   heading,
   hours,
   icon,
-  loading,
   names,
   segments,
+  summed,
   tile,
   timeText,
   titled,
@@ -64,9 +64,7 @@ function joined(parts: readonly unknown[], ctx: ViewContext): TemplateResult {
 }
 
 function factText(item: Fact, ctx: ViewContext): unknown {
-  return item.kind === "event"
-    ? aula(item.event.title, ctx)
-    : ctx.t("birthdayOf", { name: item.birthday.name });
+  return item.kind === "event" ? aula(item.event.title, ctx) : birthdays([item.birthday.name], ctx);
 }
 
 function whose(only: readonly Child[], ctx: ViewContext): string {
@@ -97,8 +95,14 @@ function todayRow(
       ${eventWhen(item, ctx, !isRunning(item.event, ctx.now))}${whose(only, ctx)}`,
     );
   }
-  for (const { item, only } of above.facts)
-    parts.push(html`${factText(item, ctx)}${whose(only, ctx)}`);
+  parts.push(
+    ...summed(
+      above.facts,
+      ({ item }) => item.kind === "event",
+      ({ item, only }) => html`${factText(item, ctx)}${whose(only, ctx)}`,
+      ctx,
+    ),
+  );
   return line("mdi:clock-outline", t("today"), joined(parts, ctx));
 }
 
@@ -131,10 +135,14 @@ function bridge(row: BridgeRow, only: readonly Child[], ctx: ViewContext): Templ
       );
     case "weekend": {
       const [first] = row.items;
-      const titles = row.items.map((item) =>
-        item.kind === "event"
-          ? aula(item.event.title, ctx)
-          : ctx.t("birthdayOf", { name: item.birthday.name }),
+      const titles = summed(
+        row.items,
+        (item) => item.kind === "event",
+        (item) =>
+          item.kind === "event"
+            ? aula(item.event.title, ctx)
+            : birthdays([item.birthday.name], ctx),
+        ctx,
       );
       const timed = first?.kind === "event" && !first.event.all_day && row.items.length === 1;
       return line(
@@ -177,6 +185,8 @@ function hero(
   span: { start: string; end: string } | undefined,
   ctx: ViewContext,
   named: Child | undefined,
+  state: CardState,
+  key: string,
 ): TemplateResult {
   let mark: TemplateResult;
   let title: TemplateResult;
@@ -208,18 +218,17 @@ function hero(
     ${mark}
     <div class="hero-text">
       <h2>${named ? html`<span class="sr">${named.first_name}: </span>` : nothing}${title}</h2>
-      ${factList([...(span ? [hours(span, ctx)] : []), ...shown.map((entry) => fact(entry, ctx))])}
+      ${span ? hours(span, ctx) : nothing} ${factStack(shown, key, ctx, state)}
     </div>
   </div>`;
 }
 
-function childError(child: DayChildView, ctx: ViewContext): TemplateResult | typeof nothing {
-  if (child.state.kind === "loading") return loading(ctx.t);
-  if (child.state.kind === "error") return apiError(child.state.error, ctx.t);
-  return child.state.error === undefined ? nothing : apiError(child.state.error, ctx.t);
-}
-
-function strip(group: DayGroup, view: DayCardView, ctx: ViewContext): TemplateResult {
+function strip(
+  group: DayGroup,
+  view: DayCardView,
+  ctx: ViewContext,
+  state: CardState,
+): TemplateResult {
   return html`<ul class="strip cols">
     ${group.children.map(
       (child, index) =>
@@ -239,11 +248,8 @@ function strip(group: DayGroup, view: DayCardView, ctx: ViewContext): TemplateRe
                   >`
                 : nothing
           }
-          ${factList(
-            child.facts.map((item) => fact(item, ctx)),
-            "span",
-          )}
-          ${childError(child, ctx)}
+          ${factStack(child.facts, `${childKey(child.child)}|facts`, ctx, state)}
+          ${childState(child.state, ctx.t)}
         </li>`,
     )}
   </ul>`;
@@ -285,12 +291,22 @@ function group(
   const school = (child: Child): string[] =>
     view.differentSchools ? [child.institution_name] : [];
   return html`<div class="child ${columns(count)} ${one ? "single" : ""}">
-    ${one ? who(one.child, school(one.child)) : nothing} ${one ? childError(one, ctx) : nothing}
+    ${one ? who(one.child, school(one.child)) : nothing}
+    ${one ? childState(one.state, ctx.t) : nothing}
     ${
       item.hero
         ? html`${aboveRows(item.above, ctx, count > 1)}
-          ${hero(item.hero, item.facts, one?.content?.hours, ctx, several ? one?.child : undefined)}
-          ${count > 1 ? strip(item, view, ctx) : nothing}
+          ${hero(
+            item.hero,
+            item.facts,
+            one?.content?.hours,
+            ctx,
+            several ? one?.child : undefined,
+            state,
+            // The header's facts fold again when the first child's day moves on.
+            `${item.children.map((child) => childKey(child.child)).join("|")}|facts`,
+          )}
+          ${count > 1 ? strip(item, view, ctx, state) : nothing}
           ${item.hero.kind === "day" ? blocks(item, item.hero.day, ctx, state) : nothing}`
         : nothing
     }

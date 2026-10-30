@@ -1,7 +1,14 @@
 import { render } from "lit";
 import { describe, expect, it } from "vitest";
 
-import { eventIcon, eventWhen, headingOf, time, timeText } from "../../src/ui/primitives.ts";
+import {
+  birthdays,
+  eventIcon,
+  eventWhen,
+  headingOf,
+  time,
+  timeText,
+} from "../../src/ui/primitives.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
 import { contextOf } from "../fixtures/snapshot.ts";
 import { allDay } from "../fixtures/week.ts";
@@ -59,5 +66,20 @@ describe("a time", () => {
   it("calls a day within an event over several days the whole day", () => {
     const camp = allDay("c", "Lejrskole", "excursion", "2026-11-03", "2026-11-05");
     expect(eventWhen({ event: camp, span: "through" }, ctx)).toBe("Hele dagen");
+  });
+});
+
+describe("a day's birthdays", () => {
+  const item = scenarioNamed("thu-1930");
+
+  it.each<[string, string[], string]>([
+    ["da", ["Alma"], "Alma har fødselsdag"],
+    ["da", ["Alma", "Bo"], "Alma og Bo har fødselsdag"],
+    ["da", ["Alma", "Bo", "Carl"], "Alma, Bo og Carl har fødselsdag"],
+    ["en", ["Alma"], "Alma's birthday"],
+    ["en", ["Alma", "Bo"], "Alma and Bo's birthdays"],
+    ["en", ["Alma", "Bo", "Carl"], "Alma, Bo, and Carl's birthdays"],
+  ])("are one sentence in %s: %j", (language, people, sentence) => {
+    expect(birthdays(people, contextOf(item, language))).toBe(sentence);
   });
 });

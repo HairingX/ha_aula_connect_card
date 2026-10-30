@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { BUDGET, collapseTemplates, minifyCss, overBudget, shortenTokens } from "../vite.config.ts";
+import {
+  BUDGET,
+  collapseTemplates,
+  minifyCss,
+  overBudget,
+  shortenTextKeys,
+  shortenTokens,
+} from "../vite.config.ts";
 
 describe("the styles' minifier", () => {
   it("drops comments and the white space only a reader needs", () => {
@@ -49,6 +56,29 @@ describe("the templates' white space", () => {
 
   it("keeps a line break the minifier writes as a template literal", () => {
     expect(collapseTemplates("a.split(`\n`)")).toBe("a.split(`\n`)");
+  });
+});
+
+describe("the texts' short keys", () => {
+  it("renames a camelCase key the bundle has only as the texts' property and as strings", () => {
+    expect(
+      shortenTextKeys('var T={noHomework:[`a`,`b`],now:[`c`,`d`]};t(`noHomework`);t("now")', [
+        "noHomework",
+        "now",
+      ]),
+    ).toBe('var T={q0:[`a`,`b`],now:[`c`,`d`]};t(`q0`);t("now")');
+  });
+
+  it("keeps a key that is also a name in the code, or a word in a longer string", () => {
+    const code =
+      "var T={weekPlan:[`a`,`b`],showMore:[`c`,`d`]};x.weekPlan;t(`weekPlan`);y=`showMore x`";
+    expect(shortenTextKeys(code, ["weekPlan", "showMore"])).toBe(code);
+  });
+
+  it("gives a key a name the bundle does not have yet", () => {
+    expect(shortenTextKeys("var T={noHomework:1};q0;t(`noHomework`)", ["noHomework"])).toBe(
+      "var T={q1:1};q0;t(`q1`)",
+    );
   });
 });
 

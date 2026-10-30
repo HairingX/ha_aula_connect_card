@@ -34,13 +34,14 @@ import type {
 import { renderBlock } from "./blocks.ts";
 import type { CardState } from "./card.ts";
 import {
-  apiError,
   aula,
+  childState,
+  counted,
   dayTitle,
   eventIcon,
   eventWhen,
   fact,
-  facts,
+  factStack,
   heading,
   hours,
   icon,
@@ -60,24 +61,12 @@ function dayColumn(day: string, ctx: ViewContext): TemplateResult {
   </span>`;
 }
 
-/**
- * A day's blocks; `named` also names its whole-day events and birthdays, which a row's summary
- * otherwise gives. A day with nothing else names them anyway.
- */
-function blocks(
-  row: DayRowView,
-  child: Child,
-  ctx: ViewContext,
-  state: CardState,
-  named = false,
-): unknown {
+/** A day opened: its whole-day events and birthdays, a line each, then its blocks. */
+function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardState): unknown {
   const { content, plan } = row;
-  const shown =
-    row.facts.length > 0 && (named || plan.nothing)
-      ? facts(row.facts.map((item) => fact(item, ctx)))
-      : nothing;
+  const shown = factStack(row.facts, `${childKey(child)}|facts|${row.day}`, ctx, state);
   if (plan.nothing) {
-    return shown === nothing ? html`<p class="empty">${ctx.t("nothingThisDay")}</p>` : shown;
+    return row.facts.length > 0 ? shown : html`<p class="empty">${ctx.t("nothingThisDay")}</p>`;
   }
   return html`${shown}
     <div class="blocks">
@@ -102,18 +91,30 @@ function blocks(
     </div>`;
 }
 
+// A closed row names an event or a birthday when it is the only one of its kind, else counts
+// them, as "2 begivenheder": the row is one line to glance at, and opens for the rest.
 function line2(row: DayRowView, ctx: ViewContext): TemplateResult | typeof nothing {
-  const shown = (id: BlockId): boolean => row.plan.blocks.some((block) => block.id === id);
+  const timed = row.plan.blocks.some((block) => block.id === "events") ? row.content.timed : [];
+  const events = row.facts.filter((item) => item.kind === "event");
+  const born = row.facts.filter((item) => item.kind === "birthday");
+  const count = events.length + timed.length;
   const items = [
-    ...row.facts.map((item) => fact(item, ctx)),
-    ...(shown("events") ? row.content.timed : []).map(
-      (item) =>
-        html`<span class="fact"
-          >${icon(eventIcon(item.event.type))}<span
-            >${aula(item.event.title, ctx)} ${eventWhen(item, ctx, true)}</span
-          ></span
-        >`,
-    ),
+    ...(count > 1
+      ? [counted("mdi:calendar-outline", ctx.t("eventCount", { n: count }))]
+      : [
+          ...events.map((item) => fact(item, ctx)),
+          ...timed.map(
+            (item) =>
+              html`<span class="fact"
+                >${icon(eventIcon(item.event.type))}<span
+                  >${aula(item.event.title, ctx)} ${eventWhen(item, ctx, true)}</span
+                ></span
+              >`,
+          ),
+        ]),
+    ...(born.length > 1
+      ? [counted("mdi:cake-variant-outline", ctx.t("birthdayCount", { n: born.length }))]
+      : born.map((item) => fact(item, ctx))),
   ];
   return items.length > 0 ? html`<span class="line-2">${items}</span>` : nothing;
 }
@@ -264,7 +265,7 @@ function weekendRow(
                   <h5 class="weekend-title">
                     ${capitalize(formatWeekdayShortDate(row.day, ctx.language), ctx.language)}
                   </h5>
-                  ${blocks(row, child, ctx, state, true)}
+                  ${blocks(row, child, ctx, state)}
                 </div>`,
             )}
           </div>`
@@ -325,10 +326,7 @@ function weekRow(item: WeekRow, child: Child, ctx: ViewContext, state: CardState
           ${dayColumn(row.day, ctx)}
           <span class="hero-text">
             <h4>${openHeading(row, item.focus, ctx)}</h4>
-            ${facts(
-              [...(span ? [hours(span, ctx)] : []), ...row.facts.map((entry) => fact(entry, ctx))],
-              "span",
-            )}
+            ${span ? hours(span, ctx) : nothing} ${open ? nothing : line2(row, ctx)}
           </span>
           ${icon("mdi:chevron-down", "chevron")}
         </summary>
@@ -395,18 +393,16 @@ function childWeeks(
 ): TemplateResult {
   const { t } = ctx;
   const school = view.differentSchools ? [child.child.institution_name] : [];
-  let content: unknown;
-  if (child.state.kind === "loading") content = loading(t);
-  else if (child.state.kind === "error") content = apiError(child.state.error, t);
-  else {
-    content = html`${child.state.error === undefined ? nothing : apiError(child.state.error, t)}
-      <div class="weeks">
-        ${child.weeks.map((section) => week(section, child.child, ctx, state))}
-      </div>`;
-  }
   return html`<div class="child">
     <h2>${who(child.child, school)}</h2>
-    ${content}
+    ${childState(child.state, t)}
+    ${
+      child.state.kind === "ready"
+        ? html`<div class="weeks">
+            ${child.weeks.map((section) => week(section, child.child, ctx, state))}
+          </div>`
+        : nothing
+    }
   </div>`;
 }
 

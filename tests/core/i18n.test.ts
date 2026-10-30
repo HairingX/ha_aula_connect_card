@@ -25,7 +25,7 @@ describe("translator", () => {
   });
 
   it("fills in placeholders and leaves unknown ones", () => {
-    expect(translator("da")("birthdayOf", { name: "Alma" })).toBe("Alma har fødselsdag");
+    expect(translator("da")("birthdayOf", { n: 1, names: "Alma" })).toBe("Alma har fødselsdag");
     expect(translator("en")("weekNumber", { m: 1 })).toBe("Week {n}");
     expect(translator("en")("weekNumber")).toBe("Week {n}");
   });

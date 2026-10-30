@@ -274,6 +274,35 @@ export const SCENARIOS: readonly Scenario[] = [
     "19:30",
     fortnight("2026-10-26", reminders),
   ),
+  ...[1, 3, 5].map((count) =>
+    scenario(
+      `thu-1930-events${String(count)}`,
+      `Thursday 19:30: ${String(count)} whole-day events and three birthdays on Friday`,
+      "2026-10-29",
+      "19:30",
+      fortnight(
+        "2026-10-26",
+        (data) => crowded(data, count, ["Alma", "Bo", "Carl"]),
+        (data) => crowded(data, count, ["Freja", "Malte", "Sigrid"]),
+      ),
+    ),
+  ),
+  scenario(
+    "thu-1930-timed4",
+    "Thursday 19:30: four events at a time on Friday",
+    "2026-10-29",
+    "19:30",
+    fortnight("2026-10-26", (data) => ({
+      ...data,
+      events: [
+        ...data.events,
+        timed("t1", "Morgensang i salen", "08:00", "08:20", "event"),
+        timed("t2", "Tandlæge", "09:30", "10:00", "event"),
+        timed("t3", "Bibliotek med 3.B", "11:00", "11:45", "excursion"),
+        timed("t4", "Fodbold i SFO", "14:00", "15:30", "event"),
+      ],
+    })),
+  ),
   scenario(
     "thu-1930-longplan",
     "Thursday 19:30: a plan for Friday of fifty lines",
@@ -453,6 +482,40 @@ function reminders(data: WeekData): WeekData {
         ),
         note(fri, 213, "comment", "Engelsk", "Vi læser højt. Husk briller."),
       ]),
+  };
+}
+
+// Whole-day events every child's school has on Friday, after the school photo, and birthdays.
+const WHOLE_DAY: readonly [title: string, type: string][] = [
+  ["Motionsdag", "event"],
+  ["Tur til Naturcenter Vestskoven", "excursion"],
+  ["Halloween-fest", "event"],
+  ["Trafikdag med cykelprøve", "event"],
+];
+
+function crowded(data: WeekData, count: number, names: readonly string[]): WeekData {
+  const extra = WHOLE_DAY.slice(0, count - 1).map(([title, type], index) =>
+    allDay(`w${String(index)}`, title, type, "2026-10-30", "2026-10-30"),
+  );
+  return {
+    ...data,
+    events: [...data.events, ...extra],
+    birthdays: [
+      ...data.birthdays.filter((birthday) => birthday.date !== "2026-10-30"),
+      ...names.map((name) => ({ date: "2026-10-30", name })),
+    ],
+  };
+}
+
+function timed(id: string, title: string, start: string, end: string, type: string) {
+  return {
+    id,
+    start: local("2026-10-30", start),
+    end: local("2026-10-30", end),
+    all_day: false,
+    title,
+    type,
+    location: null,
   };
 }
 

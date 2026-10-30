@@ -33,6 +33,7 @@ import {
   headingOf,
   icon,
   label,
+  more,
   nowLabel,
   segments,
   time,
@@ -246,27 +247,6 @@ function lessonRow(row: TimetableRow, ctx: ViewContext, detailed: boolean): Temp
   </li>`;
 }
 
-/** Shows the button that unfolds or folds what is kept by `key`. */
-function more(
-  key: string,
-  open: boolean,
-  fallback: boolean,
-  text: string,
-  options: BlockOptions,
-  ctx: ViewContext,
-): TemplateResult {
-  return html`<button
-    class="more"
-    type="button"
-    aria-expanded=${open ? "true" : "false"}
-    @click=${() => {
-      options.state.toggle(key, fallback);
-    }}
-  >
-    ${open ? ctx.t("showLess") : text}${icon("mdi:chevron-down", "chevron")}
-  </button>`;
-}
-
 // A note is folded after a few lines, as a teacher may write fifty; each unfolds by itself.
 function plan(part: Part, ctx: ViewContext, options: BlockOptions): TemplateResult {
   const { state } = options;
@@ -290,7 +270,7 @@ function plan(part: Part, ctx: ViewContext, options: BlockOptions): TemplateResu
         >
           ${aula(note.text, ctx)}
         </p>
-        ${open || state.cut(key) ? more(key, open, false, ctx.t("showMore"), options, ctx) : nothing}
+        ${open || state.cut(key) ? more(key, open, false, ctx.t("showMore"), state, ctx) : nothing}
       </li>`;
     })}
   </ul>`;
@@ -400,7 +380,7 @@ export function renderBlock(
             </div>
             ${
               id === "timetable"
-                ? more(key, unfolded, full, ctx.t("showTimetable"), options, ctx)
+                ? more(key, unfolded, full, ctx.t("showTimetable"), options.state, ctx)
                 : nothing
             }`
         : html`<p class="empty">${once}</p>`

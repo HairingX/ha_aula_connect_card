@@ -32,18 +32,12 @@ export const base = css`
     --aula-accent: var(--primary-color, #009ac7);
     --aula-warning: var(--warning-color, #ffa600);
     --aula-warning-fill: rgba(var(--rgb-warning-color, 255, 166, 0), 0.15);
-    --aula-error: var(--error-color, #db4437);
-    --aula-error-fill: rgba(var(--rgb-error-color, 219, 68, 55), 0.12);
-    --aula-info: var(--info-color, #039be5);
-    --aula-info-fill: rgba(var(--rgb-info-color, 3, 155, 229), 0.12);
     --aula-font-xs: calc(var(--ha-font-size-xs, 10px) * var(--aula-scale));
     --aula-font-s: calc(var(--ha-font-size-s, 12px) * var(--aula-scale));
     --aula-font-m: calc(var(--ha-font-size-m, 14px) * var(--aula-scale));
     --aula-font-l: calc(var(--ha-font-size-l, 16px) * var(--aula-scale));
     --aula-font-xl: calc(var(--ha-font-size-xl, 20px) * var(--aula-scale));
     --aula-font-2xl: calc(var(--ha-font-size-2xl, 24px) * var(--aula-scale));
-    --aula-font-3xl: calc(var(--ha-font-size-3xl, 28px) * var(--aula-scale));
-    --aula-font-4xl: calc(var(--ha-font-size-4xl, 32px) * var(--aula-scale));
     --aula-space-1: calc(var(--ha-space-1, 4px) * var(--aula-scale));
     --aula-space-2: calc(var(--ha-space-2, 8px) * var(--aula-scale));
     --aula-space-3: calc(var(--ha-space-3, 12px) * var(--aula-scale));
@@ -57,7 +51,6 @@ export const base = css`
     --aula-condensed: var(--ha-line-height-condensed, 1.2);
     --aula-paragraph: var(--ha-line-height-normal, 1.6);
     --aula-radius: var(--ha-border-radius-md, 8px);
-    --aula-radius-lg: var(--ha-border-radius-lg, 12px);
     --aula-icon: calc(18px * var(--aula-scale));
     container: aula / inline-size;
     color: var(--aula-text);
@@ -155,18 +148,18 @@ export const base = css`
     gap: var(--aula-space-2);
     padding: var(--aula-space-2);
     border-radius: var(--ha-border-radius-sm, 4px);
-    background: var(--aula-info-fill);
+    background: rgba(var(--rgb-info-color, 3, 155, 229), 0.12);
     line-height: var(--aula-paragraph);
   }
   .alert ha-icon {
     --mdc-icon-size: calc(24px * var(--aula-scale));
-    color: var(--aula-info);
+    color: var(--info-color, #039be5);
   }
   .alert.error {
-    background: var(--aula-error-fill);
+    background: rgba(var(--rgb-error-color, 219, 68, 55), 0.12);
   }
   .alert.error ha-icon {
-    color: var(--aula-error);
+    color: var(--error-color, #db4437);
   }
   .alert.warning {
     background: var(--aula-warning-fill);
@@ -337,13 +330,18 @@ export const base = css`
     background: var(--aula-accent);
   }
 
-  /* No fill: nothing on a card that only shows may look as if it could be tapped. */
-  /* A fact that wraps keeps its icon by its first line. */
+  /* No fill: nothing on a card that only shows may look as if it could be tapped. A line each,
+     so that several events never run together; a fact that wraps keeps its icon by its first
+     line. */
   .facts {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     align-items: flex-start;
-    gap: var(--aula-space-1) var(--aula-space-4);
+    gap: var(--aula-space-1);
+  }
+  /* Its target reaches past its line, which keeps the height of the lines around it. */
+  .facts .more {
+    margin-block: calc(-1 * var(--aula-space-3));
   }
   .fact,
   .hours {
@@ -487,7 +485,7 @@ export const blocks = css`
     gap: 2px;
     width: calc(52px * var(--aula-scale));
     height: calc(56px * var(--aula-scale));
-    border-radius: var(--aula-radius-lg);
+    border-radius: var(--ha-border-radius-lg, 12px);
     background: var(--aula-fill-muted);
     overflow: hidden;
     --mdc-icon-size: calc(28px * var(--aula-scale));
@@ -535,12 +533,12 @@ export const blocks = css`
   }
   @container aula (min-width: 600px) {
     .hero .title {
-      font-size: var(--aula-font-3xl);
+      font-size: calc(var(--ha-font-size-3xl, 28px) * var(--aula-scale));
     }
   }
   @container aula (min-width: 900px) {
     .hero .title {
-      font-size: var(--aula-font-4xl);
+      font-size: calc(var(--ha-font-size-4xl, 32px) * var(--aula-scale));
     }
     .tile {
       width: calc(64px * var(--aula-scale));
@@ -1241,9 +1239,6 @@ export const weekStyles = css`
   .focus-day .hero-text {
     gap: var(--aula-space-1);
   }
-  .focus-day .facts {
-    margin-top: var(--aula-space-1);
-  }
   .day-body {
     padding: 0 var(--aula-space-3) var(--aula-space-3);
   }
@@ -1256,7 +1251,7 @@ export const weekStyles = css`
   .weekend-day + .weekend-day {
     margin-top: var(--aula-space-6);
   }
-  .weekend-day > .facts + .blocks {
+  .facts + .blocks {
     margin-top: var(--aula-space-4);
   }
   .weekend-title {

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 
 import type { Plugin } from "vite";
@@ -86,6 +87,50 @@ function collapse(): Plugin {
   };
 }
 
+/**
+ * Returns the bundle with the texts' keys given short names, the most used the shortest. Only a
+ * camelCase key is renamed, as no data from Aula, class name or event type is one, and only
+ * where the bundle has it once as a property, the texts' own, and otherwise only as quoted
+ * strings: a key that is also a name in the code stays as it is.
+ */
+export function shortenTextKeys(code: string, keys: readonly string[]): string {
+  const word = (key: string): RegExp => new RegExp(`(?<![\\w$])${key}(?![\\w$])`, "g");
+  const count = (text: string, pattern: RegExp): number => [...text.matchAll(pattern)].length;
+  let result = code;
+  let next = 0;
+  const camel = keys.filter((key) => /[A-Z]/.test(key));
+  for (const key of camel.sort((a, b) => count(code, word(b)) - count(code, word(a)))) {
+    const quoted = count(result, new RegExp(`(["'\`])${key}\\1`, "g"));
+    const property = count(result, new RegExp(`(?<![\\w$."'\`])${key}:`, "g"));
+    if (property !== 1 || count(result, word(key)) !== quoted + 1) continue;
+    let short = `q${(next++).toString(36)}`;
+    while (result.includes(short)) short = `q${(next++).toString(36)}`;
+    result = result.replace(word(key), short);
+  }
+  return result;
+}
+
+/** Returns the keys of the texts' table. */
+function textKeys(): string[] {
+  const source = readFileSync("src/core/i18n.ts", "utf8");
+  const table = source.slice(source.indexOf("const TEXTS = {"), source.indexOf("\n} satisfies"));
+  return [...table.matchAll(/^ {2}(\w+):/gm)].map(([, key]) => String(key));
+}
+
+/** Gives the texts' keys short names in the bundle. */
+function shortKeys(): Plugin {
+  return {
+    name: "aula:short-keys",
+    apply: "build",
+    generateBundle(_options, bundle) {
+      const keys = textKeys();
+      for (const output of Object.values(bundle)) {
+        if (output.type === "chunk") output.code = shortenTextKeys(output.code, keys);
+      }
+    },
+  };
+}
+
 /** The most the bundle may weigh: as it is served, and gzipped at zlib's default level. */
 export interface Budget {
   /** Bytes as served. */
@@ -128,7 +173,7 @@ export default defineConfig({
   define: {
     __CARD_VERSION__: JSON.stringify(version),
   },
-  plugins: [minifyStyles(), collapse(), budget(BUDGET)],
+  plugins: [minifyStyles(), collapse(), shortKeys(), budget(BUDGET)],
   build: {
     lib: {
       entry: "src/index.ts",

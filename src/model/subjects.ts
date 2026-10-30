@@ -15,36 +15,12 @@ export interface SubjectName {
 }
 
 /**
- * Danish school subjects and the abbreviations and other names Aula uses for them. Left out on
- * purpose: BI (Biologi or Billedkunst), SA, KL and SV, which are ambiguous or read as a teacher's
- * initials.
+ * Danish school subjects, each with the abbreviations and other names Aula uses for it: a name
+ * and its aliases split by ",", the subjects by ";". Left out on purpose: BI (Biologi or
+ * Billedkunst), SA, KL and SV, which are ambiguous or read as a teacher's initials.
  */
-export const DANISH_SUBJECTS: readonly (readonly [name: string, aliases: readonly string[]])[] = [
-  ["Dansk", ["DAN", "DA", "DSK"]],
-  ["Matematik", ["MAT", "MA"]],
-  ["Engelsk", ["ENG", "EN"]],
-  ["Tysk", ["TYS", "TY"]],
-  ["Fransk", ["FRA", "FR"]],
-  ["Spansk", ["SPA"]],
-  ["Idræt", ["IDR", "ID"]],
-  ["Svømning", ["SVØ"]],
-  ["Natur/teknologi", ["N/T", "NT", "NAT", "Natur og teknologi"]],
-  ["Historie", ["HIS", "HI"]],
-  ["Kristendomskundskab", ["KRI", "KR", "Kristendom"]],
-  ["Samfundsfag", ["SAM"]],
-  ["Geografi", ["GEO", "GE"]],
-  ["Biologi", ["BIO"]],
-  ["Fysik/kemi", ["FYS", "FK", "Fysik-kemi"]],
-  ["Musik", ["MUS", "MU"]],
-  ["Billedkunst", ["BIL", "BK"]],
-  ["Madkundskab", ["MAD", "MK", "Hjemkundskab"]],
-  ["Håndværk og design", ["HÅN", "HD", "H&D", "HDÅ"]],
-  ["Klassens tid", ["KLT", "KT", "KLA"]],
-  ["Understøttende undervisning", ["UUV", "UU"]],
-  ["Valgfag", ["VAL"]],
-  ["Lektiecafé", ["LEK"]],
-  ["Teknologiforståelse", ["TEK"]],
-];
+export const DANISH_SUBJECTS =
+  "Dansk,DAN,DA,DSK;Matematik,MAT,MA;Engelsk,ENG,EN;Tysk,TYS,TY;Fransk,FRA,FR;Spansk,SPA;Idræt,IDR,ID;Svømning,SVØ;Natur/teknologi,N/T,NT,NAT,Natur og teknologi;Historie,HIS,HI;Kristendomskundskab,KRI,KR,Kristendom;Samfundsfag,SAM;Geografi,GEO,GE;Biologi,BIO;Fysik/kemi,FYS,FK,Fysik-kemi;Musik,MUS,MU;Billedkunst,BIL,BK;Madkundskab,MAD,MK,Hjemkundskab;Håndværk og design,HÅN,HD,H&D,HDÅ;Klassens tid,KLT,KT,KLA;Understøttende undervisning,UUV,UU;Valgfag,VAL;Lektiecafé,LEK;Teknologiforståelse,TEK";
 
 // A class marker standing alone at the start or end of a title: "3.B", "3b", "0A", "(6.A)".
 const CLASS_MARKER = /^\(?\d{1,2}\.?\s?[a-zæøå]\)?\s+|\s+\(?\d{1,2}\.?\s?[a-zæøå]\)?$/iu;
@@ -77,8 +53,8 @@ export interface SubjectLabel {
 export type SubjectNamer = (raw: string) => SubjectLabel;
 
 const BUILT_IN = new Map<string, string>(
-  DANISH_SUBJECTS.flatMap(([name, aliases]) =>
-    [name, ...aliases].map((alias) => [subjectKey(alias), name] as const),
+  DANISH_SUBJECTS.split(";").flatMap((row) =>
+    row.split(",").map((alias) => [subjectKey(alias), row.replace(/,.*/, "")] as const),
   ),
 );
 

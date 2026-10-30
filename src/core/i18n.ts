@@ -104,7 +104,19 @@ const TEXTS = {
   showLess: ["Show less", "Vis mindre"],
   showTimetable: ["Show full timetable", "Vis hele skemaet"],
   allDay: ["All day", "Hele dagen"],
-  birthdayOf: ["{name}'s birthday", "{name} har fødselsdag"],
+  birthdayOf: [
+    { one: "{names}'s birthday", other: "{names}'s birthdays" },
+    "{names} har fødselsdag",
+  ],
+  eventCount: [
+    { one: "{n} event", other: "{n} events" },
+    { one: "{n} begivenhed", other: "{n} begivenheder" },
+  ],
+  birthdayCount: [
+    { one: "{n} birthday", other: "{n} birthdays" },
+    { one: "{n} fødselsdag", other: "{n} fødselsdage" },
+  ],
+  moreFacts: ["+{n} more", "+{n} mere"],
   // The homework card
   homework: ["Homework", "Lektier"],
   weekShort: ["week {n}", "uge {n}"],

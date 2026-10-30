@@ -239,6 +239,13 @@ const SETS: Record<string, () => Shot[]> = {
       click: '[data-block="timetable"] .more',
       tag: "timetable-open",
     }),
+    ...[1, 3, 5].flatMap((count) => [
+      shot("day", `thu-1930-events${String(count)}`, 380),
+      shot("day", `thu-1930-events${String(count)}`, 800, { ...WALL, children: 2 }),
+    ]),
+    shot("day", "thu-1930-events5", 380, { click: ".hero .facts .more", tag: "facts-open" }),
+    shot("week", "thu-1930-events5", 380),
+    shot("day", "thu-1930-timed4", 380),
     shot("day", "thu-1930-longplan", 380),
     shot("day", "thu-1930-longplan", 380, { click: ".plan .more", tag: "plan-open" }),
     shot("week", "thu-1930-satlesson", 380),

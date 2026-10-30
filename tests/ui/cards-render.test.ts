@@ -128,7 +128,8 @@ describe("the school day card", () => {
     const { card } = await mount(DAY, "thu-1930", { config: { children: [1001] } });
     expect(all(card, ".chip")).toEqual([]);
     expect(all(card, ".hero .fact")).toHaveLength(2);
-    expect(spoken(card, ".hero .facts")).toBe("08.00–13.40, Skolefoto, Alma har fødselsdag");
+    expect(text(card, ".hero-text > .hours")).toBe("08.00–13.40");
+    expect(texts(card, ".hero .facts > li")).toEqual(["Skolefoto", "Alma har fødselsdag"]);
     expect(all(card, '[data-block="events"], [data-block="birthdays"]')).toEqual([]);
   });
 
@@ -542,7 +543,7 @@ describe("the week card", () => {
     await open(card, ".weekend-row");
     expect(texts(card, ".weekend-title")).toEqual(["Lørdag 31. okt.", "Søndag 1. nov."]);
     expect(all(card, ".weekend-day").map((day) => spokenOf(day, ".facts"))).toEqual([
-      "Spejdertur, Karl har fødselsdag",
+      "Spejdertur Karl har fødselsdag",
       "Spejdertur",
     ]);
   });
@@ -976,5 +977,110 @@ describe("rarer days", () => {
     focus.dispatchEvent(new Event("toggle"));
     await card.updateComplete;
     expect(all(card, ".focus-day .day-body")).toEqual([]);
+  });
+});
+
+describe("several events and birthdays", () => {
+  const facts = (card: Card, selector = ".hero .facts > li"): string[] => texts(card, selector);
+
+  it("give the hours a line of their own, each whole-day event one, and the birthdays one", async () => {
+    const { card } = await mount(DAY, "thu-1930-events3", { config: { children: [1001] } });
+    expect(text(card, ".hero-text > .hours")).toBe("08.00–13.40");
+    expect(facts(card)).toEqual([
+      "Skolefoto",
+      "Motionsdag",
+      "Tur til Naturcenter Vestskoven",
+      "Alma, Bo og Carl har fødselsdag",
+    ]);
+  });
+
+  it("show three of four or more events, and the rest on a tap", async () => {
+    const { card } = await mount(DAY, "thu-1930-events5", { config: { children: [1001] } });
+    expect(facts(card)).toEqual([
+      "Skolefoto",
+      "Motionsdag",
+      "Tur til Naturcenter Vestskoven",
+      "+2 mere",
+      "Alma, Bo og Carl har fødselsdag",
+    ]);
+    present(card.shadowRoot?.querySelector<HTMLButtonElement>(".hero .facts .more")).click();
+    await card.updateComplete;
+    expect(facts(card)).toHaveLength(7);
+    expect(facts(card).slice(3)).toEqual([
+      "Halloween-fest",
+      "Trafikdag med cykelprøve",
+      "Vis mindre",
+      "Alma, Bo og Carl har fødselsdag",
+    ]);
+  });
+
+  it("keep each child's own birthdays in its part, and the events every child has in the header", async () => {
+    const { card } = await mount(DAY, "thu-1930-events3");
+    expect(facts(card)).toEqual(["Skolefoto", "Motionsdag", "Tur til Naturcenter Vestskoven"]);
+    expect(texts(card, ".strip .facts > li")).toEqual([
+      "Alma, Bo og Carl har fødselsdag",
+      "Freja, Malte og Sigrid har fødselsdag",
+    ]);
+  });
+
+  it("are counted in a closed row of the week, and listed once it is opened", async () => {
+    const { card } = await mount(WEEK, "thu-1010", {
+      config: { children: [1001] },
+      ...changed("thu-1010", (data) => ({
+        ...data,
+        events: [...data.events, allDay("w1", "Motionsdag", "event", "2026-10-30", "2026-10-30")],
+        birthdays: [...data.birthdays, { date: "2026-10-30", name: "Bo" }],
+      })),
+    });
+    const friday = ".day-row:not(.focus-day)";
+    expect(texts(card, `${friday} .line-2 .fact`).slice(0, 2)).toEqual([
+      "2 begivenheder",
+      "2 fødselsdage",
+    ]);
+    await open(card, friday);
+    expect(texts(card, `${friday} .day-body .facts > li`)).toEqual([
+      "Skolefoto",
+      "Motionsdag",
+      "Alma og Bo har fødselsdag",
+    ]);
+  });
+
+  it("are counted in the rest of today on a day without school", async () => {
+    const { card } = await mount(DAY, "sat-1000", {
+      config: { children: [1001] },
+      ...changed("sat-1000", (data) => ({
+        ...data,
+        events: [
+          ...data.events,
+          allDay("w1", "Høstmarked", "event", "2026-10-31", "2026-10-31"),
+          allDay("w2", "Kræmmermarked", "event", "2026-10-31", "2026-10-31"),
+        ],
+        birthdays: [
+          ...data.birthdays,
+          { date: "2026-10-31", name: "Bo" },
+          { date: "2026-10-31", name: "Carl" },
+        ],
+      })),
+    });
+    expect(text(card, ".above .bridge")).toContain("2 begivenheder");
+    expect(text(card, ".above .bridge")).toContain("2 fødselsdage");
+  });
+
+  it("show a closed open day's facts in its summary", async () => {
+    const { card } = await mount(WEEK, "thu-1930-events3", { config: { children: [1001] } });
+    const focus = present(card.shadowRoot?.querySelector<HTMLDetailsElement>(".focus-day"));
+    expect(texts(card, ".focus-day .day-body .facts > li")).toHaveLength(4);
+    focus.open = false;
+    focus.dispatchEvent(new Event("toggle"));
+    await card.updateComplete;
+    expect(texts(card, ".focus-day > summary .line-2 .fact")).toEqual([
+      "3 begivenheder",
+      "3 fødselsdage",
+    ]);
+  });
+
+  it("keep timed events in the events block, a line each", async () => {
+    const { card } = await mount(DAY, "thu-1930-timed4", { config: { children: [1001] } });
+    expect(all(card, '[data-block="events"] .item')).toHaveLength(4);
   });
 });

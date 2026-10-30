@@ -54,6 +54,9 @@ describe("the namer", () => {
   });
 
   it("knows each subject by its own name too", () => {
-    for (const [name] of DANISH_SUBJECTS) expect(namer(name).name).toBe(name);
+    for (const row of DANISH_SUBJECTS.split(";")) {
+      const [name, ...aliases] = row.split(",");
+      for (const alias of aliases) expect(namer(alias).name).toBe(name);
+    }
   });
 });
