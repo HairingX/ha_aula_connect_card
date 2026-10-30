@@ -124,6 +124,10 @@ const ALL_CARDS = Object.keys(CARDS) as Shot["card"][];
 const SETS: Record<string, () => Shot[]> = {
   docs: () => [
     shot("day", "thu-1930", 380),
+    shot("day", "thu-1930", 380, {
+      click: '[data-block="timetable"] .more',
+      tag: "timetable-open",
+    }),
     shot("day", "thu-1010", 380, { theme: "dark" }),
     shot("day", "fri-1240", 380, { primary: "orange", locale: "en-US" }),
     shot("day", "thu-0715", 800, { ...WALL, children: 2 }),
@@ -132,7 +136,6 @@ const SETS: Record<string, () => Shot[]> = {
     shot("homework", "thu-1930", 800, { children: 2 }),
     shot("week", "thu-1010", 380),
     shot("week", "thu-1930", 800),
-    shot("week", "thu-1930", 800, { theme: "dark" }),
     shot("week", "sun-1800", 380),
   ],
   review: () => [
@@ -657,7 +660,8 @@ ${done
   .join("\n")}
 </main></body></html>
 `;
-writeFileSync(join(out, "index.html"), sheet);
-console.info(`Wrote ${String(done.length)} shots and index.html to ${out}`);
+// The README's set lives in the repository, where only its pictures belong.
+if (set !== "docs") writeFileSync(join(out, "index.html"), sheet);
+console.info(`Wrote ${String(done.length)} shots to ${out}`);
 if (failed.length > 0)
   throw new Error(`${String(failed.length)} shots failed:\n${failed.join("\n")}`);
