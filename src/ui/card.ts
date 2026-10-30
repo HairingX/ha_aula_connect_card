@@ -277,11 +277,11 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
       this.#lastSize = view.size;
       // A child not listed yet is waited for while the listing is retried, as at a start.
       const missing = children.refreshing ? [] : view.missing;
-      return html`${top}${missing.map((id) => alert("warning", t("childNotFound", { id })))}${this.content(
-        view,
-        config,
-        ctx,
-      )}`;
+      // A card none of whose children is listed shows no empty card under the warning.
+      const shown = config.children.length === 0 || view.missing.length < config.children.length;
+      return html`${top}${missing.map((id) => alert("warning", t("childNotFound", { id })))}${
+        shown ? this.content(view, config, ctx) : nothing
+      }`;
     } catch (error) {
       return alert("error", t("errorGeneric", { message: String(error) }));
     }

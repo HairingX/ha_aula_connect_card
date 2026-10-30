@@ -192,13 +192,6 @@ function entry(value: unknown, name: string, keys: readonly string[]): Record<st
   return value;
 }
 
-// A row of the editor's list still being filled in: what it lacks is left out, while the editor
-// stays, and the card itself says what is missing.
-function unfinished(missing: boolean, lenient: boolean, message: string): boolean {
-  if (missing && !lenient) throw new Error(message);
-  return missing;
-}
-
 /**
  * Reads `packing`: subjects and the things to bring for them, as a list or one text. `lenient`
  * leaves out a row without a subject or a thing, as the editor has while one is being added.
@@ -217,10 +210,17 @@ export function parsePacking(value: unknown, lenient = false): PackRule[] {
         if (value === undefined) throw new Error(`${name}.items: must be things to bring`);
         return value;
       });
-    if (unfinished(subject === undefined, lenient, `${name}.subject: must be a subject`)) return [];
-    if (unfinished(items.length === 0, lenient, `${name}.items: must name at least one thing`))
-      return [];
-    return [{ subject: subject ?? "", items }];
+    // A row of the editor's list still being filled in is left out, while the editor stays; the
+    // card itself says what it lacks.
+    if (subject === undefined || items.length === 0) {
+      if (lenient) return [];
+      throw new Error(
+        subject === undefined
+          ? `${name}.subject: must be a subject`
+          : `${name}.items: must name at least one thing`,
+      );
+    }
+    return [{ subject, items }];
   });
 }
 
@@ -234,9 +234,15 @@ export function parseSubjectNames(value: unknown, lenient = false): SubjectName[
     const names = entry(item, name, ["aula", "name"]);
     const aula = text(names.aula);
     const shown = text(names.name);
-    if (unfinished(aula === undefined, lenient, `${name}.aula: must be a lesson title`)) return [];
-    if (unfinished(shown === undefined, lenient, `${name}.name: must be a name`)) return [];
-    return [{ aula: aula ?? "", name: shown ?? "" }];
+    if (aula === undefined || shown === undefined) {
+      if (lenient) return [];
+      throw new Error(
+        aula === undefined
+          ? `${name}.aula: must be a lesson title`
+          : `${name}.name: must be a name`,
+      );
+    }
+    return [{ aula, name: shown }];
   });
 }
 

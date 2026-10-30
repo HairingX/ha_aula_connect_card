@@ -121,7 +121,7 @@ export function homeworkCardView(
   for (const basis of ready) {
     const { child, focus, rules } = basis;
     if (focus.day === undefined) {
-      const hero = noSchoolHero(basis, focus.horizon ?? ctx.today);
+      const hero = noSchoolHero(basis, focus.horizon);
       const key = heroKey(hero);
       const entry = heroes.get(key) ?? { hero, children: [] };
       entry.children.push(child);
@@ -131,7 +131,7 @@ export function homeworkCardView(
       if (focus.day !== undefined) add(later, focus.day, { child, items: [], empty: "noWeekPlan" });
       continue;
     }
-    const cutoff = focus.day ?? addDays(focus.horizon ?? ctx.today, 1);
+    const cutoff = focus.day ?? addDays(focus.horizon, 1);
     for (const view of basis.days) {
       if (!view.known) continue;
       const items = homeworkOf(view, rules);
@@ -150,24 +150,24 @@ export function homeworkCardView(
         notYet.set(week, [...(notYet.get(week) ?? []), child]);
     }
   }
-  const order = new Map(bases.map((basis, index) => [childKey(basis.child), index]));
+  // A day's parts are in the children's order, as each child's days are gone through in turn.
   const days = (parts: Parts): HomeworkDay[] => {
     const shown = new Set<Day>();
-    return [...parts.keys()].sort().map((day) => {
-      const week = startOfWeek(day);
-      const first = week !== thisWeek && !shown.has(week);
-      shown.add(week);
-      return {
-        day,
-        relation:
-          day === ctx.today ? "today" : day === addDays(ctx.today, 1) ? "tomorrow" : "weekday",
-        week: first ? weekNumber(day) : undefined,
-        focus: focusDays.has(day),
-        parts: [...(parts.get(day)?.values() ?? [])].sort(
-          (a, b) => (order.get(childKey(a.child)) ?? 0) - (order.get(childKey(b.child)) ?? 0),
-        ),
-      };
-    });
+    return [...parts]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, byChild]) => {
+        const week = startOfWeek(day);
+        const first = week !== thisWeek && !shown.has(week);
+        shown.add(week);
+        return {
+          day,
+          relation:
+            day === ctx.today ? "today" : day === addDays(ctx.today, 1) ? "tomorrow" : "weekday",
+          week: first ? weekNumber(day) : undefined,
+          focus: focusDays.has(day),
+          parts: [...byChild.values()],
+        };
+      });
   };
   const shown = days(later);
   const earlier = days(before);
@@ -188,12 +188,10 @@ export function homeworkCardView(
     days: shown,
     earlier,
     earlierCount: count(earlier),
-    notYet: [...notYet.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([week, children]) => ({
-        week: weekNumber(week),
-        only: only(children, ready.filter((basis) => basis.rules.weekPlan).length),
-      })),
+    notYet: [...notYet].map(([week, children]) => ({
+      week: weekNumber(week),
+      only: only(children, ready.filter((basis) => basis.rules.weekPlan).length),
+    })),
     missing,
     differentSchools: new Set(bases.map((basis) => basis.child.institution_name)).size > 1,
     size:

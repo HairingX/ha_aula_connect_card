@@ -102,6 +102,31 @@ describe("the homework card", () => {
     expect(loading.size).toBe(6);
   });
 
+  it("names the holiday ahead at a school without a week plan, and nothing else", () => {
+    const snapshot = snapshotOf(scenarioNamed("before-holiday"));
+    const key = "entry-a/1001";
+    const entry = snapshot.data.get(key);
+    if (!entry?.data) throw new Error("no data");
+    const data = new Map(snapshot.data);
+    data.set(key, { ...entry, data: { ...entry.data, week_plan: false } });
+    const shown = view("before-holiday", IDA, { ...snapshot, data });
+    expect(shown.heroes).toHaveLength(1);
+    expect(shown.days).toEqual([]);
+    expect(shown.earlier).toEqual([]);
+  });
+
+  it("looks for homework only as far as the data reaches", () => {
+    const snapshot = snapshotOf(scenarioNamed("thu-1530"));
+    const key = "entry-a/1001";
+    const entry = snapshot.data.get(key);
+    if (!entry?.data) throw new Error("no data");
+    const data = new Map(snapshot.data);
+    data.set(key, { ...entry, data: { ...entry.data, end: "2026-11-02" } });
+    const shown = view("thu-1530", IDA, { ...snapshot, data });
+    expect(shown.days.every((day) => day.day < "2026-11-02")).toBe(true);
+    expect(view("thu-1530", IDA).days.some((day) => day.day >= "2026-11-02")).toBe(true);
+  });
+
   it("names the holiday ahead before the earlier homework, and awaits no plan for it", () => {
     const shown = view("before-holiday", IDA);
     expect(shown.heroes).toMatchObject([

@@ -23,8 +23,10 @@ export interface Focus {
   readonly reason: FocusReason;
   /** Whether the switch time has passed today. */
   readonly afterSwitch: boolean;
-  /** The last day looked at; undefined while today is not known, as before the data has come. */
-  readonly horizon: Day | undefined;
+  /** Whether the data has today, as it has not before it has come. */
+  readonly known: boolean;
+  /** The last day looked at: today while today is not known. */
+  readonly horizon: Day;
   /** The days from today passed over to reach the focus day, or up to the horizon. */
   readonly skipped: readonly Day[];
 }
@@ -50,7 +52,15 @@ export function chooseFocus({ today, minute, switchAt, days }: FocusInput): Focu
   const afterSwitch = switchAt !== null && minute >= switchAt;
   const first = days.findIndex((view) => view.day === today);
   if (first < 0 || days[first]?.known !== true) {
-    return { today, day: undefined, reason: "none", afterSwitch, horizon: undefined, skipped: [] };
+    return {
+      today,
+      day: undefined,
+      reason: "none",
+      afterSwitch,
+      known: false,
+      horizon: today,
+      skipped: [],
+    };
   }
   const timetabled = isTimetabled(days);
   const skipped: Day[] = [];
@@ -65,11 +75,11 @@ export function chooseFocus({ today, minute, switchAt, days }: FocusInput): Focu
           : view.day === addDays(today, 1)
             ? "tomorrow"
             : "next_school_day";
-      return { today, day: view.day, reason, afterSwitch, horizon, skipped };
+      return { today, day: view.day, reason, afterSwitch, known: true, horizon, skipped };
     }
     skipped.push(view.day);
   }
-  return { today, day: undefined, reason: "none", afterSwitch, horizon, skipped };
+  return { today, day: undefined, reason: "none", afterSwitch, known: true, horizon, skipped };
 }
 
 /** Chooses the focus day at an instant, in the time zone times are shown in. */

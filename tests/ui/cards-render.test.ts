@@ -6,7 +6,10 @@ import type { Child, WeekData } from "../../src/core/types.ts";
 import { IDLE_RESET_MS } from "../../src/model/focus.ts";
 import { present, wsError, type FakeHass } from "../fake-hass.ts";
 import { all, mount, text, unmountAll, type Card } from "../fixtures/mount.ts";
-import { SCENARIOS, scenarioNamed } from "../fixtures/scenarios.ts";
+import { OSKAR_ELSEWHERE, SCENARIOS, scenarioNamed } from "../fixtures/scenarios.ts";
+import { allDay, CHILDREN, local, without } from "../fixtures/week.ts";
+
+const [IDA] = CHILDREN as [Child, Child];
 
 const DAY = "aula-connect-day-card";
 const HOMEWORK = "aula-connect-homework-card";
@@ -780,5 +783,198 @@ describe("a shared screen", () => {
     await card.updateComplete;
     expect(texts(card, ".plan .more")).toEqual(["Vis mindre", "Vis mere"]);
     expect(all(card, ".plan-text.clamp")).toHaveLength(1);
+  });
+});
+
+describe("rarer days", () => {
+  const event = (id: string, title: string, start: string, end: string) => ({
+    id,
+    start: local("2026-10-30", start),
+    end: local("2026-10-30", end),
+    all_day: false,
+    title,
+    type: "event",
+    location: null,
+  });
+
+  it("unfolds the week card's timetable with the teachers' initials and the lesson going on", async () => {
+    const { card } = await mount(WEEK, "thu-1010", { config: { children: [1001] } });
+    present(
+      card.shadowRoot?.querySelector<HTMLButtonElement>(
+        '.focus-day [data-block="timetable"] .more',
+      ),
+    ).click();
+    await card.updateComplete;
+    expect(texts(card, ".focus-day .lesson.now .label")).toEqual(["Nu"]);
+    expect(texts(card, ".focus-day .lesson-meta").at(-1)).toContain("TR, BV");
+  });
+
+  it("leaves out a room Aula has not, and a title Aula's own name gives", async () => {
+    const { card } = await mount(DAY, "thu-0715", {
+      config: { children: [1001], subject_names: [{ aula: "IDR", name: "IDR" }] },
+      ...changed("thu-0715", (data) => ({
+        ...data,
+        lessons: data.lessons.map((lesson) => ({ ...lesson, location: null })),
+      })),
+    });
+    present(
+      card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'),
+    ).click();
+    await card.updateComplete;
+    expect(all(card, ".lesson-meta")).toEqual([]);
+    expect(all(card, ".lesson .subject").map((item) => item.getAttribute("title"))).toEqual([
+      null,
+      "DAN",
+      "ENG",
+    ]);
+  });
+
+  it("shows notes without a subject: homework by its title, the plan and a quote as the week plan's", async () => {
+    const note = (id: number, type: string, title: string | null, content: string) => ({
+      id,
+      date: "2026-10-30",
+      type,
+      title,
+      content,
+      subject: "",
+      group: "",
+      author: "",
+    });
+    const { card } = await mount(DAY, "thu-1930", {
+      config: { children: [1001] },
+      ...changed("thu-1930", (data) => ({
+        ...data,
+        tasks: [
+          ...data.tasks,
+          note(901, "comment", null, "Husk regntøj til turen."),
+          note(902, "task", "Projekt", "Skriv en side."),
+        ],
+      })),
+    });
+    expect(texts(card, ".pack-row.quote")).toContain("Husk regntøj til turen. ugeplan");
+    expect(texts(card, ".hw-head").at(-1)).toBe("Projekt");
+    expect(all(card, ".plan-note").length - all(card, ".plan-subject").length).toBe(1);
+  });
+
+  it("shows a timed event without a place, and folds what is left of today after three", async () => {
+    const { card } = await mount(DAY, "fri-1240", {
+      config: { children: [1001] },
+      ...changed("fri-1240", (data) => ({
+        ...data,
+        events: [
+          ...data.events,
+          event("e1", "Fodbold", "15:00", "16:00"),
+          event("e2", "Koncert", "19:00", "20:00"),
+        ],
+      })),
+    });
+    expect(text(card, ".above .bridge")).toContain("+1");
+    unmountAll();
+    const { card: day } = await mount(DAY, "thu-1930", {
+      config: { children: [1001] },
+      ...changed("thu-1930", (data) => ({
+        ...data,
+        events: [...data.events, event("e1", "Fodbold", "15:00", "16:00")],
+      })),
+    });
+    expect(all(day, '[data-block="events"] .item-place')).toEqual([]);
+  });
+
+  it("calls a Saturday and a Sunday with something on the weekend", async () => {
+    const { card } = await mount(DAY, "fri-1400", {
+      config: { children: [1001] },
+      ...changed("fri-1400", (data) => ({
+        ...data,
+        birthdays: [...data.birthdays, { date: "2026-11-01", name: "Bo" }],
+      })),
+    });
+    expect(texts(card, ".above .bridge-label")).toContain("Weekend");
+  });
+
+  it("names a holiday without the day school starts when no school day follows in the data", async () => {
+    const holiday = (data: WeekData): WeekData => {
+      const empty = without(data, "2026-10-30", "2026-11-08");
+      return {
+        ...empty,
+        events: [...empty.events, allDay("s1", "Studiedag", "holiday", "2026-10-30", "2026-10-30")],
+      };
+    };
+    const { card } = await mount(DAY, "thu-1930", {
+      config: { children: [1001] },
+      ...changed("thu-1930", holiday),
+    });
+    expect(text(card, ".hero")).toContain("Studiedag");
+    expect(text(card, ".hero")).not.toContain("skolen starter");
+    unmountAll();
+    const { card: homework } = await mount(HOMEWORK, "thu-1930", {
+      config: { children: [1001] },
+      ...changed("thu-1930", holiday),
+    });
+    expect(text(homework, ".hw-day.focus")).toContain("Studiedag");
+    expect(text(homework, ".hw-day.focus")).not.toContain("skolen starter");
+  });
+
+  it("says a day has nothing when every block is hidden", async () => {
+    const { card } = await mount(DAY, "thu-1930", {
+      config: {
+        children: [1001],
+        show: { homework: false, pack: false, timetable: false, plan: false, events: false },
+      },
+    });
+    expect(text(card, ".child > .empty")).toBe("Intet i Aula for denne dag.");
+  });
+
+  it("names each child's school beside the name when two schools share a day", async () => {
+    const { card } = await mount(DAY, "thu-1930", {
+      setup: (hass) => {
+        hass.callWS.mockResolvedValue({ children: [IDA, OSKAR_ELSEWHERE] });
+      },
+    });
+    expect(texts(card, ".strip .kid-who")).toEqual([
+      `I${IDA.first_name}, ${IDA.institution_name}`,
+      "OOskar, Lindegårdens Skole",
+    ]);
+  });
+
+  it("keeps showing a child's last data with the error that stopped it", async () => {
+    for (const tag of [DAY, WEEK, HOMEWORK]) {
+      const { card, hass } = await mount(tag, "thu-1930");
+      hass.connection.refuse = wsError("not_found", "gone");
+      hass.connection.emit("disconnected");
+      hass.connection.emit("ready");
+      await vi.advanceTimersByTimeAsync(1_000);
+      await card.updateComplete;
+      expect(texts(card, '[role="alert"]')).toHaveLength(2);
+      expect(all(card, ".hero, .weeks, .hw-days").length).toBeGreaterThan(0);
+      unmountAll();
+    }
+  });
+
+  it("shows a homework card's child that is loading or refused", async () => {
+    const { card } = await mount(HOMEWORK, "thu-1930", {
+      config: { children: [1002] },
+      ...oskar(),
+    });
+    expect(all(card, ".pending .who")).toEqual([]);
+    expect(all(card, '.pending [aria-busy="true"]')).toHaveLength(1);
+    unmountAll();
+    const { card: refused } = await mount(
+      HOMEWORK,
+      "thu-1930",
+      oskar(wsError("not_found", "gone")),
+    );
+    expect(text(refused, ".pending .who")).toBe("OOskar");
+    expect(all(refused, '.pending [role="alert"]')).toHaveLength(1);
+  });
+
+  it("says an opened day has nothing, and closes the focus day when asked", async () => {
+    const { card } = await mount(WEEK, "empty-tue", { config: { children: [1001] } });
+    await open(card, ".day-row:not(.focus-day)");
+    expect(text(card, ".day-row:not(.focus-day) .empty")).toBe("Intet i Aula for denne dag.");
+    const focus = present(card.shadowRoot?.querySelector<HTMLDetailsElement>(".focus-day"));
+    focus.open = false;
+    focus.dispatchEvent(new Event("toggle"));
+    await card.updateComplete;
+    expect(all(card, ".focus-day .day-body")).toEqual([]);
   });
 });

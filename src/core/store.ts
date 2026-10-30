@@ -252,7 +252,6 @@ export class AulaStore {
   }
 
   #detach(): void {
-    if (!this.#attached) return;
     this.#attached = false;
     this.#connection.removeEventListener("ready", this.#onReady);
     this.#connection.removeEventListener("disconnected", this.#onDisconnected);
@@ -377,7 +376,7 @@ export class AulaStore {
     subscription.alive = false;
     clearTimeout(subscription.linger);
     subscription.linger = undefined;
-    if (this.#subscriptions.get(key) === subscription) this.#subscriptions.delete(key);
+    this.#subscriptions.delete(key);
     // An unsubscribe that fails, or of a subscription that was never made, changes nothing.
     void subscription.unsubscribe.then((unsubscribe) => unsubscribe?.()).catch(() => undefined);
     this.#markStale(key);
@@ -433,11 +432,16 @@ export class AulaStore {
     return [...this.#refused].some((key) => wanted.has(key));
   }
 
-  /** Tells whether the window is open; it opens when listings begin to retry. */
-  #inWindow(): boolean {
+  /** Returns how long listings have been retried, counting from the first retry. */
+  #retrying(): number {
     const now = Date.now();
     this.#retryStart ??= now;
-    return now - this.#retryStart < RETRY_WINDOW_MS;
+    return now - this.#retryStart;
+  }
+
+  /** Tells whether the window is open; it opens when listings begin to retry. */
+  #inWindow(): boolean {
+    return this.#retrying() < RETRY_WINDOW_MS;
   }
 
   // While a card watches, a listing follows until nothing is missing: quickly for the window,
@@ -476,8 +480,11 @@ export class AulaStore {
     this.#listed = true;
     this.#listFailed = false;
     this.#listError = undefined;
+    // A refused subscription is made again; its linger must not end the one made in its place.
     for (const [key, subscription] of this.#subscriptions) {
-      if (subscription.failed) this.#subscriptions.delete(key);
+      if (!subscription.failed) continue;
+      clearTimeout(subscription.linger);
+      this.#subscriptions.delete(key);
     }
     this.#missing.clear();
     for (const child of before) {
@@ -507,9 +514,7 @@ export class AulaStore {
     this.#listFailed = true;
     const inWindow = this.#inWindow();
     if (this.#list === undefined) {
-      const starting =
-        errorCode(error) === "unknown_command" &&
-        Date.now() - (this.#retryStart ?? 0) < STARTING_MS;
+      const starting = errorCode(error) === "unknown_command" && this.#retrying() < STARTING_MS;
       this.#listError = starting ? undefined : error;
       this.#refreshing = false;
     } else if (inWindow) {

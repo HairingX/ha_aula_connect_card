@@ -126,6 +126,10 @@ describe("the week plan's reminders", () => {
 
   it("still ends a sentence after a number before the next one", () => {
     expect(sentences("Læs side 38. Husk madpakke.")).toEqual(["Læs side 38.", "Husk madpakke."]);
+    expect(sentences("Tag en pose med (til blade). Husk madpakke.")).toEqual([
+      "Tag en pose med (til blade).",
+      "Husk madpakke.",
+    ]);
     expect(sentences("Vi ser filmen. Husk madpakke.")).toEqual([
       "Vi ser filmen.",
       "Husk madpakke.",

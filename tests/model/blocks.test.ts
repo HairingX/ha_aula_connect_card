@@ -96,6 +96,13 @@ describe("the subjects in Husk", () => {
     false,
   );
 
+  it("quote the week plan while homework or the plan is shown, as they are its notes", () => {
+    const shown = (blocks: BlockId[]): number => planBlocks(content, blocks).quotes.length;
+    expect(shown(["pack", "plan"])).toBe(1);
+    expect(shown(["pack", "homework"])).toBe(1);
+    expect(shown(["pack", "timetable"])).toBe(0);
+  });
+
   it("are named only while the timetable, which lists them, is hidden", () => {
     expect(planBlocks(content, DEFAULT_ORDER).subjects).toEqual([]);
     expect(

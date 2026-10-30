@@ -5,6 +5,7 @@ import { DEFAULT_ORDER, type Fact } from "../../src/model/blocks.ts";
 import type { StoreSnapshot } from "../../src/core/store.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
 import { contextOf, noHold, snapshotOf } from "../fixtures/snapshot.ts";
+import { weekData } from "../fixtures/week.ts";
 
 const OPTIONS: DayViewOptions = {
   children: [1001],
@@ -193,6 +194,36 @@ describe("the header", () => {
     });
     const [first] = view("before-holiday", {}, { ...snapshot, data }).groups;
     expect(first?.hero).toEqual({ kind: "none", horizon: "2026-10-18" });
+  });
+});
+
+describe("before the data", () => {
+  it("shows no child before the children are listed", () => {
+    const snapshot = snapshotOf(scenarioNamed("thu-1930"));
+    const shown = view(
+      "thu-1930",
+      {},
+      {
+        ...snapshot,
+        children: { list: undefined, error: undefined, refreshing: false },
+      },
+    );
+    expect(shown).toMatchObject({ groups: [], missing: [1001] });
+  });
+
+  it("loads a child whose data does not reach today yet, and sizes the card for a day", () => {
+    const item = scenarioNamed("thu-1930");
+    const snapshot = snapshotOf(item);
+    const data = new Map(snapshot.data);
+    data.set("entry-a/1001", {
+      range: snapshot.range,
+      data: weekData("2026-10-12"),
+      error: undefined,
+      stale: true,
+    });
+    const shown = view("thu-1930", {}, { ...snapshot, data });
+    expect(shown.groups[0]?.children[0]?.state).toEqual({ kind: "loading" });
+    expect(shown.size).toBe(9);
   });
 });
 

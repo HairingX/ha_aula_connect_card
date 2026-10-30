@@ -145,7 +145,7 @@ export function childBases(
     if (entry?.data === undefined) {
       state =
         entry?.error === undefined ? { kind: "loading" } : { kind: "error", error: entry.error };
-    } else if (focus.horizon === undefined) state = { kind: "loading" };
+    } else if (!focus.known) state = { kind: "loading" };
     else state = { kind: "ready", stale: entry.stale, error: entry.error };
     return {
       child,

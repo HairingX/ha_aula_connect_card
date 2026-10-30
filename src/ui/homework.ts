@@ -154,14 +154,12 @@ export function renderHomework(
       ><span class="avatars">${children.map(avatar)}</span>${segments([
         html`<span class="who-name">${names(children, ctx)}</span>`,
         html`<span class="who-meta">${t("homework")}</span>`,
-        html`<span class="who-meta"
-          >${from === to ? t("weekShort", { n: from }) : t("weeksShort", { from, to })}</span
-        >`,
+        html`<span class="who-meta">${t("weeksShort", { from, to })}</span>`,
       ])}</span
     >
   </h2>`;
-  // Kept by the first child, so that it closes when that child's focus day moves on.
-  const key = `${children[0] ? childKey(children[0]) : ""}|earlier`;
+  // Kept by the children, the first one first, so that it closes when its focus day moves on.
+  const key = `${children.map(childKey).join("|")}|earlier`;
   return html`<section class="homework-card stack ${columns(count)}" aria-label=${label}>
     ${title}
     ${

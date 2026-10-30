@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import type { CalendarEvent, Task } from "../../src/core/types.ts";
-import { buildDays, eventDays, isSchoolDay, type DayView } from "../../src/model/days.ts";
+import {
+  buildDays,
+  eventDays,
+  holidaySpan,
+  isSchoolDay,
+  type DayView,
+} from "../../src/model/days.ts";
+import { present } from "../fake-hass.ts";
 import { allDay, local, weekData, ZONE } from "../fixtures/week.ts";
 
 const RANGE = { start: "2026-10-26", end: "2026-11-09" };
@@ -85,6 +92,24 @@ describe("the days of the range", () => {
       eventDays({ ...late, all_day: true, start: "2026-10-27", end: "2026-10-27" }, ZONE),
     ).toEqual(["2026-10-27"]);
     expect(eventDays({ ...late, all_day: true, start: "tuesday" }, ZONE)).toEqual([]);
+    expect(eventDays({ ...late, end: "later" }, ZONE)).toEqual(["2026-10-27"]);
+  });
+
+  it("leave out a lesson whose start cannot be read", () => {
+    const data = weekData("2026-10-26");
+    const [lesson] = data.lessons;
+    const days = buildDays(
+      { ...data, lessons: [...data.lessons, { ...present(lesson), id: "x", start: "soon" }] },
+      RANGE,
+      ZONE,
+    );
+    expect(days.flatMap((view) => view.lessons).length).toBe(data.lessons.length);
+  });
+
+  it("give a holiday whose dates cannot be read the day it covers", () => {
+    expect(
+      holidaySpan({ ...event("holiday"), start: "autumn", end: "spring" }, "2026-10-27"),
+    ).toEqual({ first: "2026-10-27", last: "2026-10-27" });
   });
 });
 

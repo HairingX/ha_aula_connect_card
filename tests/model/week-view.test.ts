@@ -5,6 +5,7 @@ import { DEFAULT_ORDER } from "../../src/model/blocks.ts";
 import { weekCardView, type WeekRow, type WeekViewOptions } from "../../src/model/week-view.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
 import { contextOf, noHold, snapshotOf } from "../fixtures/snapshot.ts";
+import { allDay, local, weekData, without } from "../fixtures/week.ts";
 
 const OPTIONS: WeekViewOptions = {
   children: [1001],
@@ -132,6 +133,17 @@ describe("the week card", () => {
     expect(after?.rows[0] && shape(after.rows[0])).toBe("focus 19");
   });
 
+  it("is sized for its weeks of days before the data comes", () => {
+    const item = scenarioNamed("thu-1010");
+    const view = weekCardView(
+      { ...snapshotOf(item), data: new Map() },
+      OPTIONS,
+      contextOf(item),
+      noHold,
+    );
+    expect(view.size).toBe(17);
+  });
+
   it("loads a week the data does not cover yet, rather than call its days empty", () => {
     const [thisWeek, nextWeek] = weeks("thu-1000", {}, changed("thu-1000", { end: "2026-11-02" }));
     expect(thisWeek?.loading).toBe(false);
@@ -168,6 +180,53 @@ describe("the week card", () => {
       ["2026-10-10", "2026-10-18", false],
       ["2026-10-12", "2026-10-18", true],
     ]);
+  });
+
+  it("names the days a holiday covers in its second week, up to its own last day", () => {
+    const snapshot = snapshotOf(scenarioNamed("before-holiday"));
+    const key = "entry-a/1001";
+    const entry = snapshot.data.get(key);
+    if (!entry) throw new Error("no data");
+    const base = without(weekData("2026-10-05"), "2026-10-08", "2026-10-14");
+    const data = new Map(snapshot.data);
+    data.set(key, {
+      ...entry,
+      data: {
+        ...base,
+        events: [
+          ...base.events,
+          allDay("h", "Efterårsferie", "holiday", "2026-10-08", "2026-10-14"),
+        ],
+      },
+    });
+    const [, second] = weeks("before-holiday", {}, { ...snapshot, data });
+    const row = second?.rows.find((item) => item.kind === "holiday");
+    expect(row?.kind === "holiday" && [row.first, row.last, row.whole]).toEqual([
+      "2026-10-12",
+      "2026-10-14",
+      false,
+    ]);
+  });
+
+  it("calls the days folded by their number when a Sunday is among them without its Saturday", () => {
+    const snapshot = snapshotOf(scenarioNamed("sun-1800"));
+    const key = "entry-a/1001";
+    const entry = snapshot.data.get(key);
+    if (!entry?.data) throw new Error("no data");
+    const base = without(entry.data, "2026-10-31", "2026-11-01");
+    const football = {
+      id: "f",
+      start: local("2026-11-01", "10:00"),
+      end: local("2026-11-01", "12:00"),
+      all_day: false,
+      title: "Fodbold",
+      type: "event",
+      location: null,
+    };
+    const data = new Map(snapshot.data);
+    data.set(key, { ...entry, data: { ...base, events: [...base.events, football] } });
+    const [thisWeek] = weeks("sun-1800", {}, { ...snapshot, data });
+    expect(thisWeek?.rows.map(shape)[0]).toBe("earlier 6");
   });
 
   it("names the days a holiday covers in its second week, when not the whole week", () => {

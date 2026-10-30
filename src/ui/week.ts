@@ -193,7 +193,7 @@ function weekendRow(
   ctx: ViewContext,
   state: CardState,
 ): TemplateResult {
-  const first = item.days[0]?.day ?? ctx.today;
+  const first = item.days[0].day;
   const key = `${childKey(child)}|weekend|${first}`;
   const open = state.isOpen(key, false);
   // One item per event, with the days it is on, or its time when it is on today: in the run of
@@ -232,13 +232,9 @@ function weekendRow(
     if (today) facts();
   }
   const items = [...entries.values()].map(({ show, days, when }) => {
-    const words = days.map((day) => weekdayWord(day, ctx));
+    // A weekend's two days at most: "lør.–søn.".
     const where =
-      when === nothing
-        ? words.length > 1
-          ? glue(`${words[0] ?? ""}–${words[words.length - 1] ?? ""}`)
-          : words[0]
-        : when;
+      when === nothing ? glue(days.map((day) => weekdayWord(day, ctx)).join("–")) : when;
     return html`<span class="weekend-item"
       >${show(html`<span class="quiet">${when === nothing ? "," : ""} ${where}</span>`)}</span
     >`;
@@ -281,7 +277,7 @@ function weekRow(item: WeekRow, child: Child, ctx: ViewContext, state: CardState
   const { t } = ctx;
   switch (item.kind) {
     case "earlier": {
-      const key = `${childKey(child)}|earlier|${item.days[0]?.day ?? ""}`;
+      const key = `${childKey(child)}|earlier|${item.days[0].day}`;
       const open = state.isOpen(key, false);
       const n = item.days.length;
       return html`<details class="fold" ?open=${open} @toggle=${state.toggled(key, false)}>

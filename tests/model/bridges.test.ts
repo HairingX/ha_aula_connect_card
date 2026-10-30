@@ -8,7 +8,15 @@ import { allDay, local, weekData, without, ZONE } from "../fixtures/week.ts";
 const RANGE = { start: "2026-10-26", end: "2026-11-09" };
 
 function focus(today: string, skipped: string[], day: string | undefined): Focus {
-  return { today, day, reason: "next_school_day", afterSwitch: true, horizon: day, skipped };
+  return {
+    today,
+    day,
+    reason: "next_school_day",
+    afterSwitch: true,
+    known: true,
+    horizon: day ?? skipped[skipped.length - 1] ?? today,
+    skipped,
+  };
 }
 
 describe("the bridge rows", () => {
@@ -53,7 +61,11 @@ describe("the bridge rows", () => {
   });
 
   it("make room for the rest of today, counting the days of the rows left out", () => {
-    const row = (days: string[]): BridgeRow => ({ kind: "empty", days, cancelled: false });
+    const row = (days: [string, ...string[]]): BridgeRow => ({
+      kind: "empty",
+      days,
+      cancelled: false,
+    });
     const rows = [row(["a"]), row(["b", "c"]), row(["d"]), row(["e"])];
     expect(fitRows(rows, false)).toEqual({ rows: rows.slice(0, 2), moreDays: 2 });
     expect(fitRows(rows, true)).toEqual({ rows: rows.slice(0, 1), moreDays: 4 });

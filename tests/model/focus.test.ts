@@ -349,9 +349,20 @@ describe("the focus day", () => {
     );
   });
 
-  it("has no horizon while today is not known, as before the data has come", () => {
-    expect(focus(thu("07:15"), weekData("2026-10-12")).horizon).toBeUndefined();
-    expect(focus(thu("07:15"), undefined)).toMatchObject({ reason: "none", horizon: undefined });
+  it("looks no further than the data reaches", () => {
+    expect(focus(local("2026-10-30", "14:00"), { ...fortnight, end: "2026-11-02" })).toMatchObject({
+      day: undefined,
+      reason: "none",
+      horizon: "2026-11-01",
+    });
+  });
+
+  it("knows no day while today is not known, as before the data has come", () => {
+    expect(focus(thu("07:15"), weekData("2026-10-12"))).toMatchObject({
+      known: false,
+      horizon: "2026-10-29",
+    });
+    expect(focus(thu("07:15"), undefined)).toMatchObject({ reason: "none", known: false });
   });
 
   it("names the days it passed over", () => {

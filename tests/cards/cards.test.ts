@@ -193,6 +193,30 @@ describe("before there is anything to show", () => {
     expect(text(empty.card)).toContain("Aula Connect har ingen børn sat op.");
   });
 
+  it("shows only the warning when none of its children is listed", async () => {
+    for (const tag of [
+      "aula-connect-day-card",
+      "aula-connect-homework-card",
+      "aula-connect-card",
+    ]) {
+      const { card } = await mount(tag, "thu-1930", { children: [9] });
+      await vi.advanceTimersByTimeAsync(RETRY_WINDOW_MS + 60_000);
+      await card.updateComplete;
+      expect(text(card, '[role="alert"]')).toBe("Aula Connect har intet barn med id 9.");
+      expect(card.shadowRoot?.querySelector("section")).toBeNull();
+    }
+  });
+
+  it("shows a listing that fails after the window above what it has", async () => {
+    const { card, hass } = await mount("aula-connect-day-card", "thu-1930", { children: [1001] });
+    hass.callWS.mockRejectedValue(wsError("home_assistant_error", "Timeout"));
+    hass.connection.emit("ready");
+    await vi.advanceTimersByTimeAsync(RETRY_WINDOW_MS + 60_000);
+    await card.updateComplete;
+    expect(text(card, '[role="alert"]')).toBe("Kunne ikke hente fra Aula: Timeout");
+    expect(text(card, ".hero")).toContain("I morgen");
+  });
+
   it("says what went wrong instead of going blank when a view fails", async () => {
     vi.spyOn(
       AulaConnectDayCard.prototype as unknown as { view: () => unknown },
@@ -326,7 +350,7 @@ describe("a shared screen", () => {
     const { card } = await mount(
       "aula-connect-day-card",
       "thu-1200",
-      { children: [1001] },
+      {},
       undefined,
       new Date(halfPast).toISOString(),
     );
@@ -338,6 +362,33 @@ describe("a shared screen", () => {
     await vi.advanceTimersByTimeAsync(90_050);
     expect(text(card, ".title")).toBe("I morgen,");
     expect(more().getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("closes what was opened for each child when that child's day moves on", async () => {
+    const halfPast = new Date(local("2026-10-29", "11:59")).getTime() + 30_000;
+    const { card } = await mount(
+      "aula-connect-card",
+      "thu-1200",
+      {},
+      undefined,
+      new Date(halfPast).toISOString(),
+    );
+    const oskarMonday = (): HTMLDetailsElement =>
+      present(
+        card.shadowRoot
+          ?.querySelectorAll(".child")[1]
+          ?.querySelector<HTMLDetailsElement>("details.day-row:not(.focus-day)"),
+      );
+    oskarMonday().open = true;
+    oskarMonday().dispatchEvent(new Event("toggle"));
+    await card.updateComplete;
+    await vi.advanceTimersByTimeAsync(90_050);
+    await card.updateComplete;
+    expect(
+      card.shadowRoot
+        ?.querySelectorAll(".child")[1]
+        ?.querySelector(".day-row[open]:not(.focus-day)"),
+    ).toBeNull();
   });
 
   it("closes what was opened after ten minutes without a touch, but not on new data", async () => {
@@ -355,6 +406,36 @@ describe("a shared screen", () => {
     await vi.advanceTimersByTimeAsync(IDLE_RESET_MS + 60_000);
     await card.updateComplete;
     expect(friday().open).toBe(false);
+  });
+});
+
+describe("Home Assistant's state", () => {
+  it("renders again only for a new connection, language, time format or time zone", async () => {
+    const { card, hass } = await mount("aula-connect-day-card", "thu-1930", { children: [1001] });
+    const update = vi.spyOn(card as unknown as { requestUpdate(): void }, "requestUpdate");
+    card.hass = { ...hass, states: {} };
+    expect(update).not.toHaveBeenCalled();
+    card.hass = { ...hass, language: "en" };
+    await card.updateComplete;
+    expect(update).toHaveBeenCalled();
+    expect(text(card, ".hero")).toContain("Tomorrow");
+  });
+
+  it("follows a new configuration on the same connection", async () => {
+    const { card } = await mount("aula-connect-day-card", "thu-1930", { children: [1001] });
+    card.setConfig({ type: "custom:aula-connect-day-card", children: [1002] });
+    await settle();
+    await card.updateComplete;
+    expect(text(card, ".who")).toContain("Oskar");
+  });
+
+  it("measures what is folded where the browser cannot watch sizes", async () => {
+    vi.stubGlobal("ResizeObserver", undefined);
+    const { card } = await mount("aula-connect-day-card", "thu-1930-longplan", {
+      children: [1001],
+    });
+    expect(card.shadowRoot?.querySelectorAll(".plan-text.clamp")).toHaveLength(3);
+    vi.unstubAllGlobals();
   });
 });
 

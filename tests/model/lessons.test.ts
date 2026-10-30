@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Lesson } from "../../src/core/types.ts";
+import { inTimetableOrder } from "../../src/model/notes.ts";
 import {
   lessonTime,
   mergeLessons,
@@ -39,6 +40,24 @@ describe("merging lessons", () => {
       lesson("11:15", "12:00", { teachers: ["Bo Vang"], status: "substitute", location: "B14" }),
     ]);
     expect(blocks).toHaveLength(5);
+  });
+
+  it("joins the halves of a double lesson without a room", () => {
+    expect(
+      mergeLessons([
+        lesson("08:00", "08:45", { location: null }),
+        lesson("08:45", "09:30", { location: null }),
+      ]),
+    ).toHaveLength(1);
+  });
+
+  it("puts what has no subject after what the timetable orders", () => {
+    expect(
+      inTimetableOrder(["none", "eng", "dan"], (item) => (item === "none" ? undefined : item), [
+        "dan",
+        "eng",
+      ]),
+    ).toEqual(["dan", "eng", "none"]);
   });
 
   it("takes no status and the normal status as the same", () => {

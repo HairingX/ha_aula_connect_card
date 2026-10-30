@@ -149,10 +149,10 @@ export function sentences(text: string): string[] {
   const result: string[] = [];
   for (const line of text.split("\n")) {
     let from = 0;
-    for (const match of line.matchAll(/([.!?])\s+/gu)) {
+    for (const match of line.matchAll(/[.!?]\s+/gu)) {
       const at = match.index;
       const next = at + match[0].length;
-      if (!ends(match[1] ?? "", line.slice(from, at), line.slice(next))) continue;
+      if (!ends(match[0].charAt(0), line.slice(from, at), line.slice(next))) continue;
       result.push(line.slice(from, at + 1));
       from = next;
     }

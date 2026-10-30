@@ -58,7 +58,7 @@ function subscribedIds(connection: FakeConnection): unknown[] {
 }
 
 function listeners(connection: FakeConnection): number {
-  return [...connection.listeners.values()].reduce((sum, set) => sum + set.size, 0);
+  return [...connection.listeners.values()].reduce((sum, list) => sum + list.length, 0);
 }
 
 beforeEach(() => {
@@ -273,6 +273,27 @@ describe("the connection", () => {
     expect(subscribedIds(connection)).toEqual([1001, 1002]);
     expect(connection.subscriptions).toHaveLength(4);
     expect(store.snapshot.children.refreshing).toBe(false);
+  });
+
+  it("listens once when a card comes back after its child's lingering subscription ended", async () => {
+    const { connection, store } = setup();
+    const release = store.watch({ children: [1001], onChange: vi.fn() });
+    await settle();
+    release();
+    connection.subscriptions[0]?.callback({ ended: true });
+    store.watch({ children: [1001], onChange: vi.fn() });
+    await settle();
+    expect(listeners(connection)).toBe(2);
+  });
+
+  it("lets go of a lost connection when only lingering subscriptions held it", async () => {
+    const { connection, store } = setup();
+    const release = store.watch({ children: [1001], onChange: vi.fn() });
+    await settle();
+    release();
+    connection.emit("disconnected");
+    expect(listeners(connection)).toBe(0);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("shows a refused subscription as the child's error, keeping its last data", async () => {
@@ -549,6 +570,62 @@ describe("listing the children again", () => {
     first({ children: [] });
     await settle();
     expect(store.snapshot.children.list).toEqual(CHILDREN);
+  });
+
+  it("ignores the failure of a listing a newer one replaced", async () => {
+    const { connection, hass, store } = setup();
+    let fail: (error: unknown) => void = () => undefined;
+    hass.callWS.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          fail = reject;
+        }),
+    );
+    store.watch({ children: [], onChange: vi.fn() });
+    connection.emit("ready");
+    await settle();
+    fail(wsError("home_assistant_error", "Timeout"));
+    await settle();
+    expect(store.snapshot.children).toEqual({
+      list: CHILDREN,
+      error: undefined,
+      refreshing: false,
+    });
+  });
+
+  it("stops the editor's wait when a listing fails, but not while Home Assistant starts", async () => {
+    const failing = setup();
+    failing.answer(wsError("home_assistant_error", "Timeout"));
+    const gaveUp = vi.fn();
+    void failing.store.whenListed(60_000).then(gaveUp);
+    await settle();
+    expect(gaveUp).toHaveBeenCalled();
+    const starting = setup();
+    starting.answer(wsError("unknown_command", "Unknown command."));
+    const listed = vi.fn();
+    void starting.store.whenListed(60_000).then(listed);
+    await settle();
+    expect(listed).not.toHaveBeenCalled();
+    starting.answer(CHILDREN);
+    await vi.advanceTimersByTimeAsync(RETRY_MAX_MS);
+    expect(listed).toHaveBeenCalled();
+  });
+
+  it("keeps a subscription made again after a refusal when the refused one's linger is up", async () => {
+    const { connection, store } = setup();
+    connection.refuse = wsError("not_found", "Child not found");
+    const release = store.watch({ children: [1001], onChange: vi.fn() });
+    await settle();
+    release();
+    connection.refuse = undefined;
+    connection.emit("ready");
+    await settle();
+    store.watch({ children: [1001], onChange: vi.fn() });
+    await settle();
+    await vi.advanceTimersByTimeAsync(LINGER_MS);
+    connection.emit("ready");
+    await settle();
+    expect(subscribedIds(connection)).toEqual([1001]);
   });
 
   it("stops listing and retrying when it is idle", async () => {

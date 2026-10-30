@@ -29,6 +29,15 @@ describe("the rest of today", () => {
     expect(todayRest(tuesday, at("2026-11-03", "18:30"), ZONE)).toBeUndefined();
   });
 
+  it("takes an event whose end cannot be read as over once it has begun", () => {
+    const tuesday = present(days[8]);
+    const meeting = { ...present(tuesday.events[0]), end: "later" };
+    const rest = (time: string) =>
+      todayRest({ ...tuesday, events: [meeting] }, at("2026-11-03", time), ZONE)?.events;
+    expect(rest("15:00")).toHaveLength(1);
+    expect(rest("17:30")).toBeUndefined();
+  });
+
   it("leaves out all-day events unless it is told to name them", () => {
     const friday = present(days[4]);
     expect(todayRest(friday, at("2026-10-30", "14:00"), ZONE)).toBeUndefined();

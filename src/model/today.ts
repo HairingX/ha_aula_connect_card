@@ -9,7 +9,7 @@ import { instant } from "../core/dates.ts";
 import type { CalendarEvent } from "../core/types.ts";
 import type { Fact, TimedEvent } from "./blocks.ts";
 import { isWholeDay, spanOn, type DayView } from "./days.ts";
-import { isCancelled, mergeLessons, schoolHours, type LessonBlock } from "./lessons.ts";
+import { isCancelled, lessonTime, mergeLessons, schoolHours, type LessonBlock } from "./lessons.ts";
 
 /** What is left of today. */
 export interface TodayRest {
@@ -41,7 +41,7 @@ export function todayRest(
   timed = true,
 ): TodayRest | undefined {
   const running = mergeLessons(view.lessons.filter((lesson) => !isCancelled(lesson))).find(
-    (block) => !ended(block.end, block.start, now) && (instant(block.start) ?? now) <= now,
+    (block) => lessonTime(block, now) === "now",
   );
   const hours = schoolHours(view.lessons);
   const ends = hours && !ended(hours.end, hours.start, now) ? hours.end : undefined;

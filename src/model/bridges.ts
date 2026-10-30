@@ -41,13 +41,13 @@ export type BridgeRow =
       /** Its own last day, even beyond the range. */
       readonly last: Day;
       /** The days passed over that it covers. */
-      readonly days: readonly Day[];
+      readonly days: readonly [Day, ...Day[]];
     }
   | {
       /** A Saturday, a Sunday, or both, with something on. */
       readonly kind: "weekend";
       /** The days. */
-      readonly days: readonly Day[];
+      readonly days: readonly [Day, ...Day[]];
       /** What is on them. */
       readonly items: readonly BridgeItem[];
     }
@@ -55,7 +55,7 @@ export type BridgeRow =
       /** Weekdays in a row without school. */
       readonly kind: "empty";
       /** The days. */
-      readonly days: readonly Day[];
+      readonly days: readonly [Day, ...Day[]];
       /** Whether their lessons are all cancelled, rather than none in Aula. */
       readonly cancelled: boolean;
     };

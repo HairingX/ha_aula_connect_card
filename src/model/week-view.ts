@@ -54,7 +54,7 @@ export type WeekRow =
       /** The days that are over, folded into one row. */
       readonly kind: "earlier";
       /** The days. */
-      readonly days: readonly DayRowView[];
+      readonly days: readonly [DayRowView, ...DayRowView[]];
       /** Whether they are Monday to Friday, to Saturday, or the whole week. */
       readonly span: FoldSpan | undefined;
     }
@@ -84,7 +84,7 @@ export type WeekRow =
       /** Saturday and Sunday still to come, when either has something on. */
       readonly kind: "weekend";
       /** The days with something on. */
-      readonly days: readonly DayRowView[];
+      readonly days: readonly [DayRowView, ...DayRowView[]];
       /** Whether one of them is today, with something still on. */
       readonly today: boolean;
     }
@@ -148,7 +148,7 @@ function span(days: readonly DayRowView[], weekdays: number): FoldSpan | undefin
   if (days.length - weekend.length < weekdays) return undefined;
   if (weekend.length === 0) return "weekdays";
   if (weekend.length === 2) return "week";
-  return weekday(weekend[0]?.day ?? "") === 6 ? "toSaturday" : undefined;
+  return weekend.some((row) => weekday(row.day) === 6) ? "toSaturday" : undefined;
 }
 
 function week(
@@ -237,16 +237,17 @@ function week(
     } else if (view.day <= today) earlier.push(row(view));
     else rows.push({ kind: "day", row: row(view) });
   }
-  if (weekend.length > 0) rows.push({ kind: "weekend", days: weekend, today: weekendToday });
+  const [saturday, ...sunday] = weekend;
+  if (saturday) rows.push({ kind: "weekend", days: [saturday, ...sunday], today: weekendToday });
   const weekdays = views.filter((view) => !isWeekend(view.day)).length;
   const focused = focus.day !== undefined && startOfWeek(focus.day) === start;
+  const [first, ...later] = earlier;
   return {
     ...section,
     loading: false,
-    rows:
-      earlier.length > 0
-        ? [{ kind: "earlier", days: earlier, span: span(earlier, weekdays) }, ...rows]
-        : rows,
+    rows: first
+      ? [{ kind: "earlier", days: [first, ...later], span: span(earlier, weekdays) }, ...rows]
+      : rows,
     notYet: rules.planMissing.has(start) && !focused ? section.number : undefined,
   };
 }
@@ -256,26 +257,25 @@ function week(
  * first row keeps its own dates, and the next week's row the days of that week it covers.
  */
 function continued(weeks: readonly WeekSection[]): WeekSection[] {
-  const [first, ...rest] = weeks;
-  if (!first) return [];
   const shown = new Set(
-    first.rows.flatMap((row) => (row.kind === "holiday" ? [row.event.id] : [])),
+    weeks
+      .slice(0, 1)
+      .flatMap((section) => section.rows)
+      .flatMap((row) => (row.kind === "holiday" ? [row.event.id] : [])),
   );
-  return [
-    first,
-    ...rest.map((section) => {
-      const end = addDays(section.start, 6);
-      return {
-        ...section,
-        rows: section.rows.map((row): WeekRow => {
-          if (row.kind !== "holiday" || !shown.has(row.event.id)) return row;
-          const from = row.first > section.start ? row.first : section.start;
-          const to = row.last < end ? row.last : end;
-          return { ...row, first: from, last: to, whole: from === section.start && to === end };
-        }),
-      };
-    }),
-  ];
+  return weeks.map((section, index) => {
+    if (index === 0) return section;
+    const end = addDays(section.start, 6);
+    return {
+      ...section,
+      // A holiday shown the week before began before this week's Monday.
+      rows: section.rows.map((row): WeekRow => {
+        if (row.kind !== "holiday" || !shown.has(row.event.id)) return row;
+        const to = row.last < end ? row.last : end;
+        return { ...row, first: section.start, last: to, whole: to === end };
+      }),
+    };
+  });
 }
 
 /** Builds the week card's view. */

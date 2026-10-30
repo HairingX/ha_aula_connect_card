@@ -105,8 +105,8 @@ function todayRow(
 function bridgeLabel(row: BridgeRow, ctx: ViewContext): string {
   const weekday = (day: string): string =>
     capitalize(formatWeekday(day, ctx.language), ctx.language);
-  const first = row.days[0] ?? "";
-  const last = row.days[row.days.length - 1] ?? first;
+  const [first] = row.days;
+  const last = row.days.reduce((_, day) => day);
   switch (row.kind) {
     case "holiday":
       return row.event.title;
@@ -288,7 +288,7 @@ function group(
     ${one ? who(one.child, school(one.child)) : nothing} ${one ? childError(one, ctx) : nothing}
     ${
       item.hero
-        ? html`${item.above ? aboveRows(item.above, ctx, count > 1) : nothing}
+        ? html`${aboveRows(item.above, ctx, count > 1)}
           ${hero(item.hero, item.facts, one?.content?.hours, ctx, several ? one?.child : undefined)}
           ${count > 1 ? strip(item, view, ctx) : nothing}
           ${item.hero.kind === "day" ? blocks(item, item.hero.day, ctx, state) : nothing}`

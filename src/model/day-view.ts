@@ -150,18 +150,27 @@ export interface GroupBlock {
 }
 
 /** Children who share a focus day, under one header; or one child not ready to be shown. */
-export interface DayGroup {
+export type DayGroup = (
+  | {
+      /** No header while the child is not ready. */
+      readonly hero: undefined;
+      /** No rows above it either. */
+      readonly above: undefined;
+    }
+  | {
+      /** The header. */
+      readonly hero: Hero;
+      /** The rows above the header. */
+      readonly above: AboveRows;
+    }
+) & {
   /** The children, in order. */
   readonly children: readonly DayChildView[];
-  /** The header; undefined while the child is not ready. */
-  readonly hero: Hero | undefined;
-  /** The rows above the header. */
-  readonly above: AboveRows | undefined;
   /** The header's facts: every child's, or the one child's. */
   readonly facts: readonly Fact[];
   /** The blocks, in the configured order, each with a part per child. */
   readonly blocks: readonly GroupBlock[];
-}
+};
 
 /** The school day card's view. */
 export interface DayCardView {
@@ -199,9 +208,8 @@ function rowKey(row: BridgeRow): string {
 // is left to its own row, which gives its dates.
 function rest(basis: ChildBasis, ctx: ViewContext, blocks: readonly BlockId[]) {
   const { focus } = basis;
-  if (focus.day === focus.today) return undefined;
   const view = dayIn(basis, focus.today);
-  if (!view?.known) return undefined;
+  if (focus.day === focus.today || !view?.known) return undefined;
   const holiday = holidayOf(view);
   const facts = isSchoolDay(view, basis.rules.timetabled)
     ? []
@@ -260,9 +268,7 @@ function above(
       else lines.set(key, { row, children: [basis.child] });
     }
   }
-  const sorted = [...lines.values()].sort((a, b) =>
-    (a.row.days[0] ?? "").localeCompare(b.row.days[0] ?? ""),
-  );
+  const sorted = [...lines.values()].sort((a, b) => a.row.days[0].localeCompare(b.row.days[0]));
   const { rows, moreDays } = fitRows(
     sorted.map((line) => line.row),
     today.length > 0,
@@ -271,10 +277,11 @@ function above(
     today,
     events: shared(events.values()),
     facts: shared(facts.values()),
-    bridges: rows.map((row) => {
-      const children = lines.get(rowKey(row))?.children ?? [];
-      return { row, only: children.length === bases.length ? [] : children };
-    }),
+    // The rows kept are the first of those given.
+    bridges: sorted.slice(0, rows.length).map(({ row, children }) => ({
+      row,
+      only: children.length === bases.length ? [] : children,
+    })),
     moreDays,
   };
 }
@@ -317,7 +324,7 @@ export function heroKey(hero: Hero): string {
 function heroOf(basis: ChildBasis): Hero {
   const { focus } = basis;
   return focus.day === undefined
-    ? noSchoolHero(basis, focus.horizon ?? focus.today)
+    ? noSchoolHero(basis, focus.horizon)
     : { kind: "day", focus, day: focus.day };
 }
 

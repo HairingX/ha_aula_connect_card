@@ -15,7 +15,7 @@ import {
 import { translator, type TextKey, type Translate } from "../core/i18n.ts";
 import { BLOCKS, type BlockId } from "../model/blocks.ts";
 import { subjectNamer } from "../model/subjects.ts";
-import { isRecord } from "./common.ts";
+import { configRecord } from "./common.ts";
 
 /** A field or group of Home Assistant's form, as far as the cards use them. */
 export type FormSchema =
@@ -283,8 +283,7 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
  * Throws for what the form would show other than the card does: Home Assistant ticks only an
  * option equal to the value, and the time field shows only a time written as one.
  */
-function assertShown(config: unknown, known: boolean): void {
-  const raw = isRecord(config) ? config : {};
+function assertShown(raw: Record<string, unknown>, known: boolean): void {
   const children = Array.isArray(raw.children) ? (raw.children as unknown[]) : [];
   if (known && children.some((id) => typeof id === "string")) {
     throw new Error("children: write the child ids as numbers, such as [1001], to choose here");
@@ -325,7 +324,7 @@ export function configForm(
     },
     assertConfig: (config) => {
       resolve(config, true);
-      assertShown(config, knownChildren().length > 0);
+      assertShown(configRecord(config), knownChildren().length > 0);
     },
   };
 }

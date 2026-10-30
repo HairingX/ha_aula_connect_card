@@ -129,7 +129,7 @@ export function emptyText(
 ): string {
   switch (empty) {
     case "planMissing":
-      return ctx.t("weekPlanNotYet", { n: content.planMissing ?? "" });
+      return ctx.t("weekPlanNotYet", { n: String(content.planMissing) });
     case "noWeekPlan":
       return ctx.t("noWeekPlanHomework");
     case "noTimetable":
