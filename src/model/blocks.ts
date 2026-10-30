@@ -28,7 +28,7 @@ import { packRows, quotes, type PackRow, type PackRule, type Quote } from "./pac
 import type { SubjectLabel, SubjectNamer } from "./subjects.ts";
 
 /** The blocks, in their default order. */
-export const BLOCKS = ["homework", "pack", "timetable", "plan", "events", "birthdays"] as const;
+export const BLOCKS = ["task", "pack", "timetable", "comment", "events", "birthdays"] as const;
 
 /** A block of a day. */
 export type BlockId = (typeof BLOCKS)[number];
@@ -177,6 +177,12 @@ export function homeworkOf(view: DayView, rules: ContentRules): NoteView[] {
   );
 }
 
+/** Returns a day's notes other than what the week plan marks. */
+export function commentsOf(view: DayView, rules: ContentRules): NoteView[] {
+  if (!rules.weekPlan) return [];
+  return view.notes.filter((note) => !isHomework(note)).map((note) => noteView(note, rules.namer));
+}
+
 function status(value: string | null): LessonStatus | undefined {
   if (value === null || value.trim() === "" || value === "normal") return undefined;
   return value === "substitute" ? { kind: "substitute" } : { kind: "other", text: value };
@@ -223,7 +229,7 @@ export function dayContent(
     hours: schoolHours(view.lessons),
     subjects: [...subjects.values()],
     homework: homeworkOf(view, rules),
-    plan: notes.filter((note) => !isHomework(note.note)),
+    plan: commentsOf(view, rules),
     pack: packRows(view.lessons, rules.packing, namer),
     quotes: quotes(notes, lessonKeys),
     timed: view.events
@@ -278,13 +284,13 @@ function homeworkEmpty(content: DayContent): EmptyKind | undefined {
  */
 export function planBlocks(content: DayContent, blocks: readonly BlockId[]): BlockPlan {
   const quoted =
-    blocks.includes("homework") || blocks.includes("plan") ? content.quotes : ([] as const);
+    blocks.includes("task") || blocks.includes("comment") ? content.quotes : ([] as const);
   const subjects = blocks.includes("timetable") ? [] : content.subjects;
   const has: Record<BlockId, boolean> = {
-    homework: content.homework.length > 0,
+    task: content.homework.length > 0,
     pack: subjects.length > 0 || content.pack.length > 0 || quoted.length > 0,
     timetable: content.timetable.length > 0,
-    plan: content.plan.length > 0,
+    comment: content.plan.length > 0,
     events: content.timed.length > 0,
     birthdays: false,
   };
@@ -294,7 +300,7 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
   const planned: PlannedBlock[] = [];
   for (const id of blocks) {
     const empty =
-      id === "homework"
+      id === "task"
         ? homeworkEmpty(content)
         : id === "timetable" && other && !isWeekend(content.view.day)
           ? "noTimetable"

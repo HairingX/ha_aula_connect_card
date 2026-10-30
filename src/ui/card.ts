@@ -8,7 +8,7 @@
 
 import { html, nothing, render as renderTemplate, type TemplateResult } from "lit/html.js";
 
-import { viewContext, type ViewContext } from "../core/context.ts";
+import { viewContext, type Labels, type ViewContext } from "../core/context.ts";
 import { rememberLanguage } from "../core/memory.ts";
 import { storeFor, type StoreSnapshot } from "../core/store.ts";
 import type { ChildKey, HomeAssistant } from "../core/types.ts";
@@ -27,6 +27,8 @@ export interface CardConfigBase {
   readonly timetable: "compact" | "full";
   /** The lines of a note of the plan shown before "Vis mere"; 0 shows every note whole. */
   readonly infoLines: number;
+  /** The names chosen for the week plan's two kinds of notes. */
+  readonly labels: Labels;
 }
 
 /** How a day's timetable and plan are folded. */
@@ -281,7 +283,7 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     const { config } = this;
     const hass = this.#hassValue;
     if (!config || !hass) return nothing;
-    const ctx = viewContext(hass, new Date());
+    const ctx = viewContext(hass, new Date(), config.labels);
     return html`<ha-card>
       <div class="aula ${config.size}" lang=${ctx.lang}>
         <div class="body">${this.#body(this.aula.snapshot, config, ctx)}</div>

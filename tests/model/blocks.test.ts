@@ -20,19 +20,19 @@ const RANGE = { start: "2026-10-26", end: "2026-11-09" };
 
 describe("the order of the blocks", () => {
   it.each<[BlockId[], ShowConfig, BlockId[]]>([
-    [[], {}, ["homework", "pack", "timetable", "plan", "events", "birthdays"]],
-    [["timetable"], {}, ["timetable", "homework", "pack", "plan", "events", "birthdays"]],
-    [["events", "homework"], {}, ["events", "homework", "pack", "timetable", "plan", "birthdays"]],
-    [["homework"], { homework: false }, ["pack", "timetable", "plan", "events", "birthdays"]],
+    [[], {}, ["task", "pack", "timetable", "comment", "events", "birthdays"]],
+    [["timetable"], {}, ["timetable", "task", "pack", "comment", "events", "birthdays"]],
+    [["events", "task"], {}, ["events", "task", "pack", "timetable", "comment", "birthdays"]],
+    [["task"], { task: false }, ["pack", "timetable", "comment", "events", "birthdays"]],
   ])("order %j and show %j give %j", (order, show, blocks) => {
     expect(orderBlocks(order, show)).toEqual(blocks);
   });
 
   it.each<[BlockId[], ShowConfig, BlockId[]]>([
-    [[], {}, ["pack", "homework", "timetable", "plan", "events", "birthdays"]],
-    [["timetable"], {}, ["timetable", "pack", "homework", "plan", "events", "birthdays"]],
-    [["homework", "pack"], {}, ["homework", "pack", "timetable", "plan", "events", "birthdays"]],
-    [[], { pack: false }, ["homework", "timetable", "plan", "events", "birthdays"]],
+    [[], {}, ["pack", "task", "timetable", "comment", "events", "birthdays"]],
+    [["timetable"], {}, ["timetable", "pack", "task", "comment", "events", "birthdays"]],
+    [["task", "pack"], {}, ["task", "pack", "timetable", "comment", "events", "birthdays"]],
+    [[], { pack: false }, ["task", "timetable", "comment", "events", "birthdays"]],
   ])("on a wall screen, order %j and show %j give %j", (order, show, blocks) => {
     expect(orderBlocks(order, show, true)).toEqual(blocks);
   });
@@ -96,8 +96,8 @@ describe("the subjects in Husk", () => {
 
   it("quote the week plan while homework or the plan is shown, as they are its notes", () => {
     const shown = (blocks: BlockId[]): number => planBlocks(content, blocks).quotes.length;
-    expect(shown(["pack", "plan"])).toBe(1);
-    expect(shown(["pack", "homework"])).toBe(1);
+    expect(shown(["pack", "comment"])).toBe(1);
+    expect(shown(["pack", "task"])).toBe(1);
     expect(shown(["pack", "timetable"])).toBe(0);
   });
 

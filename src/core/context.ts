@@ -9,6 +9,23 @@ import { localTime, timeZone, useAmPm } from "./dates.ts";
 import { cardLanguage, translator, type Translate } from "./i18n.ts";
 import type { Day, HassLocale, HomeAssistant } from "./types.ts";
 
+/** The name chosen for the week plan's marked notes, Meebook's tasks. */
+export type TaskLabel = "important" | "tasks" | "homework";
+
+/** The name chosen for the week plan's other notes, Meebook's comments. */
+export type CommentLabel = "plan" | "comments" | "info" | "notes";
+
+/** The names chosen for the week plan's two kinds of notes. */
+export interface Labels {
+  /** The marked notes' name. */
+  readonly task: TaskLabel;
+  /** The other notes' name. */
+  readonly comment: CommentLabel;
+}
+
+/** The names the notes have unless the configuration chooses others. */
+export const DEFAULT_LABELS: Labels = { task: "important", comment: "plan" };
+
 /** The user's settings and the time now. */
 export interface ViewContext {
   /** The cards' texts in the user's language, their dashes and dots joined to the words beside them. */
@@ -27,6 +44,8 @@ export interface ViewContext {
   readonly today: Day;
   /** The minutes since `today`'s midnight on the clock. */
   readonly minute: number;
+  /** The names chosen for the week plan's two kinds of notes. */
+  readonly labels: Labels;
 }
 
 // Home Assistant leaves the locale's language empty until the user's profile has loaded.
@@ -34,8 +53,12 @@ function locale(hass: HomeAssistant): HassLocale {
   return { ...hass.locale, language: hass.locale.language || hass.language };
 }
 
-/** Returns the view context of `hass` at `now`. */
-export function viewContext(hass: HomeAssistant, now: Date): ViewContext {
+/** Returns the view context of `hass` at `now`, with the notes' names `labels` chooses. */
+export function viewContext(
+  hass: HomeAssistant,
+  now: Date,
+  labels: Labels = DEFAULT_LABELS,
+): ViewContext {
   const zone = timeZone(hass);
   const { day, minute } = localTime(now, zone);
   const settings = locale(hass);
@@ -48,6 +71,7 @@ export function viewContext(hass: HomeAssistant, now: Date): ViewContext {
     now,
     today: day,
     minute,
+    labels,
   };
 }
 

@@ -32,8 +32,8 @@ describe("translator", () => {
 
   it("picks the singular or plural form by n", () => {
     const da = translator("da");
-    expect(da("homeworkCount", { n: 1 })).toBe("1 lektie");
-    expect(da("homeworkCount", { n: 2 })).toBe("2 lektier");
+    expect(da("countHomework", { n: 1 })).toBe("1 lektie");
+    expect(da("countImportant", { n: 2 })).toBe("2 vigtige");
     expect(da("daysWithoutSchool", { n: 1 })).toBe("+ 1 dag uden skole");
     expect(translator("en")("daysWithoutSchool", { n: 3 })).toBe("+ 3 days without school");
     expect(translator("en")("daysWithoutSchool")).toBe("+ {n} days without school");

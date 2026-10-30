@@ -1,6 +1,6 @@
 /**
- * The homework card's view: the homework by the day it is for, each day with a part for each
- * child, from the focus day on, with the earlier days folded away.
+ * The week plan card's view: the notes it shows by the day they are for, each day with a part
+ * for each child, from the focus day on, with the earlier days folded away.
  *
  * @packageDocumentation
  */
@@ -9,18 +9,23 @@ import type { ViewContext } from "../core/context.ts";
 import { addDays, startOfWeek, weekNumber } from "../core/dates.ts";
 import type { StoreSnapshot } from "../core/store.ts";
 import { childKey, type Child, type ChildKey, type Day } from "../core/types.ts";
-import { homeworkOf } from "./blocks.ts";
+import { commentsOf, homeworkOf } from "./blocks.ts";
 import { childBases, type ChildState, type Hold, type ViewOptions } from "./child.ts";
 import { heroKey, noSchoolHero, type NoSchoolHero } from "./day-view.ts";
 import type { Focus } from "./focus.ts";
 import type { NoteView } from "./notes.ts";
 
-/** A child's homework for one day. */
+/** Which of the week plan's notes the card shows: what is marked, the others, or both. */
+export type NotesShown = "tasks" | "comments" | "all";
+
+/** A child's notes for one day. */
 export interface HomeworkPart {
   /** The child. */
   readonly child: Child;
-  /** The homework, in the order of the day's timetable. */
+  /** What the week plan marks, in the order of the day's timetable. */
   readonly items: readonly NoteView[];
+  /** The week plan's other notes. */
+  readonly comments: readonly NoteView[];
   /** Why there is none: none in the week plan, the week plan not in Aula yet, or no week plan. */
   readonly empty: "noHomework" | "planMissing" | "noWeekPlan" | undefined;
 }
@@ -103,10 +108,10 @@ function only(children: readonly Child[], all: number): readonly Child[] {
   return children.length === all ? [] : children;
 }
 
-/** Builds the homework card's view. */
+/** Builds the week plan card's view, of the notes `options.notes` chooses. */
 export function homeworkCardView(
   snapshot: StoreSnapshot,
-  options: ViewOptions,
+  options: ViewOptions & { readonly notes: NotesShown },
   ctx: ViewContext,
   hold: Hold,
 ): HomeworkCardView {
@@ -128,19 +133,27 @@ export function homeworkCardView(
       heroes.set(key, entry);
     } else focusDays.add(focus.day);
     if (!rules.weekPlan) {
-      if (focus.day !== undefined) add(later, focus.day, { child, items: [], empty: "noWeekPlan" });
+      if (focus.day !== undefined)
+        add(later, focus.day, { child, items: [], comments: [], empty: "noWeekPlan" });
       continue;
     }
     const cutoff = focus.day ?? addDays(focus.horizon, 1);
     for (const view of basis.days) {
       if (!view.known) continue;
-      const items = homeworkOf(view, rules);
+      const items = options.notes === "comments" ? [] : homeworkOf(view, rules);
+      const comments = options.notes === "tasks" ? [] : commentsOf(view, rules);
+      const has = items.length + comments.length > 0;
       const week = startOfWeek(view.day);
       if (view.day === focus.day) {
         const empty = rules.planMissing.has(week) ? "planMissing" : "noHomework";
-        add(later, view.day, { child, items, empty: items.length > 0 ? undefined : empty });
-      } else if (items.length > 0) {
-        add(view.day > cutoff ? later : before, view.day, { child, items, empty: undefined });
+        add(later, view.day, { child, items, comments, empty: has ? undefined : empty });
+      } else if (has) {
+        add(view.day > cutoff ? later : before, view.day, {
+          child,
+          items,
+          comments,
+          empty: undefined,
+        });
       }
     }
     // A week whose plan is missing is said once: by its focus day, else on a line of its own.
@@ -172,7 +185,11 @@ export function homeworkCardView(
   const shown = days(later);
   const earlier = days(before);
   const count = (list: readonly HomeworkDay[]): number =>
-    list.reduce((sum, day) => sum + day.parts.reduce((n, part) => n + part.items.length, 0), 0);
+    list.reduce(
+      (sum, day) =>
+        sum + day.parts.reduce((n, part) => n + part.items.length + part.comments.length, 0),
+      0,
+    );
   return {
     weeks: [weekNumber(snapshot.range.start), weekNumber(addDays(snapshot.range.end, -1))],
     children: bases.map((basis) => ({

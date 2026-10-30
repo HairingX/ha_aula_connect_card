@@ -6,11 +6,11 @@
  */
 
 import { AulaConnectDayCard } from "./cards/day-card.ts";
-import { AulaConnectHomeworkCard } from "./cards/homework-card.ts";
+import { AulaConnectWeekplanCard } from "./cards/weekplan-card.ts";
 import { registerCard } from "./cards/register.ts";
 import { AulaConnectWeekCard } from "./cards/week-card.ts";
 import { DAY_CARD } from "./config/day.ts";
-import { HOMEWORK_CARD } from "./config/homework.ts";
+import { WEEKPLAN_CARD } from "./config/weekplan.ts";
 import { WEEK_CARD } from "./config/week.ts";
 
 /** The cards' version, set when they are built. */
@@ -23,11 +23,11 @@ const defined = [
     preview: true,
     anchor: "#school-day-card",
   }),
-  registerCard(HOMEWORK_CARD, AulaConnectHomeworkCard, {
+  registerCard(WEEKPLAN_CARD, AulaConnectWeekplanCard, {
     name: "pickerHomeworkName",
     description: "pickerHomeworkDescription",
     preview: true,
-    anchor: "#homework-card",
+    anchor: "#week-plan-card",
   }),
   // A week is about 1300 px high: as a preview it would stretch its row of the picker.
   registerCard(WEEK_CARD, AulaConnectWeekCard, {

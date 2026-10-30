@@ -12,7 +12,7 @@ import { allDay, CHILDREN, local, without } from "../fixtures/week.ts";
 const [IDA] = CHILDREN as [Child, Child];
 
 const DAY = "aula-connect-day-card";
-const HOMEWORK = "aula-connect-homework-card";
+const HOMEWORK = "aula-connect-weekplan-card";
 const WEEK = "aula-connect-week-card";
 
 /** Returns what a screen reader reads of an element: without what is hidden from it. */
@@ -116,11 +116,8 @@ describe("the school day card", () => {
   it("answers each block for every child, naming the child, and says when one has nothing", async () => {
     const { card } = await mount(DAY, "thu-1930");
     expect(texts(card, ".strip .kid-name")).toEqual(["Ida", "Oskar"]);
-    expect(texts(card, '[data-block="homework"] .part-who span:last-child')).toEqual([
-      "Ida",
-      "Oskar",
-    ]);
-    expect(texts(card, '[data-block="homework"] .empty')).toEqual(["Ingen lektier i ugeplanen."]);
+    expect(texts(card, '[data-block="task"] .part-who span:last-child')).toEqual(["Ida", "Oskar"]);
+    expect(texts(card, '[data-block="task"] .empty')).toEqual(["Ingen lektier i ugeplanen."]);
     expect(texts(card, ".lesson.cancelled .subject")).toEqual(["Klassens tid"]);
   });
 
@@ -229,7 +226,7 @@ describe("the school day card", () => {
 
   it("says a week plan is not in Aula yet, not that there is no homework", async () => {
     const { card } = await mount(DAY, "sun-1800-noplan", { config: { children: [1001] } });
-    expect(text(card, '[data-block="homework"] .empty')).toBe(
+    expect(text(card, '[data-block="task"] .empty')).toBe(
       "Ugeplanen for uge 45 er ikke i Aula endnu.",
     );
   });
@@ -322,15 +319,15 @@ describe("the school day card's rows above", () => {
 describe("the school day card's blocks", () => {
   it("says once what every child lacks, naming no one", async () => {
     const { card } = await mount(DAY, "sun-1800-noplan");
-    expect(texts(card, '[data-block="homework"] .empty')).toEqual([
+    expect(texts(card, '[data-block="task"] .empty')).toEqual([
       "Ugeplanen for uge 45 er ikke i Aula endnu.",
     ]);
-    expect(all(card, '[data-block="homework"] .part-who')).toEqual([]);
+    expect(all(card, '[data-block="task"] .part-who')).toEqual([]);
   });
 
   it("names a child with nothing on one line beside a child who has something", async () => {
     const { card } = await mount(DAY, "thu-1930");
-    const parts = all(card, '[data-block="homework"] .part');
+    const parts = all(card, '[data-block="task"] .part');
     expect(parts.map((part) => part.classList.contains("is-empty"))).toEqual([false, true]);
   });
 
@@ -939,7 +936,7 @@ describe("rarer days", () => {
     const { card } = await mount(DAY, "thu-1930", {
       config: {
         children: [1001],
-        show: { homework: false, pack: false, timetable: false, plan: false, events: false },
+        show: { task: false, pack: false, timetable: false, comment: false, events: false },
       },
     });
     expect(text(card, ".child > .empty")).toBe("Intet i Aula for denne dag.");

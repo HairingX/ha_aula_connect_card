@@ -156,7 +156,7 @@ describe("the header", () => {
   it("says each fact once: whole-day events and birthdays in the header, no block for them", () => {
     const item = group("thu-1930");
     expect(named(item.facts)).toEqual(["Skolefoto", "Alma"]);
-    expect(item.blocks.map((block) => block.id)).toEqual(["homework", "pack", "timetable", "plan"]);
+    expect(item.blocks.map((block) => block.id)).toEqual(["task", "pack", "timetable", "comment"]);
   });
 
   it("names the holiday ahead and the day school starts again", () => {

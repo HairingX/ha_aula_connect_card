@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import "../../src/index.ts";
 import { AulaConnectDayCard } from "../../src/cards/day-card.ts";
-import { AulaConnectHomeworkCard } from "../../src/cards/homework-card.ts";
+import { AulaConnectWeekplanCard } from "../../src/cards/weekplan-card.ts";
 import { AulaConnectWeekCard } from "../../src/cards/week-card.ts";
 import { forget } from "../../src/core/memory.ts";
 import { RETRY_WINDOW_MS, STARTING_MS } from "../../src/core/store.ts";
@@ -78,7 +78,7 @@ afterEach(() => {
 describe("registration", () => {
   it("defines the three cards and lists them in the card picker", () => {
     expect(customElements.get("aula-connect-day-card")).toBe(AulaConnectDayCard);
-    expect(customElements.get("aula-connect-homework-card")).toBe(AulaConnectHomeworkCard);
+    expect(customElements.get("aula-connect-weekplan-card")).toBe(AulaConnectWeekplanCard);
     expect(customElements.get("aula-connect-week-card")).toBe(AulaConnectWeekCard);
     expect(customElements.get("aula-connect-card")).toBeUndefined();
     const entries = window.customCards ?? [];
@@ -89,7 +89,7 @@ describe("registration", () => {
         "https://github.com/HairingX/ha_aula_connect_card#school-day-card",
       ],
       [
-        "aula-connect-homework-card",
+        "aula-connect-weekplan-card",
         true,
         "https://github.com/HairingX/ha_aula_connect_card#homework-card",
       ],
@@ -199,7 +199,7 @@ describe("before there is anything to show", () => {
   });
 
   it("says when there are no children, or names a missing child, once retries are over", async () => {
-    const { card } = await mount("aula-connect-homework-card", "thu-1930", { children: [1001, 9] });
+    const { card } = await mount("aula-connect-weekplan-card", "thu-1930", { children: [1001, 9] });
     expect(text(card, '[role="alert"]')).toBe("");
     expect(text(card, '[role="status"]')).toBe("Opdaterer fra Aula…");
     await vi.advanceTimersByTimeAsync(RETRY_WINDOW_MS + 60_000);
@@ -218,7 +218,7 @@ describe("before there is anything to show", () => {
   it("shows only the warning when none of its children is listed", async () => {
     for (const tag of [
       "aula-connect-day-card",
-      "aula-connect-homework-card",
+      "aula-connect-weekplan-card",
       "aula-connect-week-card",
     ]) {
       const { card } = await mount(tag, "thu-1930", { children: [9] });
@@ -266,7 +266,7 @@ describe("the cards", () => {
   });
 
   it("fold the earlier homework", async () => {
-    const { card } = await mount("aula-connect-homework-card", "thu-1530", { children: [1001] });
+    const { card } = await mount("aula-connect-weekplan-card", "thu-1530", { children: [1001] });
     expect(text(card, ".fold > summary")).toBe("Tidligere lektier (3)");
   });
 
@@ -281,7 +281,7 @@ describe("the cards", () => {
       min_columns: 12,
       min_rows: 4,
     });
-    const homework = new AulaConnectHomeworkCard();
+    const homework = new AulaConnectWeekplanCard();
     expect(homework.getCardSize()).toBe(6);
     expect(homework.getGridOptions()).toEqual({
       columns: "full",
@@ -316,13 +316,13 @@ describe("the cards", () => {
     });
     expect(hass.callWS).toHaveBeenCalledOnce();
     expect(hass.connection.subscriptions).toHaveLength(0);
-    expect(await AulaConnectHomeworkCard.getStubConfig()).toEqual({
-      type: "custom:aula-connect-homework-card",
+    expect(await AulaConnectWeekplanCard.getStubConfig()).toEqual({
+      type: "custom:aula-connect-weekplan-card",
     });
   });
 
   it("give the visual editor a form for each card, its children first", () => {
-    for (const card of [AulaConnectDayCard, AulaConnectHomeworkCard, AulaConnectWeekCard]) {
+    for (const card of [AulaConnectDayCard, AulaConnectWeekplanCard, AulaConnectWeekCard]) {
       expect(card.getConfigForm().schema[0]).toMatchObject({ name: "children" });
     }
   });

@@ -986,6 +986,15 @@ export const homeworkStyles = css`
     container: child / inline-size;
     gap: var(--aula-space-6);
   }
+  .meta-icon {
+    --mdc-icon-size: calc(18px * var(--aula-scale));
+    margin-inline-end: var(--aula-space-1);
+    vertical-align: -3px;
+  }
+  /* What the week plan marks stands on a surface; its other notes follow quietly below. */
+  .part > .homework + .plan {
+    margin-top: var(--aula-space-4);
+  }
   .avatars {
     display: flex;
   }

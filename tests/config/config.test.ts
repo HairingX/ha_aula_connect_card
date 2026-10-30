@@ -8,7 +8,7 @@ import {
 } from "../../src/core/memory.ts";
 import { parseSwitchTime } from "../../src/config/common.ts";
 import { dayConfigForm, resolveDayConfig } from "../../src/config/day.ts";
-import { homeworkConfigForm, resolveHomeworkConfig } from "../../src/config/homework.ts";
+import { weekplanConfigForm, resolveWeekplanConfig } from "../../src/config/weekplan.ts";
 import { resolveWeekConfig, weekConfigForm } from "../../src/config/week.ts";
 import type { FormSchema } from "../../src/config/form.ts";
 import { CHILDREN } from "../fixtures/week.ts";
@@ -17,7 +17,7 @@ afterEach(() => {
   forget();
 });
 
-const ALL = ["homework", "pack", "timetable", "plan", "events", "birthdays"];
+const ALL = ["task", "pack", "timetable", "comment", "events", "birthdays"];
 
 describe("the week card's configuration", () => {
   it("fills in the defaults", () => {
@@ -53,9 +53,9 @@ describe("the week card's configuration", () => {
 
   it("hides the blocks show turns off", () => {
     expect(resolveWeekConfig({ show: { timetable: false, birthdays: false } }).blocks).toEqual([
-      "homework",
+      "task",
       "pack",
-      "plan",
+      "comment",
       "events",
     ]);
   });
@@ -111,14 +111,14 @@ describe("checking a configuration", () => {
 
   it("drops repeated blocks and counts emptied editor fields as absent", () => {
     const config = resolveDayConfig({
-      order: ["plan", "plan", "", null, "homework"],
+      order: ["comment", "comment", "", null, "task"],
       show: { events: null },
       switch_time: "",
       size: null,
       packing: [{ subject: " Idræt ", items: ["Idrætstøj", "", null] }],
       subject_names: null,
     });
-    expect(config.order).toEqual(["plan", "homework"]);
+    expect(config.order).toEqual(["comment", "task"]);
     expect(config.show).toEqual({});
     expect(config.switchAt).toBe(720);
     expect(config.size).toBe("normal");
@@ -133,29 +133,29 @@ describe("checking a configuration", () => {
 
   it("gives every card the shared keys", () => {
     const shared = { children: [1001], switch_time: "07:30", size: "large" };
-    expect(resolveHomeworkConfig({ ...shared, packing: [] })).toMatchObject({
+    expect(resolveWeekplanConfig({ ...shared, packing: [] })).toMatchObject({
       children: [1001],
       switchAt: 450,
       size: "large",
     });
     expect(resolveDayConfig(shared).blocks).toEqual([
       "pack",
-      "homework",
+      "task",
       "timetable",
-      "plan",
+      "comment",
       "events",
       "birthdays",
     ]);
   });
 
   it("puts Husk first on a wall screen, unless order says otherwise", () => {
-    expect(resolveDayConfig({ size: "large" }).blocks.slice(0, 2)).toEqual(["pack", "homework"]);
-    expect(resolveWeekConfig({ size: "large" }).blocks.slice(0, 2)).toEqual(["pack", "homework"]);
-    expect(resolveDayConfig({ size: "large", order: ["homework"] }).blocks.slice(0, 2)).toEqual([
-      "homework",
+    expect(resolveDayConfig({ size: "large" }).blocks.slice(0, 2)).toEqual(["pack", "task"]);
+    expect(resolveWeekConfig({ size: "large" }).blocks.slice(0, 2)).toEqual(["pack", "task"]);
+    expect(resolveDayConfig({ size: "large", order: ["task"] }).blocks.slice(0, 2)).toEqual([
+      "task",
       "pack",
     ]);
-    expect(resolveDayConfig({}).blocks.slice(0, 2)).toEqual(["homework", "pack"]);
+    expect(resolveDayConfig({}).blocks.slice(0, 2)).toEqual(["task", "pack"]);
   });
 });
 
@@ -312,7 +312,7 @@ describe("the editor", () => {
       "packing_group",
       "subject_names_group",
     ]);
-    expect(names(homeworkConfigForm().schema)).toEqual([
+    expect(names(weekplanConfigForm().schema)).toEqual([
       "children",
       "switch_time",
       "size",
@@ -366,7 +366,7 @@ describe("the editor", () => {
 
   it("gives every list of single choices text values, which is all Home Assistant's radio list ticks", () => {
     rememberChildren(CHILDREN);
-    const lists = [dayConfigForm(), weekConfigForm(), homeworkConfigForm()]
+    const lists = [dayConfigForm(), weekConfigForm(), weekplanConfigForm()]
       .flatMap((form) => form.schema)
       .flatMap((field) => {
         const select = "selector" in field ? field.selector.select : undefined;
@@ -475,7 +475,7 @@ describe("the editor", () => {
     rememberChildren(CHILDREN);
     const fieldsOf = (schema: readonly FormSchema[]): FormSchema[] =>
       schema.flatMap((field) => ("schema" in field ? fieldsOf(field.schema) : [field]));
-    for (const form of [dayConfigForm(), weekConfigForm(), homeworkConfigForm()]) {
+    for (const form of [dayConfigForm(), weekConfigForm(), weekplanConfigForm()]) {
       for (const field of fieldsOf(form.schema)) {
         expect(form.computeLabel(field), field.name).toBeTruthy();
       }
@@ -493,7 +493,7 @@ describe("the editor", () => {
       dayConfigForm().assertConfig({ order: ["lunch"] });
     }).toThrow('order[0]: unknown block "lunch"');
     expect(() => {
-      homeworkConfigForm().assertConfig({ order: ["lunch"] });
+      weekplanConfigForm().assertConfig({ order: ["lunch"] });
     }).not.toThrow();
   });
 });

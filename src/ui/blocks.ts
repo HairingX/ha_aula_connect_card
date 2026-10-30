@@ -10,6 +10,7 @@ import { html, nothing, type TemplateResult } from "lit/html.js";
 
 import type { ViewContext } from "../core/context.ts";
 import { daysBetween, formatWeekday } from "../core/dates.ts";
+import { commentIcon, commentName, taskIcon, taskName } from "../core/labels.ts";
 import { initials } from "../core/text.ts";
 import type { Child, Day } from "../core/types.ts";
 import {
@@ -69,33 +70,37 @@ export interface BlockOptions {
   readonly state: CardState;
 }
 
-const ICONS: Readonly<Record<BlockId, string>> = {
-  homework: "mdi:book-open-page-variant-outline",
+const ICONS: Readonly<Record<Exclude<BlockId, "task" | "comment">, string>> = {
   pack: "mdi:bag-personal-outline",
   timetable: "mdi:timetable",
-  plan: "mdi:clipboard-text-outline",
   events: "mdi:calendar-outline",
   birthdays: "mdi:cake-variant-outline",
 };
 
-/** Returns the homework block's title: "Lektier til i morgen", naming the day it is for. */
+/** Returns a block's icon; the week plan's follow the names chosen for them. */
+export function blockIcon(id: BlockId, ctx: ViewContext): string {
+  return id === "task" ? taskIcon(ctx) : id === "comment" ? commentIcon(ctx) : ICONS[id];
+}
+
+/** Returns the marked notes' title: "Vigtigt til i morgen", naming the day they are for. */
 export function homeworkTitle(day: string, ctx: ViewContext): string {
   const ahead = daysBetween(ctx.today, day);
-  if (ahead === 0) return ctx.t("homeworkToday");
-  if (ahead === 1) return ctx.t("homeworkTomorrow");
-  return ctx.t("homeworkDay", { day: formatWeekday(day, ctx.language) });
+  const name = taskName(ctx);
+  if (ahead === 0) return ctx.t("homeworkToday", { name });
+  if (ahead === 1) return ctx.t("homeworkTomorrow", { name });
+  return ctx.t("homeworkDay", { name, day: formatWeekday(day, ctx.language) });
 }
 
 function title(id: BlockId, day: string, ctx: ViewContext): string {
   switch (id) {
-    case "homework":
+    case "task":
       return homeworkTitle(day, ctx);
     case "pack":
       return ctx.t("blockPack");
     case "timetable":
       return ctx.t("blockTimetable");
-    case "plan":
-      return ctx.t("blockPlan");
+    case "comment":
+      return commentName(ctx);
     default:
       return ctx.t("blockEvents");
   }
@@ -139,13 +144,13 @@ export function emptyText(
       return ctx.t("noHomework");
     default:
       return ctx.t(
-        id === "homework"
+        id === "task"
           ? "noHomework"
           : id === "pack"
             ? "noPack"
             : id === "timetable"
               ? "noLessons"
-              : id === "plan"
+              : id === "comment"
                 ? "noPlan"
                 : "noEvents",
       );
@@ -247,14 +252,22 @@ function lessonRow(row: TimetableRow, ctx: ViewContext, detailed: boolean): Temp
   </li>`;
 }
 
-// A note is folded after a few lines, as a teacher may write fifty; each unfolds by itself.
-function plan(part: Part, ctx: ViewContext, options: BlockOptions): TemplateResult {
-  const { state } = options;
+/**
+ * Shows the week plan's other notes in a quiet column, each folded after the configured lines and
+ * opened by itself; `key` keeps their state.
+ */
+export function planNotes(
+  notes: readonly NoteView[],
+  key: string,
+  ctx: ViewContext,
+  state: CardState,
+): TemplateResult {
   const { lines } = state.folding;
+  // A teacher may write fifty lines.
   return html`<ul class="plan">
-    ${part.content.plan.map((note) => {
-      const key = `${part.key}|plan|${options.day}|${String(note.note.id)}`;
-      const open = state.isOpen(key, false);
+    ${notes.map((note) => {
+      const noteKey = `${key}|${String(note.note.id)}`;
+      const open = state.isOpen(noteKey, false);
       return html`<li class="plan-note">
         ${
           note.subject || note.title
@@ -266,14 +279,18 @@ function plan(part: Part, ctx: ViewContext, options: BlockOptions): TemplateResu
         <p
           class="plan-text ${lines > 0 && !open ? "clamp" : ""}"
           style="--lines: ${lines}"
-          data-cut=${key}
+          data-cut=${noteKey}
         >
           ${aula(note.text, ctx)}
         </p>
-        ${open || state.cut(key) ? more(key, open, false, ctx.t("showMore"), state, ctx) : nothing}
+        ${open || state.cut(noteKey) ? more(noteKey, open, false, ctx.t("showMore"), state, ctx) : nothing}
       </li>`;
     })}
   </ul>`;
+}
+
+function plan(part: Part, ctx: ViewContext, options: BlockOptions): TemplateResult {
+  return planNotes(part.content.plan, `${part.key}|plan|${options.day}`, ctx, options.state);
 }
 
 function events(part: Part, ctx: ViewContext): TemplateResult {
@@ -303,7 +320,7 @@ function body(
   unfolded: boolean,
 ): unknown {
   switch (id) {
-    case "homework":
+    case "task":
       return homeworkList(part.content.homework, ctx);
     case "pack":
       return pack(part, ctx);
@@ -315,7 +332,7 @@ function body(
         : html`<ol class="lessons folded">
             ${foldTimetable(part.content.timetable).map((row) => foldedRow(row, ctx))}
           </ol>`;
-    case "plan":
+    case "comment":
       return plan(part, ctx, options);
     default:
       return events(part, ctx);
@@ -351,7 +368,7 @@ export function renderBlock(
   const { full } = options.state.folding;
   const unfolded = options.state.isOpen(key, full);
   return html`<section class="block" data-block=${id}>
-    ${headingOf(options.level, html`${icon(ICONS[id])}<span>${title(id, options.day, ctx)}</span>`, "block-head")}
+    ${headingOf(options.level, html`${icon(blockIcon(id, ctx))}<span>${title(id, options.day, ctx)}</span>`, "block-head")}
     ${
       once === undefined
         ? html`<div class="cols">
