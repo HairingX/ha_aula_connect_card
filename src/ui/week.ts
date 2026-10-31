@@ -44,7 +44,6 @@ import {
   apiError,
   aula,
   childState,
-  columns,
   counted,
   dayTitle,
   eventIcon,
@@ -509,7 +508,7 @@ export function renderWeek(
   return html`<section class="week stack" aria-label=${label}>
     ${view.children.length > 1 ? nav(view, ctx, state) : nothing}
     <div class="kids">
-      <div class="children ${columns(view.children.length, "wide-")}">
+      <div class="children ${view.children.length > 1 ? "several" : "one"}">
         ${view.children.map((child) => childWeeks(child, view, ctx, state))}
       </div>
     </div>

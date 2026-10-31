@@ -224,9 +224,10 @@ subject_names:
 when they have the same day, a column of hours and things of each child's own under it, and in
 every block a part for each child, in the same order and the same column all the way down, the
 children named once over the columns. With one child, no name is shown. From about 600 px (700 px on a wall) two children stand side by
-side, from about 900 px (1100 px) three; more fill two rows. The week card, whose rows need more
-room, puts two side by side from about 750 px (900 px on a wall) and three from about 1150 px
-(1550 px). In a sections view a card is as wide as its section: let the section span the view's
+side, from about 900 px (1100 px) three; more fill two rows. On the week card each child has a column
+of its own, at least 340 px wide (460 px on a wall), alike for every child: as many stand side by
+side as the card has room for, and the rest below, in the same columns. With one child, an open
+day spreads its blocks over the width. In a sections view a card is as wide as its section: let the section span the view's
 columns (`column_span`) for the children to stand side by side.
 
 **One card per child** shows them one after another: put a card for each child, each with its

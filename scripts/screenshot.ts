@@ -206,8 +206,11 @@ const SETS: Record<string, () => Shot[]> = {
     shot("day", "thu-0715", 1216, { ...WALL, children: 2 }),
     shot("day", "thu-0715", 1216, { ...WALL, locale: "en-US", children: 2 }),
     shot("day", "thu-0715-3child", 1216, { ...WALL, children: 3 }),
+    shot("week", "thu-0715-3child", 900, { children: 3 }),
     shot("week", "thu-0715-3child", 1216, { children: 3 }),
     shot("week", "thu-0715-3child", 1560, { large: true, children: 3 }),
+    shot("week", "thu-0715", 1020, { large: true, children: 2 }),
+    shot("week", "thu-1930", 1600, { children: 2 }),
     shot("day", "thu-0715", 800, { ...WALL, locale: "en-US", children: 2 }),
     shot("day", "thu-1930", 800, {
       ...WALL,

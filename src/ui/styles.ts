@@ -208,15 +208,7 @@ export const base = css`
     }
   }
   @container kids (min-width: 712px) {
-    .large .kids-2,
-    .normal .wide-2 {
-      --aula-cols: 2;
-      --aula-beside: 0;
-      --aula-split: block;
-    }
-  }
-  @container kids (min-width: 872px) {
-    .large .wide-2 {
+    .large .kids-2 {
       --aula-cols: 2;
       --aula-beside: 0;
       --aula-split: block;
@@ -229,17 +221,8 @@ export const base = css`
       --aula-split: block;
     }
   }
-  /* A week's rows need as much room for each of three children as for each of two. */
   @container kids (min-width: 1100px) {
-    .large .kids-3,
-    .normal .wide-3 {
-      --aula-cols: 3;
-      --aula-beside: 0;
-      --aula-split: block;
-    }
-  }
-  @container kids (min-width: 1500px) {
-    .large .wide-3 {
+    .large .kids-3 {
       --aula-cols: 3;
       --aula-beside: 0;
       --aula-split: block;
@@ -1366,13 +1349,31 @@ export const weekStyles = css`
   .rows > li + li:has(> .focus-day, > .day-row[open]) {
     border-top-color: transparent;
   }
+  /*
+   * Several children each have a column of their own, alike, as many side by side as there is
+   * room for and the rest below in the same columns; one child's open day spreads its blocks.
+   */
+  .week .several {
+    --aula-week-column: 340px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--aula-week-column)), 1fr));
+  }
+  .large .week .several {
+    --aula-week-column: 460px;
+  }
+  .week .several > .child {
+    padding-top: var(--aula-space-4);
+    border-top: 1px solid var(--aula-line);
+  }
+  .week .several > .child + .child::before {
+    display: none;
+  }
   @container day (min-width: 600px) {
-    .day-body .blocks {
+    .week .one .day-body .blocks {
       display: block;
       columns: 2;
       column-gap: var(--aula-space-8);
     }
-    .day-body .blocks > .block {
+    .week .one .day-body .blocks > .block {
       break-inside: avoid;
       margin-bottom: var(--aula-space-6);
     }
