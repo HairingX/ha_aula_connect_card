@@ -121,6 +121,14 @@ and next week opens at Monday:
 
 ![The week card on a Sunday evening](docs/week-sun-1800-380-light-blue-da-1child.png)
 
+**‹ and ›** step a week back or ahead, as far as you like: to see what last week's plan said, or
+what is on in three weeks. A week back shows every day as a row of its own. **I dag** brings the
+card back, and it comes back by itself after ten minutes without a touch, so a shared screen is
+always on this week. With one child the steps sit beside the first week's name; with several,
+above the children.
+
+![The week card a week back](docs/week-thu-1010-380-light-blue-da-1child-browsed-back.png)
+
 ## Configuration
 
 | Option                 | Cards            | Default          | What it does                                                                                                                                                                     |
@@ -248,7 +256,8 @@ holds the day, each child's hours and what each child is to bring.
 
 - `aula_connect/children`, to list the children.
 - `aula_connect/week/subscribe`, with a child's `entry_id` and `child_id` and the days from the
-  Monday of this week to the Sunday of the next. The integration sends the range again whenever
+  Monday of this week to the Sunday of the next; browsed to other weeks, the week card subscribes
+  for those days too, for as long as it shows them and a minute after. The integration sends the range again whenever
   it can have changed; the cards move to a new day and week by their own clock.
 
 ## Privacy

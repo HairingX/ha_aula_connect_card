@@ -32,6 +32,9 @@ how it is set up: the README.
     leaves them out, and says nothing of homework.
   - The card moves to a new day and week by its own clock, as events come only on change. It
     subscribes again after a lost connection, and lists the children again after `ended`.
+  - The store subscribes each child for this week and next; the week card browsed to other weeks
+    subscribes for those days apart, kept a minute after it moves on, and comes back to this
+    week after ten minutes without a touch.
 - A week plan's note may hold HTML: it is shown as plain text, never as markup.
 - The tests run the card against a fake `hass` and made-up data (`tests/fixtures/`): no real
   child, school, teacher or text from a real Aula account is ever committed.

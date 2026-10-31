@@ -7,7 +7,7 @@ import { IDLE_RESET_MS } from "../../src/model/focus.ts";
 import { present, wsError, type FakeHass } from "../fake-hass.ts";
 import { all, mount, text, unmountAll, type Card } from "../fixtures/mount.ts";
 import { OSKAR_ELSEWHERE, SCENARIOS, scenarioNamed } from "../fixtures/scenarios.ts";
-import { allDay, CHILDREN, local, without } from "../fixtures/week.ts";
+import { allDay, CHILDREN, local, weekData, without } from "../fixtures/week.ts";
 
 const [IDA] = CHILDREN as [Child, Child];
 
@@ -1237,5 +1237,111 @@ describe("several events and birthdays", () => {
   it("put timed events in the timetable among the lessons, by when they begin", async () => {
     const { card } = await mount(DAY, "thu-1930-timed4", { config: { children: [1001] } });
     expect(all(card, '[data-block="timetable"] .event-row:not(.all-day)')).toHaveLength(4);
+  });
+});
+
+describe("browsing the weeks", () => {
+  // Answers a subscription for other days with made-up data for them.
+  const browsable = (hass: FakeHass): void => {
+    const connection = hass.connection;
+    const scenario = connection.respond;
+    connection.respond = (message) =>
+      message.start === "2026-10-26"
+        ? scenario?.(message)
+        : {
+            ...weekData(String(message.start)),
+            start: message.start,
+            end: message.end,
+          };
+  };
+  const heads = (card: Card): string[] => texts(card, ".week-head");
+  const step = async (card: Card, selector: string): Promise<void> => {
+    present(card.shadowRoot?.querySelector<HTMLButtonElement>(selector)).click();
+    await vi.advanceTimersByTimeAsync(0);
+    await card.updateComplete;
+  };
+  const BACK = '.nav-step[data-step="-1"]';
+  const AHEAD = '.nav-step[data-step="1"]';
+
+  it("steps a week back and ahead, says the weeks shown, and goes back with I dag", async () => {
+    const { card } = await mount(WEEK, "thu-1010", {
+      config: { children: [1001] },
+      setup: browsable,
+    });
+    expect(heads(card)).toEqual([
+      "Uge 44 · Denne uge 26. okt.–1. nov.",
+      "Uge 45 · Næste uge 2.–8. nov.",
+    ]);
+    expect(all(card, ".nav-today")).toHaveLength(0);
+    await step(card, BACK);
+    expect(heads(card)).toEqual([
+      "Uge 43 · Sidste uge 19.–25. okt.",
+      "Uge 44 · Denne uge 26. okt.–1. nov.",
+    ]);
+    expect(text(card, ".week-nav .sr")).toBe("Uge 43 og 44");
+    await step(card, BACK);
+    expect(heads(card)[0]).toBe("Uge 42 · For 2 uger siden 12.–18. okt.");
+    await step(card, ".nav-today");
+    await step(card, AHEAD);
+    await step(card, AHEAD);
+    expect(heads(card)).toEqual([
+      "Uge 46 · Om 2 uger 9.–15. nov.",
+      "Uge 47 · Om 3 uger 16.–22. nov.",
+    ]);
+    await step(card, ".nav-today");
+    expect(heads(card)[0]).toBe("Uge 44 · Denne uge 26. okt.–1. nov.");
+    expect(all(card, ".nav-today")).toHaveLength(0);
+  });
+
+  it("names the one week shown when the card shows one", async () => {
+    const { card } = await mount(WEEK, "thu-1010", {
+      config: { children: [1001], weeks: 1 },
+      setup: browsable,
+    });
+    await step(card, BACK);
+    expect(text(card, ".week-nav .sr")).toBe("Uge 43");
+  });
+
+  it("waits for a week it has no data for, and says why Aula would not give it", async () => {
+    const { card, hass } = await mount(WEEK, "thu-1010", { config: { children: [1001] } });
+    hass.connection.respond = undefined;
+    await step(card, BACK);
+    expect(all(card, ".week-section")[0]?.querySelector('[role="status"]')).not.toBeNull();
+    unmountAll();
+    const { card: refused, hass: other } = await mount(WEEK, "thu-1010", {
+      config: { children: [1001] },
+    });
+    other.connection.refuse = wsError("not_found", "gone");
+    await step(refused, BACK);
+    expect(all(refused, ".week-section")[0]?.querySelector(".alert")).not.toBeNull();
+  });
+
+  it("goes back to this week after ten minutes without a touch", async () => {
+    const { card } = await mount(WEEK, "thu-1010", {
+      config: { children: [1001] },
+      setup: browsable,
+    });
+    await step(card, BACK);
+    await vi.advanceTimersByTimeAsync(IDLE_RESET_MS + 60_000);
+    await card.updateComplete;
+    expect(heads(card)[0]).toBe("Uge 44 · Denne uge 26. okt.–1. nov.");
+  });
+
+  it("keeps the week shown when a new week begins while browsed", async () => {
+    const { card, hass } = await mount(WEEK, "sun-1800", {
+      config: { children: [1001] },
+      setup: browsable,
+      clock: "2026-11-01T23:55:00+01:00",
+    });
+    await step(card, BACK);
+    expect(heads(card)[0]).toBe("Uge 43 · Sidste uge 19.–25. okt.");
+    await vi.advanceTimersByTimeAsync(6 * 60_000);
+    await card.updateComplete;
+    expect(
+      hass.connection.subscriptions
+        .map((item) => `${String(item.message.start)}/${String(item.message.end)}`)
+        .slice(-2),
+    ).toEqual(["2026-11-02/2026-11-16", "2026-10-26/2026-11-02"]);
+    expect(heads(card)[0]).toBe("Uge 44 · Sidste uge 26. okt.–1. nov.");
   });
 });

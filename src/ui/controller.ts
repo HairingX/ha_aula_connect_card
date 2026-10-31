@@ -8,7 +8,7 @@
 import { onMinute } from "../core/clock.ts";
 import { settingsKey } from "../core/context.ts";
 import { storeFor, type AulaStore, type StoreSnapshot } from "../core/store.ts";
-import type { HomeAssistant } from "../core/types.ts";
+import type { DayRange, HomeAssistant } from "../core/types.ts";
 
 /** The card a controller serves, which it asks to render again. */
 export interface ControllerHost {
@@ -18,8 +18,11 @@ export interface ControllerHost {
 
 /** What a controller asks its card. */
 export interface ControllerHooks {
-  /** The child ids the card shows; undefined while it has no configuration. */
-  readonly wanted: () => readonly number[] | undefined;
+  /**
+   * The child ids the card shows, and the days beyond the store's range it shows, as when
+   * browsed to another week; undefined while it has no configuration.
+   */
+  readonly wanted: () => { children: readonly number[]; extra: DayRange | undefined } | undefined;
   /** Called on each tick of the clock, before the card renders again. */
   readonly tick: (now: Date) => void;
 }
@@ -34,6 +37,7 @@ export class AulaController {
   #release: (() => void) | undefined;
   #stopClock: (() => void) | undefined;
   #connected = false;
+  #extra: string | undefined;
 
   /** Makes the controller of `host`, which tells it when it comes onto the page and leaves it. */
   constructor(host: ControllerHost, hooks: ControllerHooks) {
@@ -60,7 +64,7 @@ export class AulaController {
     return changed;
   }
 
-  /** Watches again with the children the configuration now names. */
+  /** Watches again with the children and the days the card now shows. */
   configChanged(): void {
     this.#sync();
   }
@@ -78,8 +82,8 @@ export class AulaController {
   }
 
   #sync(): void {
-    const children = this.#hooks.wanted();
-    if (!this.#connected || !this.#hass || children === undefined) {
+    const wanted = this.#hooks.wanted();
+    if (!this.#connected || !this.#hass || wanted === undefined) {
       this.#unwatch();
       return;
     }
@@ -87,9 +91,12 @@ export class AulaController {
     if (store !== this.#store) this.#unwatch();
     this.#store = store;
     const previous = this.#release;
+    const { children, extra } = wanted;
+    this.#extra = extra && `${extra.start}/${extra.end}`;
     // Watching before letting go keeps a child both want from lingering or resubscribing.
     this.#release = store.watch({
       children,
+      extra,
       onChange: () => {
         this.#host.requestUpdate();
       },
@@ -97,6 +104,9 @@ export class AulaController {
     previous?.();
     this.#stopClock ??= onMinute((now) => {
       this.#store?.touch(now);
+      // Days beyond the range move with it, as at Monday 00:00 while another week is shown.
+      const extra = this.#hooks.wanted()?.extra;
+      if ((extra && `${extra.start}/${extra.end}`) !== this.#extra) this.#sync();
       this.#hooks.tick(now);
       this.#host.requestUpdate();
     });

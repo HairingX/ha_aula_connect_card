@@ -8,7 +8,7 @@
 import { selectChildren } from "../core/children.ts";
 import type { ViewContext } from "../core/context.ts";
 import { startOfWeek } from "../core/dates.ts";
-import type { StoreSnapshot } from "../core/store.ts";
+import type { ChildData, StoreSnapshot } from "../core/store.ts";
 import {
   childKey,
   type Child,
@@ -146,30 +146,49 @@ export function childBases(
       key,
       chooseFocus({ today: ctx.today, minute: ctx.minute, switchAt: options.switchAt, days }),
     );
-    const weekPlan = entry?.data?.week_plan ?? true;
     let state: ChildState;
     if (entry?.data === undefined) {
       state =
         entry?.error === undefined ? { kind: "loading" } : { kind: "error", error: entry.error };
     } else if (!focus.known) state = { kind: "loading" };
     else state = { kind: "ready", stale: entry.stale, error: entry.error };
-    return {
-      child,
-      key,
-      state,
-      days,
-      focus,
-      rules: {
-        namer,
-        packing: options.packing,
-        weekPlan,
-        timetabled: isTimetabled(days),
-        planMissing: missingPlans(days, weekPlan),
-        zone: ctx.zone,
-      },
-    };
+    const rules = rulesOf(days, entry, namer, options.packing, ctx.zone);
+    return { child, key, state, days, focus, rules };
   });
   return { bases, missing };
+}
+
+function rulesOf(
+  days: readonly DayView[],
+  entry: ChildData | undefined,
+  namer: SubjectNamer,
+  packing: readonly PackRule[],
+  zone: string,
+): ContentRules {
+  const weekPlan = entry?.data?.week_plan ?? true;
+  return {
+    namer,
+    packing,
+    weekPlan,
+    timetabled: isTimetabled(days),
+    planMissing: missingPlans(days, weekPlan),
+    zone,
+  };
+}
+
+/**
+ * Returns a child's basis for other days than the store's range, from the data held for them:
+ * its days, and what their content is made with; the state and focus stay the range's.
+ */
+export function basisFor(
+  basis: ChildBasis,
+  entry: ChildData | undefined,
+  range: DayRange,
+  zone: string,
+): ChildBasis {
+  const days = daysOf(entry?.data, range, zone);
+  const { namer, packing } = basis.rules;
+  return { ...basis, days, rules: rulesOf(days, entry, namer, packing, zone) };
 }
 
 /** Returns a day of a child's range. */
