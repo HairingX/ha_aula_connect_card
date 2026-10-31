@@ -79,7 +79,7 @@ describe("the week card", () => {
       "day 06",
       "weekend 08",
     ]);
-    expect(nextWeek).toMatchObject({ number: 45, relation: "next", loading: false });
+    expect(nextWeek).toMatchObject({ number: 45, relation: 1, loading: false });
   });
 
   it("keeps today as a closed row with its end while school is on after the switch", () => {

@@ -1,14 +1,21 @@
 /**
- * The week card's view: each child's weeks day by day, with the days that are over folded, the
- * focus day open, and the weekend one row.
+ * The week card's view: each child's weeks day by day, with this week's days that are over
+ * folded, the focus day open, and the weekend one row; or, browsed to, other weeks.
  *
  * @packageDocumentation
  */
 
 import type { ViewContext } from "../core/context.ts";
-import { addDays, isWeekend, startOfWeek, weekday, weekNumber } from "../core/dates.ts";
-import type { StoreSnapshot } from "../core/store.ts";
-import type { CalendarEvent, Child, Day } from "../core/types.ts";
+import {
+  addDays,
+  daysBetween,
+  isWeekend,
+  startOfWeek,
+  weekday,
+  weekNumber,
+} from "../core/dates.ts";
+import { extraKey, type StoreSnapshot } from "../core/store.ts";
+import type { CalendarEvent, Child, Day, DayRange } from "../core/types.ts";
 import {
   dayContent,
   planBlocks,
@@ -17,7 +24,14 @@ import {
   type DayContent,
   type Fact,
 } from "./blocks.ts";
-import { childBases, dayIn, type ChildBasis, type ChildState, type Hold } from "./child.ts";
+import {
+  basisFor,
+  childBases,
+  dayIn,
+  type ChildBasis,
+  type ChildState,
+  type Hold,
+} from "./child.ts";
 import type { DayViewOptions } from "./day-view.ts";
 import { heldLessons, holidayOf, holidaySpan, type DayView } from "./days.ts";
 import type { Focus } from "./focus.ts";
@@ -109,10 +123,12 @@ export interface WeekSection {
   readonly start: Day;
   /** Its ISO 8601 number. */
   readonly number: number;
-  /** This week or next. */
-  readonly relation: "this" | "next";
+  /** The weeks from this week: 0 for this week, 1 for next, -1 for last week. */
+  readonly relation: number;
   /** Whether the data does not cover it yet: it is loading, not empty. */
   readonly loading: boolean;
+  /** Why its data could not be had, when it could not. */
+  readonly error: unknown;
   /** Its rows, in date order after the folded days. */
   readonly rows: readonly WeekRow[];
   /** Its number, when its week plan is not in Aula yet and no open day says so. */
@@ -139,6 +155,10 @@ export interface WeekCardView {
   readonly missing: readonly number[];
   /** Whether the children go to different schools. */
   readonly differentSchools: boolean;
+  /** The weeks the card is browsed away from the weeks it shows by itself. */
+  readonly offset: number;
+  /** The ISO 8601 numbers of the weeks shown. */
+  readonly numbers: readonly number[];
   /** The card's height in units of 50 pixels, roughly, for the masonry view. */
   readonly size: number;
 }
@@ -156,17 +176,21 @@ function week(
   start: Day,
   options: WeekViewOptions,
   ctx: ViewContext,
+  error: unknown,
 ): WeekSection {
   const { focus, rules } = basis;
   const today = ctx.today;
+  // Only this week folds the days that are over: a week browsed back to shows them all.
+  const current = start === startOfWeek(today);
   const views = basis.days.filter((view) => startOfWeek(view.day) === start);
   const section = {
     start,
     number: weekNumber(start),
-    relation: start === startOfWeek(today) ? ("this" as const) : ("next" as const),
+    relation: daysBetween(startOfWeek(today), start) / 7,
+    error: undefined,
   };
   if (views.some((view) => !view.known)) {
-    return { ...section, loading: true, rows: [], notYet: undefined };
+    return { ...section, error, loading: true, rows: [], notYet: undefined };
   }
   const row = (view: DayView): DayRowView => {
     const content = dayContent(view, rules, ctx.now, view.day === today);
@@ -187,6 +211,7 @@ function week(
     if (holiday && view.lessons.length === 0) holidays.set(view.day, holiday);
   }
   const over = (event: CalendarEvent): boolean =>
+    current &&
     [...holidays].filter(([, item]) => item.id === event.id).every(([day]) => day < today);
   const events = options.blocks.includes("events");
   const todayView = dayIn(basis, today);
@@ -224,16 +249,16 @@ function week(
       // A weekend day with nothing on it is left out; one that is over joins the fold.
       const item = row(view);
       if (item.facts.length === 0 && item.plan.timed.length === 0) continue;
-      const current =
+      const now =
         view.day === today && todayRest(view, ctx.now, ctx.zone, item.facts, events) !== undefined;
-      if (view.day < today || (view.day === today && !current)) earlier.push(item);
+      if (current && (view.day < today || (view.day === today && !now))) earlier.push(item);
       else {
         weekend.push(item);
-        weekendToday ||= current;
+        weekendToday ||= now;
       }
     } else if (view.day === today && left) {
       rows.push({ kind: "today", row: row(view), ends: left.ends });
-    } else if (view.day <= today) earlier.push(row(view));
+    } else if (current && view.day <= today) earlier.push(row(view));
     else rows.push({ kind: "day", row: row(view) });
   }
   const [saturday, ...sunday] = weekend;
@@ -277,24 +302,57 @@ function continued(weeks: readonly WeekSection[]): WeekSection[] {
   });
 }
 
-/** Builds the week card's view. */
+/**
+ * Returns the days of the weeks shown `offset` weeks from this week that `range`, the store's,
+ * lacks; undefined when it has them all.
+ */
+export function extraWeeks(range: DayRange, weeks: 1 | 2, offset: number): DayRange | undefined {
+  const first = addDays(range.start, 7 * offset);
+  const shown = Array.from({ length: weeks }, (_, index) => addDays(first, 7 * index)).filter(
+    (start) => start < range.start || start >= range.end,
+  );
+  const [start] = shown;
+  return start === undefined ? undefined : { start, end: addDays(shown.at(-1) ?? start, 7) };
+}
+
+/**
+ * Builds the week card's view: this week, and next week as configured or once the focus day is
+ * in it; browsed `offset` weeks away, the weeks from that many after this week.
+ */
 export function weekCardView(
   snapshot: StoreSnapshot,
   options: WeekViewOptions,
   ctx: ViewContext,
   hold: Hold,
+  offset = 0,
 ): WeekCardView {
   const { bases, missing } = childBases(snapshot, options, ctx, hold);
   const thisWeek = startOfWeek(ctx.today);
   const nextWeek = addDays(thisWeek, 7);
+  const extra = extraWeeks(snapshot.range, options.weeks, offset);
   let rows = 0;
+  let numbers: number[] = [];
   const children = bases.map((basis): WeekChildView => {
     const focusWeek = basis.focus.day === undefined ? thisWeek : startOfWeek(basis.focus.day);
+    const first = addDays(thisWeek, 7 * offset);
     const starts =
-      options.weeks === 2 || focusWeek === nextWeek ? [thisWeek, nextWeek] : [thisWeek];
+      offset !== 0
+        ? [first, ...(options.weeks === 2 ? [addDays(first, 7)] : [])]
+        : options.weeks === 2 || focusWeek === nextWeek
+          ? [thisWeek, nextWeek]
+          : [thisWeek];
+    numbers = starts.map(weekNumber);
+    const entry = extra && snapshot.data.get(extraKey(basis.key, extra));
+    const other = extra && basisFor(basis, entry, extra, ctx.zone);
     const weeks =
       basis.state.kind === "ready"
-        ? continued(starts.map((start) => week(basis, start, options, ctx)))
+        ? continued(
+            starts.map((start) =>
+              other && start >= extra.start && start < extra.end
+                ? week(other, start, options, ctx, entry?.error)
+                : week(basis, start, options, ctx, undefined),
+            ),
+          )
         : [];
     for (const section of weeks) {
       for (const item of section.rows) {
@@ -313,6 +371,8 @@ export function weekCardView(
     children,
     missing,
     differentSchools: new Set(bases.map((basis) => basis.child.institution_name)).size > 1,
+    offset,
+    numbers,
     size: bases.some((basis) => basis.state.kind === "ready") ? 3 + rows : 3 + 7 * options.weeks,
   };
 }

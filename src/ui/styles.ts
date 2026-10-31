@@ -1121,6 +1121,48 @@ export const homeworkStyles = css`
 
 /** The week card. */
 export const weekStyles = css`
+  /* The steps sit at the end, in reach of a thumb; "I dag" at the start, only while away. */
+  .week-nav {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--aula-space-1);
+    margin: calc(-1 * var(--aula-space-2)) calc(-1 * var(--aula-space-2)) var(--aula-space-2);
+  }
+  .nav-step,
+  .nav-today {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--aula-target);
+    border: 0;
+    border-radius: var(--aula-target);
+    background: none;
+    color: var(--aula-text-2);
+    font: inherit;
+    font-weight: var(--aula-medium);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .nav-step {
+    width: var(--aula-target);
+  }
+  .nav-today {
+    margin-inline-end: auto;
+    padding: 0 var(--aula-space-4);
+    background: var(--aula-fill-muted);
+    color: var(--aula-text);
+  }
+  @media (hover: hover) {
+    .nav-step:hover,
+    .nav-today:hover {
+      background: var(--aula-fill-strong);
+    }
+  }
+  .nav-step:active,
+  .nav-today:active {
+    background: var(--aula-fill-strong);
+  }
   .count {
     white-space: nowrap;
     --mdc-icon-size: 1.1em;

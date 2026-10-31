@@ -34,6 +34,12 @@ import type {
 } from "../model/week-view.ts";
 import { BLOCK_ICONS, renderBlock } from "./blocks.ts";
 import type { CardState } from "./card.ts";
+
+/** What the week card's template asks the element besides what is open: the week shown. */
+export interface WeekBrowser extends CardState {
+  /** Shows the week before (-1) or after (1), or with 0 the weeks the card shows by itself. */
+  browse(step: -1 | 0 | 1): void;
+}
 import {
   aula,
   childState,
@@ -45,6 +51,7 @@ import {
   factStack,
   heading,
   hours,
+  apiError,
   icon,
   label,
   loading,
@@ -370,10 +377,7 @@ function week(
   const { t } = ctx;
   return html`<section class="week-section">
     <h3 class="week-head">
-      <span
-        >${t("weekNumber", { n: section.number })} ·
-        ${section.relation === "this" ? t("thisWeek") : t("nextWeek")}</span
-      >
+      <span>${t("weekNumber", { n: section.number })} · ${relation(section.relation, ctx)}</span>
       <span class="week-dates"
         >${formatDayRange(section.start, addDays(section.start, 6), ctx.language, "short")}</span
       >
@@ -384,11 +388,13 @@ function week(
         : html`<p class="not-yet">${t("weekPlanNotYet", { n: section.notYet })}</p>`
     }
     ${
-      section.loading
-        ? loading(t)
-        : html`<ol class="rows">
-            ${section.rows.map((item) => html`<li>${weekRow(item, child, ctx, state)}</li>`)}
-          </ol>`
+      section.error !== undefined
+        ? apiError(section.error, t)
+        : section.loading
+          ? loading(t)
+          : html`<ol class="rows">
+              ${section.rows.map((item) => html`<li>${weekRow(item, child, ctx, state)}</li>`)}
+            </ol>`
     }
   </section>`;
 }
@@ -414,8 +420,72 @@ function childWeeks(
   </div>`;
 }
 
+function relation(weeks: number, ctx: ViewContext): string {
+  const { t } = ctx;
+  if (weeks === 0) return t("thisWeek");
+  if (weeks === 1) return t("nextWeek");
+  if (weeks === -1) return t("lastWeek");
+  return weeks > 0 ? t("weeksAhead", { n: weeks }) : t("weeksAgo", { n: -weeks });
+}
+
+// The steps keep their place, so that a finger can tap on; "I dag" comes only while away.
+function nav(view: WeekCardView, ctx: ViewContext, browser: WeekBrowser): TemplateResult {
+  const { t } = ctx;
+  const [from, to] = view.numbers;
+  return html`<nav class="week-nav" aria-label=${t("weekNav")}>
+    ${
+      view.offset === 0
+        ? nothing
+        : html`<button
+            class="nav-today"
+            type="button"
+            @click=${() => {
+              browser.browse(0);
+            }}
+          >
+            ${t("today")}
+          </button>`
+    }
+    <button
+      class="nav-step"
+      type="button"
+      data-step="-1"
+      aria-label=${t("previousWeek")}
+      @click=${() => {
+        browser.browse(-1);
+      }}
+    >
+      ${icon("mdi:chevron-left")}
+    </button>
+    <button
+      class="nav-step"
+      type="button"
+      data-step="1"
+      aria-label=${t("nextWeek")}
+      @click=${() => {
+        browser.browse(1);
+      }}
+    >
+      ${icon("mdi:chevron-right")}
+    </button>
+    <span class="sr" aria-live="polite"
+      >${
+        view.offset === 0 || from === undefined
+          ? ""
+          : to === undefined
+            ? t("weekNumber", { n: from })
+            : t("weeksShown", { from, to })
+      }</span
+    >
+  </nav>`;
+}
+
 /** Renders the week card. */
-export function renderWeek(view: WeekCardView, ctx: ViewContext, state: CardState): TemplateResult {
+export function renderWeek(
+  view: WeekCardView,
+  ctx: ViewContext,
+  state: WeekBrowser,
+): TemplateResult {
   const label = ctx.t("regionWeek", {
     names: names(
       view.children.map((child) => child.child),
@@ -423,6 +493,7 @@ export function renderWeek(view: WeekCardView, ctx: ViewContext, state: CardStat
     ),
   });
   return html`<section class="week stack" aria-label=${label}>
+    ${nav(view, ctx, state)}
     <div class="kids">
       <div class="children wide-${String(Math.min(view.children.length, 3))}">
         ${view.children.map((child) => childWeeks(child, view, ctx, state))}

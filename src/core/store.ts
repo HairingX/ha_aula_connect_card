@@ -1,7 +1,7 @@
 /**
  * The data every card on a page shares: one store per websocket connection lists the children
  * and holds one subscription per child for this week and next, whatever the number of cards and
- * previews that show the child. Data is kept in memory only, never in the browser's storage, as a
+ * previews that show the child, and one per child for other days a card browses to. Data is kept in memory only, never in the browser's storage, as a
  * shared screen must not keep a child's data.
  *
  * @packageDocumentation
@@ -48,6 +48,18 @@ export const RETRY_SLOW_MS = 300_000;
  */
 export const STARTING_MS = 30_000;
 
+/** The key of a child's data for days beyond the range: `extraKey(childKey, days)`. */
+export type ExtraKey = `${ChildKey}@${Day}/${Day}`;
+
+/** Returns the key the data of a child's days beyond the range is held by. */
+export function extraKey(key: ChildKey, days: DayRange): ExtraKey {
+  return `${key}@${days.start}/${days.end}`;
+}
+
+function childOf(key: ChildKey | ExtraKey): ChildKey {
+  return key.replace(/@.*/, "") as ChildKey;
+}
+
 /** Returns the days a store subscribes for on `today`: from the Monday of its week, 14 days. */
 export function rangeFor(today: Day): DayRange {
   const start = startOfWeek(today);
@@ -82,14 +94,16 @@ export interface StoreSnapshot {
   readonly range: DayRange;
   /** The children. */
   readonly children: ChildrenState;
-  /** Each child's data, by its key. */
-  readonly data: ReadonlyMap<ChildKey, ChildData>;
+  /** Each child's data, by its key, and the data of other days by their `extraKey`. */
+  readonly data: ReadonlyMap<ChildKey | ExtraKey, ChildData>;
 }
 
 /** What a card watches. */
 export interface WatchOptions {
   /** The child ids the card shows; every child when empty. */
   readonly children: readonly number[];
+  /** Days beyond the range the card also shows, for its children, at most 21. */
+  readonly extra?: DayRange | undefined;
   /** Called, once per microtask at most, when the snapshot has changed. */
   readonly onChange: () => void;
 }
@@ -97,11 +111,19 @@ export interface WatchOptions {
 interface Watcher {
   /** The child ids wanted; null for none, when only the list is wanted. */
   readonly children: readonly number[] | null;
+  readonly extra: DayRange | undefined;
   readonly onChange: () => void;
+}
+
+interface Wanted {
+  readonly child: Child;
+  readonly range: DayRange;
 }
 
 interface Subscription {
   readonly range: DayRange;
+  /** Whether it is for other days than the range, which it keeps when the range moves. */
+  readonly extra: boolean;
   /** False once the subscription ended, was replaced or was lost: nothing of it counts then. */
   alive: boolean;
   /** Whether it was refused; it is made again only after the children are listed again. */
@@ -121,8 +143,8 @@ export class AulaStore {
   #zone: string;
   #range: DayRange;
   readonly #watchers = new Set<Watcher>();
-  readonly #subscriptions = new Map<ChildKey, Subscription>();
-  readonly #data = new Map<ChildKey, ChildData>();
+  readonly #subscriptions = new Map<ChildKey | ExtraKey, Subscription>();
+  readonly #data = new Map<ChildKey | ExtraKey, ChildData>();
   #list: Child[] | undefined;
   #listError: unknown;
   #refreshing = false;
@@ -133,7 +155,7 @@ export class AulaStore {
   /** Children an earlier listing had and the last lacks: kept for the window, awaited after it. */
   readonly #missing = new Map<ChildKey, Child>();
   /** Children whose subscription was refused, until data comes for them. */
-  readonly #refused = new Set<ChildKey>();
+  readonly #refused = new Set<ChildKey | ExtraKey>();
   /** Counts listings, so that the answer of one replaced by a newer is ignored. */
   #listing = 0;
   /** When the listings began to retry, for the window. */
@@ -181,12 +203,16 @@ export class AulaStore {
   }
 
   /**
-   * Watches the children a card shows until the returned function is called. The first watcher
-   * of an idle store lists the children; a child's subscription outlives its last watcher by
-   * `LINGER_MS`, so a card made again at once finds its data.
+   * Watches the children a card shows, and the days beyond the range it shows, until the returned
+   * function is called. The first watcher of an idle store lists the children; a subscription
+   * outlives its last watcher by `LINGER_MS`, so a card made again at once finds its data.
    */
   watch(options: WatchOptions): () => void {
-    return this.#add({ children: [...options.children], onChange: options.onChange });
+    return this.#add({
+      children: [...options.children],
+      extra: options.extra,
+      onChange: options.onChange,
+    });
   }
 
   /**
@@ -204,6 +230,7 @@ export class AulaStore {
       const timer = setTimeout(done, timeout);
       const release = this.#add({
         children: null,
+        extra: undefined,
         onChange: () => {
           if (this.#list !== undefined || this.#listError !== undefined) done();
         },
@@ -280,20 +307,23 @@ export class AulaStore {
     if (this.#idle()) this.#detach();
   };
 
-  #markStale(key: ChildKey): void {
+  #markStale(key: ChildKey | ExtraKey): void {
     const current = this.#data.get(key);
     if (!current || current.stale) return;
     this.#data.set(key, { ...current, stale: true });
     this.#changed();
   }
 
-  #wanted(): Map<ChildKey, Child> {
-    const result = new Map<ChildKey, Child>();
+  #wanted(): Map<ChildKey | ExtraKey, Wanted> {
+    const result = new Map<ChildKey | ExtraKey, Wanted>();
     if (!this.#list) return result;
     for (const watcher of this.#watchers) {
       if (!watcher.children) continue;
       for (const child of selectChildren(this.#list, watcher.children).shown) {
-        result.set(childKey(child), child);
+        const key = childKey(child);
+        result.set(key, { child, range: this.#range });
+        if (watcher.extra)
+          result.set(extraKey(key, watcher.extra), { child, range: watcher.extra });
       }
     }
     return result;
@@ -302,19 +332,20 @@ export class AulaStore {
   /** Brings the subscriptions in line with what the watchers want and the range. */
   #reconcile(): void {
     const wanted = this.#wanted();
-    for (const [key, child] of wanted) {
+    for (const [key, { child, range }] of wanted) {
       const current = this.#subscriptions.get(key);
-      if (current && sameRange(current.range, this.#range)) {
+      if (current && sameRange(current.range, range)) {
         clearTimeout(current.linger);
         current.linger = undefined;
         continue;
       }
       if (current) this.#end(key, current);
-      if (this.#listed && !this.#missing.has(key)) this.#subscribe(key, child);
+      if (this.#listed && !this.#missing.has(childOf(key))) this.#subscribe(key, child, range);
     }
     for (const [key, subscription] of this.#subscriptions) {
       if (wanted.has(key)) continue;
-      if (!sameRange(subscription.range, this.#range)) this.#end(key, subscription);
+      if (!subscription.extra && !sameRange(subscription.range, this.#range))
+        this.#end(key, subscription);
       else
         subscription.linger ??= setTimeout(() => {
           this.#end(key, subscription);
@@ -324,10 +355,10 @@ export class AulaStore {
     if (this.#idle()) this.#detach();
   }
 
-  #subscribe(key: ChildKey, child: Child): void {
-    const range = this.#range;
+  #subscribe(key: ChildKey | ExtraKey, child: Child, range: DayRange): void {
     const subscription: Subscription = {
       range,
+      extra: key !== childOf(key),
       alive: true,
       failed: false,
       unsubscribe: Promise.resolve(undefined),
@@ -372,7 +403,7 @@ export class AulaStore {
     });
   }
 
-  #end(key: ChildKey, subscription: Subscription): void {
+  #end(key: ChildKey | ExtraKey, subscription: Subscription): void {
     subscription.alive = false;
     clearTimeout(subscription.linger);
     subscription.linger = undefined;
@@ -385,7 +416,7 @@ export class AulaStore {
   // The integration ends a subscription when its entry is unloaded, as for a reload, or when Aula
   // no longer lists the child. The children are listed once the last of an entry's children has
   // ended and the entry has had a moment to come back.
-  #ended(key: ChildKey, subscription: Subscription): void {
+  #ended(key: ChildKey | ExtraKey, subscription: Subscription): void {
     if (!subscription.alive) return;
     this.#end(key, subscription);
     this.#refreshing = true;
@@ -503,7 +534,7 @@ export class AulaStore {
     } else {
       this.#list = children;
       this.#refreshing = false;
-      for (const key of [...this.#data.keys()]) if (!keys.has(key)) this.#data.delete(key);
+      for (const key of [...this.#data.keys()]) if (!keys.has(childOf(key))) this.#data.delete(key);
     }
     this.#changed();
     this.#reconcile();

@@ -21,9 +21,11 @@ import { join } from "node:path";
 import * as mdi from "@mdi/js";
 
 import { localTime } from "../src/core/dates.ts";
-import { rangeFor } from "../src/core/store.ts";
+import { extraKey, rangeFor } from "../src/core/store.ts";
 import { childKey, type Child, type DayRange, type WeekData } from "../src/core/types.ts";
+import { extraWeeks } from "../src/model/week-view.ts";
 import { scenarioNamed, SCENARIOS, type Scenario } from "../tests/fixtures/scenarios.ts";
+import { weekData } from "../tests/fixtures/week.ts";
 
 interface Page {
   clock: { setFixedTime(time: Date): Promise<void> };
@@ -90,6 +92,8 @@ interface Shot {
   readonly glance?: boolean;
   /** A selector in the card to click before the shot, such as a row to open. */
   readonly click?: string;
+  /** The weeks the week card is browsed to before the shot, with its steps. */
+  readonly browse?: number;
 }
 
 // What a family would set up: the things to bring for sports and swimming.
@@ -189,6 +193,8 @@ const SETS: Record<string, () => Shot[]> = {
   // and with three children, an unpublished week plan, a camp, cancelled lessons, holidays,
   // long names and reminders at the narrowest width, an opened weekend and an opened day.
   extra: () => [
+    shot("week", "thu-1010", 380, { browse: -1, tag: "browsed-back" }),
+    shot("week", "thu-1010", 380, { browse: 2, tag: "browsed-ahead" }),
     shot("day", "thu-1010", 380, { config: { expand_abbreviations: false }, tag: "abbreviations" }),
     shot("day", "thu-1930", 380, { children: 2 }),
     shot("day", "sun-1800", 380, { children: 2 }),
@@ -325,6 +331,8 @@ interface Mount {
   children: readonly Child[];
   data: Record<string, WeekData>;
   range: DayRange;
+  /** The data of the days beyond the range a browsed card asks for, by `extraKey`. */
+  extra: Record<string, WeekData>;
   width: number;
   language: string;
   locale: string;
@@ -354,12 +362,11 @@ function mount(arg: Mount): void {
         message: Record<string, unknown>,
       ) => {
         const key = `${String(message.entry_id)}/${String(message.child_id)}`;
-        const data = arg.data[key];
-        if (
-          data === undefined ||
-          message.start !== arg.range.start ||
-          message.end !== arg.range.end
-        ) {
+        const ranged = message.start === arg.range.start && message.end === arg.range.end;
+        const data = ranged
+          ? arg.data[key]
+          : arg.extra[`${key}@${String(message.start)}/${String(message.end)}`];
+        if (data === undefined) {
           errors.push(`unexpected subscription ${JSON.stringify(message)}`);
           return Promise.reject(new Error(errors[errors.length - 1]));
         }
@@ -586,6 +593,14 @@ for (const item of shots) {
     children: scenario.children,
     data: Object.fromEntries(children.map((child) => [childKey(child), scenario.data(child)])),
     range,
+    extra: Object.fromEntries(
+      children.flatMap((child) => {
+        const days = extraWeeks(range, 2, item.browse ?? 0);
+        return days
+          ? [[extraKey(childKey(child), days), { ...weekData(days.start), ...days }]]
+          : [];
+      }),
+    ),
     width: item.width,
     language: item.locale.slice(0, 2),
     locale: item.locale,
@@ -607,6 +622,19 @@ for (const item of shots) {
     null,
   )) as string[];
   if (errors.length > 0) throw new Error(`${name(item)}: ${errors.join("; ")}`);
+  for (let step = 0; step < Math.abs(item.browse ?? 0); step++) {
+    await tab.evaluate(
+      async ({ selector, target }) => {
+        const card = document.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>(
+          selector,
+        );
+        card?.shadowRoot?.querySelector<HTMLElement>(target)?.click();
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        await card?.updateComplete;
+      },
+      { selector: tag, target: `.nav-step[data-step="${(item.browse ?? 0) < 0 ? "-1" : "1"}"]` },
+    );
+  }
   if (item.click !== undefined) {
     await tab.evaluate(
       async ({ selector, target }) => {

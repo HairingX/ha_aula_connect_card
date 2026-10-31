@@ -11,7 +11,7 @@ import { html, nothing, render as renderTemplate, type TemplateResult } from "li
 import { viewContext, type ViewContext } from "../core/context.ts";
 import { rememberLanguage } from "../core/memory.ts";
 import { storeFor, type StoreSnapshot } from "../core/store.ts";
-import type { ChildKey, HomeAssistant } from "../core/types.ts";
+import type { ChildKey, DayRange, HomeAssistant } from "../core/types.ts";
 import type { Hold } from "../model/child.ts";
 import { heldFocus, IDLE_RESET_MS, type Focus } from "../model/focus.ts";
 import { AulaController } from "./controller.ts";
@@ -111,6 +111,7 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     this.renderRoot.append(style);
     this.aula = new AulaController(this, {
       wanted: () => this.config?.children,
+      extra: () => this.extraDays(),
       tick: (now) => {
         this.#tick(now);
       },
@@ -137,6 +138,16 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
 
   /** The card's height in units of 50 pixels before its data has come. */
   protected abstract emptySize(config: Config | undefined): number;
+
+  /** The days beyond the store's range the card shows: none unless browsed elsewhere. */
+  protected extraDays(): DayRange | undefined {
+    return undefined;
+  }
+
+  /** Goes back to what the card shows by itself, after a while without a touch. */
+  protected idle(): void {
+    this.#opened.clear();
+  }
 
   /**
    * Sets the configuration.
@@ -201,7 +212,7 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
 
   // On a shared screen, what someone opened closes again after ten minutes without a touch.
   #tick(now: Date): void {
-    if (now.getTime() - this.#lastInteraction >= IDLE_RESET_MS) this.#opened.clear();
+    if (now.getTime() - this.#lastInteraction >= IDLE_RESET_MS) this.idle();
   }
 
   /** How the configuration folds a day's timetable and plan. */

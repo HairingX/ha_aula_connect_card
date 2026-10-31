@@ -8,6 +8,7 @@ import {
   RETRY_SLOW_MS,
   RETRY_WINDOW_MS,
   STARTING_MS,
+  extraKey,
   rangeFor,
   storeFor,
   type AulaStore,
@@ -228,6 +229,65 @@ describe("watching", () => {
     expect(storeFor(hass)).toBe(store);
     await settle();
     expect(connection.active.map((item) => item.message.start)).toEqual(["2026-10-26"]);
+  });
+});
+
+describe("days beyond the range", () => {
+  const LAST_WEEK = { start: "2026-10-19", end: "2026-10-26" };
+  const LAST_KEY = extraKey(IDA_KEY, LAST_WEEK);
+
+  it("are subscribed once per child for every card that shows them, beside the range", async () => {
+    const { connection, store } = setup();
+    store.watch({ children: [1001], extra: LAST_WEEK, onChange: vi.fn() });
+    store.watch({ children: [1001], extra: LAST_WEEK, onChange: vi.fn() });
+    await settle();
+    expect(connection.active.map((item) => item.message.start)).toEqual([
+      "2026-10-26",
+      "2026-10-19",
+    ]);
+    const week = weekData("2026-10-19");
+    connection.subscriptions[1]?.callback(week);
+    expect(store.snapshot.data.get(LAST_KEY)).toMatchObject({ data: week, stale: false });
+    expect(store.snapshot.data.get(IDA_KEY)).toBeUndefined();
+  });
+
+  it("linger after the card has moved on, so that going back finds them, then end", async () => {
+    const { connection, store } = setup();
+    const release = store.watch({ children: [1001], extra: LAST_WEEK, onChange: vi.fn() });
+    await settle();
+    store.watch({ children: [1001], onChange: vi.fn() });
+    release();
+    await vi.advanceTimersByTimeAsync(LINGER_MS - 1);
+    expect(connection.active).toHaveLength(2);
+    store.watch({ children: [1001], extra: LAST_WEEK, onChange: vi.fn() });
+    await vi.advanceTimersByTimeAsync(LINGER_MS * 2);
+    expect(connection.subscriptions).toHaveLength(2);
+  });
+
+  it("are kept when the range moves on at Monday 00:00", async () => {
+    const { connection, store } = setup();
+    store.watch({ children: [1001], extra: LAST_WEEK, onChange: vi.fn() });
+    await settle();
+    vi.setSystemTime(new Date("2026-11-02T00:00:00.050+01:00"));
+    store.touch(new Date());
+    await settle();
+    expect(connection.active.map((item) => item.message.start)).toEqual([
+      "2026-10-19",
+      "2026-11-02",
+    ]);
+  });
+
+  it("are dropped with their child when it is no longer listed", async () => {
+    const { connection, answer, store } = setup();
+    store.watch({ children: [], extra: LAST_WEEK, onChange: vi.fn() });
+    await settle();
+    const last = connection.active.find((item) => item.message.start === "2026-10-19");
+    last?.callback(weekData("2026-10-19"));
+    expect(store.snapshot.data.get(LAST_KEY)).toBeDefined();
+    connection.subscriptions[0]?.callback({ ended: true });
+    answer([OSKAR]);
+    await vi.advanceTimersByTimeAsync(RELOAD_DELAY_MS + RETRY_WINDOW_MS + RETRY_MAX_MS);
+    expect(store.snapshot.data.has(LAST_KEY)).toBe(false);
   });
 });
 
