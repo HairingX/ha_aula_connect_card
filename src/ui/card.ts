@@ -110,8 +110,8 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     style.textContent = (this.constructor as typeof AulaCard).styles;
     this.renderRoot.append(style);
     this.aula = new AulaController(this, {
-      wanted: () => this.config?.children,
-      extra: () => this.extraDays(),
+      wanted: () =>
+        this.config && { children: this.config.children, extra: this.extraDays(this.config) },
       tick: (now) => {
         this.#tick(now);
       },
@@ -140,9 +140,7 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
   protected abstract emptySize(config: Config | undefined): number;
 
   /** The days beyond the store's range the card shows: none unless browsed elsewhere. */
-  protected extraDays(): DayRange | undefined {
-    return undefined;
-  }
+  protected extraDays: (config: Config) => DayRange | undefined = () => undefined;
 
   /** Goes back to what the card shows by itself, after a while without a touch. */
   protected idle(): void {

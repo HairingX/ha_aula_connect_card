@@ -373,15 +373,19 @@ function week(
   child: Child,
   ctx: ViewContext,
   state: CardState,
+  steps: unknown = nothing,
 ): TemplateResult {
   const { t } = ctx;
   return html`<section class="week-section">
-    <h3 class="week-head">
-      <span>${t("weekNumber", { n: section.number })} · ${relation(section.relation, ctx)}</span>
-      <span class="week-dates"
-        >${formatDayRange(section.start, addDays(section.start, 6), ctx.language, "short")}</span
-      >
-    </h3>
+    <div class="week-top">
+      <h3 class="week-head">
+        <span>${t("weekNumber", { n: section.number })} · ${relation(section.relation, ctx)}</span>
+        <span class="week-dates"
+          >${formatDayRange(section.start, addDays(section.start, 6), ctx.language, "short")}</span
+        >
+      </h3>
+      ${steps}
+    </div>
     ${
       section.notYet === undefined
         ? nothing
@@ -403,7 +407,7 @@ function childWeeks(
   child: WeekChildView,
   view: WeekCardView,
   ctx: ViewContext,
-  state: CardState,
+  state: WeekBrowser,
 ): TemplateResult {
   const { t } = ctx;
   const school = view.differentSchools ? [child.child.institution_name] : [];
@@ -413,7 +417,16 @@ function childWeeks(
     ${
       child.state.kind === "ready"
         ? html`<div class="weeks">
-            ${child.weeks.map((section) => week(section, child.child, ctx, state))}
+            ${child.weeks.map((section, index) =>
+              week(
+                section,
+                child.child,
+                ctx,
+                state,
+                // One child's steps share the first week's line; several children's have their own.
+                index === 0 && view.children.length === 1 ? nav(view, ctx, state) : nothing,
+              ),
+            )}
           </div>`
         : nothing
     }
@@ -443,7 +456,7 @@ function nav(view: WeekCardView, ctx: ViewContext, browser: WeekBrowser): Templa
               browser.browse(0);
             }}
           >
-            ${t("today")}
+            <span>${t("today")}</span>
           </button>`
     }
     <button
@@ -493,7 +506,7 @@ export function renderWeek(
     ),
   });
   return html`<section class="week stack" aria-label=${label}>
-    ${nav(view, ctx, state)}
+    ${view.children.length > 1 ? nav(view, ctx, state) : nothing}
     <div class="kids">
       <div class="children wide-${String(Math.min(view.children.length, 3))}">
         ${view.children.map((child) => childWeeks(child, view, ctx, state))}

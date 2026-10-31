@@ -142,6 +142,7 @@ const SETS: Record<string, () => Shot[]> = {
     shot("week", "thu-1010", 380),
     shot("week", "thu-1930", 800),
     shot("week", "sun-1800", 380),
+    shot("week", "thu-1010", 380, { browse: -1, tag: "browsed-back" }),
   ],
   review: () => [
     ...ALL_CARDS.flatMap((card) => SCENARIOS.map((item) => shot(card, item.id, 380))),
@@ -193,7 +194,6 @@ const SETS: Record<string, () => Shot[]> = {
   // and with three children, an unpublished week plan, a camp, cancelled lessons, holidays,
   // long names and reminders at the narrowest width, an opened weekend and an opened day.
   extra: () => [
-    shot("week", "thu-1010", 380, { browse: -1, tag: "browsed-back" }),
     shot("week", "thu-1010", 380, { browse: 2, tag: "browsed-ahead" }),
     shot("day", "thu-1010", 380, { config: { expand_abbreviations: false }, tag: "abbreviations" }),
     shot("day", "thu-1930", 380, { children: 2 }),

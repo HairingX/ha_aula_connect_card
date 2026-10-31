@@ -312,7 +312,7 @@ export function extraWeeks(range: DayRange, weeks: 1 | 2, offset: number): DayRa
     (start) => start < range.start || start >= range.end,
   );
   const [start] = shown;
-  return start === undefined ? undefined : { start, end: addDays(shown.at(-1) ?? start, 7) };
+  return start === undefined ? undefined : { start, end: addDays(start, 7 * shown.length) };
 }
 
 /**

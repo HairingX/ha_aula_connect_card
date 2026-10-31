@@ -43,10 +43,10 @@ export class AulaConnectWeekCard
     this.requestUpdate();
   }
 
-  protected override extraDays(): DayRange | undefined {
+  protected override extraDays = (config: WeekCardConfig): DayRange | undefined => {
     const range = this.aula.snapshot?.range;
-    return range && this.config ? extraWeeks(range, this.config.weeks, this.#offset) : undefined;
-  }
+    return range && extraWeeks(range, config.weeks, this.#offset);
+  };
 
   protected override idle(): void {
     super.idle();

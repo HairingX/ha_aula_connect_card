@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import type { StoreSnapshot } from "../../src/core/store.ts";
+import { extraKey, type StoreSnapshot } from "../../src/core/store.ts";
 import { DEFAULT_ORDER } from "../../src/model/blocks.ts";
-import { weekCardView, type WeekRow, type WeekViewOptions } from "../../src/model/week-view.ts";
+import {
+  extraWeeks,
+  weekCardView,
+  type WeekRow,
+  type WeekViewOptions,
+} from "../../src/model/week-view.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
 import { contextOf, noHold, snapshotOf } from "../fixtures/snapshot.ts";
 import { allDay, local, weekData, without } from "../fixtures/week.ts";
@@ -255,5 +260,92 @@ describe("the week card", () => {
     expect(thursday?.kind === "day" && thursday.row.content.timed.map((item) => item.span)).toEqual(
       ["until"],
     );
+  });
+});
+
+describe("browsing", () => {
+  const RANGE = { start: "2026-10-26", end: "2026-11-09" };
+
+  it.each<[1 | 2, number, { start: string; end: string } | undefined]>([
+    [2, 0, undefined],
+    [2, -1, { start: "2026-10-19", end: "2026-10-26" }],
+    [2, -2, { start: "2026-10-12", end: "2026-10-26" }],
+    [2, 1, { start: "2026-11-09", end: "2026-11-16" }],
+    [2, 2, { start: "2026-11-09", end: "2026-11-23" }],
+    [1, 1, undefined],
+    [1, -2, { start: "2026-10-12", end: "2026-10-19" }],
+  ])(
+    "asks, for %d weeks shown %d weeks away, for the days the store lacks: %j",
+    (count, offset, days) => {
+      expect(extraWeeks(RANGE, count, offset)).toEqual(days);
+    },
+  );
+
+  const LAST = { start: "2026-10-19", end: "2026-10-26" };
+  const browsed = (
+    entry: Partial<{ data: ReturnType<typeof weekData>; error: unknown }>,
+    options: Partial<WeekViewOptions> = {},
+    offset = -1,
+  ) => {
+    const item = scenarioNamed("thu-1010");
+    const snapshot = snapshotOf(item);
+    const data = new Map(snapshot.data);
+    data.set(extraKey("entry-a/1001", LAST), {
+      range: LAST,
+      data: entry.data,
+      error: entry.error,
+      stale: false,
+    });
+    return weekCardView(
+      { ...snapshot, data },
+      { ...OPTIONS, ...options },
+      contextOf(item),
+      noHold,
+      offset,
+    );
+  };
+
+  it("shows a week before this one with every day a row of its own, and this week as ever", () => {
+    const view = browsed({ data: { ...weekData("2026-10-19"), ...LAST } });
+    const [last, current] = view.children[0]?.weeks ?? [];
+    expect(last).toMatchObject({ number: 43, relation: -1, loading: false });
+    expect(last?.rows.map(shape)).toEqual([
+      "day 19",
+      "day 20",
+      "day 21",
+      "day 22",
+      "day 23",
+      "weekend 24",
+    ]);
+    expect(current?.rows.map(shape)[0]).toBe("earlier 3");
+    expect(view).toMatchObject({ offset: -1, numbers: [43, 44] });
+  });
+
+  it("shows a holiday that is over in a week browsed back to", () => {
+    const data = { ...weekData("2026-10-19"), ...LAST };
+    const holiday = without(data, "2026-10-19", "2026-10-23");
+    const view = browsed({
+      data: {
+        ...holiday,
+        events: [
+          ...holiday.events,
+          allDay("h", "Efterårsferie", "holiday", "2026-10-19", "2026-10-23"),
+        ],
+      },
+    });
+    expect(view.children[0]?.weeks[0]?.rows.map(shape)[0]).toBe("holiday Efterårsferie");
+  });
+
+  it("waits for a week the store has no data for, and says why it could not be had", () => {
+    expect(browsed({}).children[0]?.weeks[0]).toMatchObject({ loading: true, error: undefined });
+    const error = new Error("gone");
+    expect(browsed({ error }).children[0]?.weeks[0]).toMatchObject({ loading: true, error });
+  });
+
+  it("shows one week at a time when the card shows one, from the store's own days when it has them", () => {
+    const view = browsed({}, { weeks: 1 }, 1);
+    expect(view.children[0]?.weeks.map((section) => [section.number, section.loading])).toEqual([
+      [45, false],
+    ]);
   });
 });

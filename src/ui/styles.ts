@@ -1124,10 +1124,24 @@ export const weekStyles = css`
   /* The steps sit at the end, in reach of a thumb; "I dag" at the start, only while away. */
   .week-nav {
     display: flex;
+    flex: none;
     align-items: center;
     justify-content: flex-end;
     gap: var(--aula-space-1);
     margin: calc(-1 * var(--aula-space-2)) calc(-1 * var(--aula-space-2)) var(--aula-space-2);
+  }
+  /* Beside the steps, the week's name and dates wrap rather than push them away. */
+  .week-top {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-2);
+  }
+  .week-top > .week-head {
+    flex: 1;
+    flex-wrap: wrap;
+  }
+  .week-top > .week-nav {
+    margin: calc(-1 * var(--aula-space-3)) calc(-1 * var(--aula-space-2)) 0 0;
   }
   .nav-step,
   .nav-today {
@@ -1147,20 +1161,24 @@ export const weekStyles = css`
   .nav-step {
     width: var(--aula-target);
   }
+  /* The target stays 48 px; the pill in it is no taller than a line of text. */
   .nav-today {
     margin-inline-end: auto;
-    padding: 0 var(--aula-space-4);
-    background: var(--aula-fill-muted);
     color: var(--aula-text);
+  }
+  .nav-today > span {
+    padding: var(--aula-space-1) var(--aula-space-3);
+    border-radius: var(--aula-target);
+    background: var(--aula-fill-muted);
   }
   @media (hover: hover) {
     .nav-step:hover,
-    .nav-today:hover {
+    .nav-today:hover > span {
       background: var(--aula-fill-strong);
     }
   }
   .nav-step:active,
-  .nav-today:active {
+  .nav-today:active > span {
     background: var(--aula-fill-strong);
   }
   .count {

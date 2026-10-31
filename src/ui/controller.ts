@@ -18,10 +18,11 @@ export interface ControllerHost {
 
 /** What a controller asks its card. */
 export interface ControllerHooks {
-  /** The child ids the card shows; undefined while it has no configuration. */
-  readonly wanted: () => readonly number[] | undefined;
-  /** The days beyond the store's range the card shows, as when browsed to another week. */
-  readonly extra: () => DayRange | undefined;
+  /**
+   * The child ids the card shows, and the days beyond the store's range it shows, as when
+   * browsed to another week; undefined while it has no configuration.
+   */
+  readonly wanted: () => { children: readonly number[]; extra: DayRange | undefined } | undefined;
   /** Called on each tick of the clock, before the card renders again. */
   readonly tick: (now: Date) => void;
 }
@@ -81,8 +82,8 @@ export class AulaController {
   }
 
   #sync(): void {
-    const children = this.#hooks.wanted();
-    if (!this.#connected || !this.#hass || children === undefined) {
+    const wanted = this.#hooks.wanted();
+    if (!this.#connected || !this.#hass || wanted === undefined) {
       this.#unwatch();
       return;
     }
@@ -90,7 +91,7 @@ export class AulaController {
     if (store !== this.#store) this.#unwatch();
     this.#store = store;
     const previous = this.#release;
-    const extra = this.#hooks.extra();
+    const { children, extra } = wanted;
     this.#extra = extra && `${extra.start}/${extra.end}`;
     // Watching before letting go keeps a child both want from lingering or resubscribing.
     this.#release = store.watch({
@@ -104,7 +105,7 @@ export class AulaController {
     this.#stopClock ??= onMinute((now) => {
       this.#store?.touch(now);
       // Days beyond the range move with it, as at Monday 00:00 while another week is shown.
-      const extra = this.#hooks.extra();
+      const extra = this.#hooks.wanted()?.extra;
       if ((extra && `${extra.start}/${extra.end}`) !== this.#extra) this.#sync();
       this.#hooks.tick(now);
       this.#host.requestUpdate();
