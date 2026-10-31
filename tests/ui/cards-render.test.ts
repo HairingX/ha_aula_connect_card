@@ -405,6 +405,16 @@ describe("the school day card's blocks", () => {
   });
 });
 
+describe("the week card's children", () => {
+  it("have a column each when there are several, and one child's day spreads its blocks", async () => {
+    const { card } = await mount(WEEK, "thu-0715-3child");
+    expect(present(card.shadowRoot?.querySelector(".children")).className).toBe("children several");
+    unmountAll();
+    const { card: one } = await mount(WEEK, "thu-0715-3child", { config: { children: [1001] } });
+    expect(present(one.shadowRoot?.querySelector(".children")).className).toBe("children one");
+  });
+});
+
 describe("the homework card", () => {
   it("groups by the day homework is for, then by child, with the earlier days folded first", async () => {
     const { card } = await mount(HOMEWORK, "thu-1530");
