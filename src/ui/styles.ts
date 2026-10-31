@@ -229,8 +229,17 @@ export const base = css`
       --aula-split: block;
     }
   }
+  /* A week's rows need as much room for each of three children as for each of two. */
   @container kids (min-width: 1100px) {
-    .large .kids-3 {
+    .large .kids-3,
+    .normal .wide-3 {
+      --aula-cols: 3;
+      --aula-beside: 0;
+      --aula-split: block;
+    }
+  }
+  @container kids (min-width: 1500px) {
+    .large .wide-3 {
       --aula-cols: 3;
       --aula-beside: 0;
       --aula-split: block;

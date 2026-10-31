@@ -405,6 +405,28 @@ describe("the school day card's blocks", () => {
   });
 });
 
+describe("the week card's children", () => {
+  it("stand in three columns when there are three, and in two rows when there are more", async () => {
+    const item = scenarioNamed("thu-0715-3child");
+    const { card } = await mount(WEEK, "thu-0715-3child");
+    expect(present(card.shadowRoot?.querySelector(".children")).className).toBe("children wide-3");
+    unmountAll();
+    const four = { ...present(item.children[2]), child_id: 1004 };
+    const { card: more } = await mount(WEEK, "thu-0715-3child", {
+      setup: (hass) => {
+        hass.callWS.mockResolvedValue({ children: [...item.children, four] });
+        hass.connection.respond = (message) =>
+          item.data(
+            present([...item.children, four].find((child) => child.child_id === message.child_id)),
+          );
+      },
+    });
+    expect(present(more.shadowRoot?.querySelector(".children")).className).toBe(
+      "children wide-2 tworow",
+    );
+  });
+});
+
 describe("the homework card", () => {
   it("groups by the day homework is for, then by child, with the earlier days folded first", async () => {
     const { card } = await mount(HOMEWORK, "thu-1530");

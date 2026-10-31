@@ -41,8 +41,10 @@ export interface WeekBrowser extends CardState {
   browse(step: -1 | 0 | 1): void;
 }
 import {
+  apiError,
   aula,
   childState,
+  columns,
   counted,
   dayTitle,
   eventIcon,
@@ -51,7 +53,6 @@ import {
   factStack,
   heading,
   hours,
-  apiError,
   icon,
   label,
   loading,
@@ -508,7 +509,7 @@ export function renderWeek(
   return html`<section class="week stack" aria-label=${label}>
     ${view.children.length > 1 ? nav(view, ctx, state) : nothing}
     <div class="kids">
-      <div class="children wide-${String(Math.min(view.children.length, 3))}">
+      <div class="children ${columns(view.children.length, "wide-")}">
         ${view.children.map((child) => childWeeks(child, view, ctx, state))}
       </div>
     </div>
