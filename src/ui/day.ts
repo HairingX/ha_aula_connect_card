@@ -307,10 +307,7 @@ export function renderDay(view: DayCardView, ctx: ViewContext, state: CardState)
   });
   const several = view.groups.length > 1;
   // Children at schools with different days stand side by side; a shared day has its columns.
-  const side =
-    several && view.groups.every((item) => item.children.length === 1)
-      ? columns(view.groups.length, "kids-")
-      : "";
+  const side = several && view.groups.every((item) => item.children.length === 1) ? "several" : "";
   return html`<section class="day stack" aria-label=${label}>
     <div class="kids">
       <div class="children ${side}">

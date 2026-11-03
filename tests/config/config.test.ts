@@ -161,6 +161,22 @@ describe("checking a configuration", () => {
   });
 });
 
+describe("the school day card's grouping", () => {
+  it.each<[unknown, string]>([
+    [undefined, "block"],
+    ["", "block"],
+    ["child", "child"],
+  ])("is %j: %s", (groupBy, shown) => {
+    expect(resolveDayConfig({ group_by: groupBy }).groupBy).toBe(shown);
+  });
+
+  it("refuses anything but block or child", () => {
+    expect(() => resolveDayConfig({ group_by: "type" })).toThrow(
+      "group_by: must be block or child",
+    );
+  });
+});
+
 describe("the week plan card's notes", () => {
   it.each<[unknown, string]>([
     [undefined, "tasks"],
@@ -310,6 +326,7 @@ describe("the editor", () => {
   it("gives each card its fields, top to bottom", () => {
     expect(names(dayConfigForm().schema)).toEqual([
       "children",
+      "group_by",
       "order",
       "show",
       "timetable",
@@ -398,6 +415,7 @@ describe("the editor", () => {
           : [];
       });
     expect(lists.map((list) => list.name)).toEqual([
+      "group_by",
       "timetable",
       "size",
       "weeks",

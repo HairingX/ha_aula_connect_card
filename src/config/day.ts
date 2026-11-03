@@ -17,7 +17,17 @@ import { configForm, type ConfigForm } from "./form.ts";
 export const DAY_CARD = "aula-connect-day-card";
 
 /** The school day card's configuration, with its defaults filled in. */
-export interface DayCardConfig extends CommonConfig, BlocksConfig {}
+export interface DayCardConfig extends CommonConfig, BlocksConfig {
+  /** Whether the blocks hold every child, or each child has its whole day apart. */
+  readonly groupBy: "block" | "child";
+}
+
+/** Reads `group_by`: block or child. */
+export function parseGroupBy(value: unknown): "block" | "child" {
+  if (value === undefined || value === null || value === "") return "block";
+  if (value !== "block" && value !== "child") throw new Error("group_by: must be block or child");
+  return value;
+}
 
 /**
  * Checks a school day card's configuration and fills in its defaults; `lenient` leaves out the
@@ -28,7 +38,11 @@ export interface DayCardConfig extends CommonConfig, BlocksConfig {}
 export function resolveDayConfig(config: unknown, lenient = false): DayCardConfig {
   const raw = configRecord(config);
   const common = resolveCommon(raw, lenient);
-  return { ...common, ...resolveBlocks(raw, common.size === "large") };
+  return {
+    ...common,
+    ...resolveBlocks(raw, common.size === "large"),
+    groupBy: parseGroupBy(raw.group_by),
+  };
 }
 
 /** Returns the school day card's form. */
@@ -36,6 +50,7 @@ export function dayConfigForm(): ConfigForm {
   return configForm(
     [
       "children",
+      "group_by",
       "order",
       "show",
       "timetable",
