@@ -240,6 +240,7 @@ const SETS: Record<string, () => Shot[]> = {
     shot("week", "sat-1000-birthday", 380, { click: ".weekend-row > summary", tag: "open" }),
     shot("week", "sat-1000-birthday", 380, { locale: "en-US" }),
     shot("week", "thu-1930", 380, { click: ".day-row:not(.focus-day) > summary", tag: "open" }),
+    shot("week", "thu-1930", 340, { click: ".day-row:not(.focus-day) > summary", tag: "open" }),
     shot("day", "thu-1930", 380, {
       click: '[data-block="timetable"] .more',
       tag: "timetable-open",
@@ -532,6 +533,15 @@ function layout(tag: string): string[] {
     const names = [...strip.querySelectorAll(".kid-name, .who-name")];
     const tops = new Set(names.map((name) => Math.round(name.getBoundingClientRect().top)));
     if (tops.size > 1) problems.push(`the children's names stand at ${[...tops].join(", ")} px`);
+  }
+  // A week's dates stand in one column, whether their days are closed, open or the focus.
+  for (const weeks of root.querySelectorAll(".weeks")) {
+    const lefts = new Set(
+      [...weeks.querySelectorAll(".daycol")].map((day) =>
+        Math.round(day.getBoundingClientRect().left),
+      ),
+    );
+    if (lefts.size > 1) problems.push(`a week's dates stand at ${[...lefts].join(", ")} px`);
   }
   for (const time of root.querySelectorAll("time")) {
     // A box for each run of text, on one line unless the time is broken.
