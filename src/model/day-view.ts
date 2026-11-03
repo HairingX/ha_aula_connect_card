@@ -42,6 +42,12 @@ export interface DayViewOptions extends ViewOptions {
   readonly blocks: readonly BlockId[];
 }
 
+/** What the school day card's own view takes besides. */
+export interface DayCardOptions extends DayViewOptions {
+  /** Whether children with the same day share the blocks, or each has its whole day apart. */
+  readonly groupBy: "block" | "child";
+}
+
 /** A child's rest of today. */
 export interface TodayEntry {
   /** The child. */
@@ -411,12 +417,12 @@ function size(groups: readonly DayGroup[]): number {
 
 /**
  * Builds the school day card's view. Once every child can be shown, children with the same focus
- * day share a header; until then each child stands alone, so that a header never forms from
- * some of the children only.
+ * day share a header, unless grouped by child; until then each child stands alone, so that a
+ * header never forms from some of the children only.
  */
 export function dayCardView(
   snapshot: StoreSnapshot,
-  options: DayViewOptions,
+  options: DayCardOptions,
   ctx: ViewContext,
   hold: Hold,
 ): DayCardView {
@@ -425,7 +431,8 @@ export function dayCardView(
   const together = new Map<string, ChildBasis[]>();
   for (const basis of bases) {
     // Children without a school day ahead share a header only when it says the same for each.
-    const key = ready ? heroKey(heroOf(basis)) : String(together.size);
+    const key =
+      ready && options.groupBy === "block" ? heroKey(heroOf(basis)) : String(together.size);
     together.set(key, [...(together.get(key) ?? []), basis]);
   }
   const groups = [...together.values()].map((items) => group(items, options, ctx));

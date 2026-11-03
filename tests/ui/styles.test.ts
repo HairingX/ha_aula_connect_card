@@ -67,9 +67,8 @@ describe("the wall screen", () => {
     expect(declared(blocks, ".large .n-3 .cols", "@container child (min-width: 1100px)")).toContain(
       "--aula-n: 3",
     );
-    expect(declared(base, ".large .kids-3", "@container kids (min-width: 1100px)")).toContain(
-      "--aula-cols: 3",
-    );
+    // Three columns of 332 px and two gaps of 48 px fit in the 1168 px within the kiosk's padding.
+    expect(declared(base, ".large .several")).toContain("--aula-column: 332px");
   });
 });
 

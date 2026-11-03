@@ -284,6 +284,28 @@ describe("abbreviations", () => {
   });
 });
 
+describe("the school day card grouped by child", () => {
+  it("gives each child its whole day in a column of its own, named, even on the same day", async () => {
+    const { card } = await mount(DAY, "thu-0715", { config: { group_by: "child" } });
+    const children = present(card.shadowRoot?.querySelector(".children"));
+    expect(children.className).toBe("children several");
+    const columns = all(card, ".children > .child");
+    expect(columns).toHaveLength(2);
+    expect(columns.map((column) => column.querySelector(".who-name")?.textContent)).toEqual([
+      "Ida",
+      "Oskar",
+    ]);
+    expect(columns.every((column) => column.querySelector(".hero") !== null)).toBe(true);
+    expect(all(card, ".strip")).toHaveLength(0);
+  });
+
+  it("shares the blocks between children on the same day by default", async () => {
+    const { card } = await mount(DAY, "thu-0715");
+    expect(all(card, ".children > .child")).toHaveLength(1);
+    expect(all(card, ".strip")).toHaveLength(1);
+  });
+});
+
 describe("the school day card's rows above", () => {
   it("names each child's time when school ends, never one child's as every child's", async () => {
     const { card } = await mount(DAY, "thu-1300");

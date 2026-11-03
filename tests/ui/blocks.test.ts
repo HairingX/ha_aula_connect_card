@@ -19,6 +19,7 @@ const [group] = dayCardView(
     subjectNames: [],
     expandAbbreviations: true,
     blocks: DEFAULT_ORDER,
+    groupBy: "block",
   },
   ctx,
   noHold,

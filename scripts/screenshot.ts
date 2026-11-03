@@ -136,6 +136,7 @@ const SETS: Record<string, () => Shot[]> = {
     shot("day", "fri-1240", 380, { primary: "orange", locale: "en-US" }),
     shot("day", "thu-0715", 800, { ...WALL, children: 2 }),
     shot("day", "thu-1930", 800, { ...WALL, children: 2 }),
+    shot("day", "thu-1930", 800, { children: 2, config: { group_by: "child" }, tag: "by-child" }),
     shot("weekplan", "thu-1930", 380),
     shot("weekplan", "thu-1930", 800, { children: 2 }),
     shot("weekplan", "thu-1930", 380, { config: { notes: "all" }, tag: "notes-all" }),
@@ -194,6 +195,18 @@ const SETS: Record<string, () => Shot[]> = {
   // and with three children, an unpublished week plan, a camp, cancelled lessons, holidays,
   // long names and reminders at the narrowest width, an opened weekend and an opened day.
   extra: () => [
+    shot("day", "thu-1930", 380, { children: 2, config: { group_by: "child" }, tag: "by-child" }),
+    shot("day", "thu-0715-3child", 1216, {
+      ...WALL,
+      children: 3,
+      config: { group_by: "child" },
+      tag: "by-child",
+    }),
+    shot("day", "thu-0715-3child", 900, {
+      children: 3,
+      config: { group_by: "child" },
+      tag: "by-child",
+    }),
     shot("week", "thu-1010", 380, { browse: 2, tag: "browsed-ahead" }),
     shot("day", "thu-1010", 380, { config: { expand_abbreviations: false }, tag: "abbreviations" }),
     shot("day", "thu-1930", 380, { children: 2 }),

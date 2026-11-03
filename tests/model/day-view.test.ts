@@ -1,22 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { dayCardView, type DayGroup, type DayViewOptions } from "../../src/model/day-view.ts";
+import { dayCardView, type DayGroup, type DayCardOptions } from "../../src/model/day-view.ts";
 import { DEFAULT_ORDER, type Fact } from "../../src/model/blocks.ts";
 import type { StoreSnapshot } from "../../src/core/store.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
 import { contextOf, noHold, snapshotOf } from "../fixtures/snapshot.ts";
 import { weekData } from "../fixtures/week.ts";
 
-const OPTIONS: DayViewOptions = {
+const OPTIONS: DayCardOptions = {
   children: [1001],
   switchAt: 720,
   packing: [{ subject: "Svømning", items: ["Badetøj"] }],
   subjectNames: [],
   expandAbbreviations: true,
   blocks: DEFAULT_ORDER,
+  groupBy: "block",
 };
 
-function view(id: string, options: Partial<DayViewOptions> = {}, snapshot?: StoreSnapshot) {
+function view(id: string, options: Partial<DayCardOptions> = {}, snapshot?: StoreSnapshot) {
   const item = scenarioNamed(id);
   return dayCardView(
     snapshot ?? snapshotOf(item),
@@ -26,7 +27,7 @@ function view(id: string, options: Partial<DayViewOptions> = {}, snapshot?: Stor
   );
 }
 
-function group(id: string, options: Partial<DayViewOptions> = {}): DayGroup {
+function group(id: string, options: Partial<DayCardOptions> = {}): DayGroup {
   const [first] = view(id, options).groups;
   if (!first) throw new Error("no group");
   return first;

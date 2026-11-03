@@ -149,6 +149,13 @@ const TEXTS = {
   notesTasks: ["What is marked", "Det markerede"],
   notesComments: ["The other notes", "Det øvrige"],
   notesAll: ["Both", "Begge"],
+  editorGroupBy: ["Arrange by", "Opdel efter"],
+  editorGroupByHelper: [
+    "By block: each block holds every child. By child: each child's whole day in a column of its own.",
+    "Blokke: hver blok rummer alle børn. Barn: hvert barns hele dag i sin egen kolonne.",
+  ],
+  groupByBlock: ["Block", "Blokke"],
+  groupByChild: ["Child", "Barn"],
   editorTimetable: ["Timetable view", "Skemaets visning"],
   editorTimetableHelper: ["Default: compact.", "Standard: kort."],
   editorTimetableCompact: ["Compact – subjects and start times", "Kort – fag og starttider"],
