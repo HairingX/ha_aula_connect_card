@@ -1189,8 +1189,17 @@ export const weekStyles = css`
     padding: var(--aula-space-2) var(--aula-space-3);
     box-sizing: border-box;
   }
+  /* A row's fill, and an open day's frame, reach into the card's padding by as much. */
+  .week {
+    --aula-bleed: var(--aula-space-3);
+  }
+  @container aula (max-width: 359px) {
+    .week {
+      --aula-bleed: var(--aula-space-2);
+    }
+  }
   .day-row:not(.focus-day) > summary {
-    margin-inline: calc(-1 * var(--aula-space-3));
+    margin-inline: calc(-1 * var(--aula-bleed));
   }
   .daycol {
     flex: none;
@@ -1253,16 +1262,22 @@ export const weekStyles = css`
   .past .number {
     color: var(--aula-text-2);
   }
-  /* Today's bar is on the content's edge, the row closed or open. */
+  /* Today's bar is on the edge a row's fill and an open day's frame share, closed or open. */
   .today-row,
   .focus-day.today {
     position: relative;
+  }
+  .focus-day.today::before {
+    inset-inline-start: 0;
+  }
+  .today-row::before {
+    inset-inline-start: calc(-1 * var(--aula-bleed));
   }
   .today-row::before,
   .focus-day.today::before {
     content: "";
     position: absolute;
-    inset: 0 auto 0 0;
+    inset-block: 0;
     width: calc(4px * var(--aula-scale));
     border-radius: var(--aula-radius) 0 0 var(--aula-radius);
     background: var(--aula-accent);
@@ -1272,13 +1287,17 @@ export const weekStyles = css`
     align-items: center;
     gap: var(--aula-space-3);
     min-height: var(--aula-target);
-    padding: var(--aula-space-2) 0;
+    /* No fill to reach out, so its date steps in to the others'. */
+    padding: var(--aula-space-2) calc(var(--aula-space-3) - var(--aula-bleed));
   }
-  /* An open day is framed, the focus day and any other the user opens alike. */
+  /*
+   * An open day is framed, the focus day and any other the user opens alike. The frame reaches
+   * out as far as a closed row's fill, so that its date stays in the column of the others.
+   */
   .focus-day,
   .day-row[open] {
     container: day / inline-size;
-    margin: var(--aula-space-2) 0;
+    margin: var(--aula-space-2) calc(-1 * var(--aula-bleed));
     border-radius: var(--aula-radius);
     background: var(--aula-fill-faint);
   }

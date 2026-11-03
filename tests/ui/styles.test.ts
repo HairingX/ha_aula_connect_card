@@ -72,6 +72,19 @@ describe("the wall screen", () => {
   });
 });
 
+describe("the week card's rows", () => {
+  it("keep a day's date in one column, closed or open, as the frame reaches out as far as a row's fill", () => {
+    const bleed = "calc(-1 * var(--aula-bleed))";
+    expect(declared(weekStyles, ".day-row:not(.focus-day) > summary")).toContain(
+      `margin-inline: ${bleed}`,
+    );
+    expect(declared(weekStyles, ".day-row[open]")).toContain(
+      `margin: var(--aula-space-2) ${bleed}`,
+    );
+    expect(declared(weekStyles, ".focus-day")).toContain(`margin: var(--aula-space-2) ${bleed}`);
+  });
+});
+
 describe("what is never cut", () => {
   it("clamps no quote of the week plan, only the plan's notes behind Vis mere", () => {
     const clamped = ALL.flatMap(rules)
@@ -159,8 +172,12 @@ describe("the week card's days", () => {
     expect(declared(weekStyles, ".day-row[open] > summary")).toContain("margin-inline: 0");
   });
 
-  it("puts today's bar on the content's edge, the row closed or open", () => {
-    expect(declared(weekStyles, ".today-row::before")).toContain("inset: 0 auto 0 0");
-    expect(declared(weekStyles, ".holiday-row")).toContain("padding: var(--aula-space-2) 0");
+  it("puts today's bar on the edge a row's fill and an open day's frame share, closed or open", () => {
+    expect(declared(weekStyles, ".today-row::before")).toContain(
+      "inset-inline-start: calc(-1 * var(--aula-bleed))",
+    );
+    expect(declared(weekStyles, ".holiday-row")).toContain(
+      "padding: var(--aula-space-2) calc(var(--aula-space-3) - var(--aula-bleed))",
+    );
   });
 });
