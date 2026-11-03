@@ -134,6 +134,7 @@ above the children.
 | Option                 | Cards            | Default          | What it does                                                                                                                                                                     |
 | ---------------------- | ---------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `children`             | all              | every child      | The children to show, by Aula's child id, in this order.                                                                                                                         |
+| `group_by`             | school day       | `block`          | `block`: each block holds every child. `child`: each child's whole day apart, in a [column of its own](#several-children).                                                       |
 | `switch_time`          | all              | `"12:00"`        | When the next school day takes over from today. `"00:00"` keeps today all day.                                                                                                   |
 | `size`                 | all              | `normal`         | `large` for a wall screen: text 1.5 times as large, the wall's sizes from a 480 px card, and Husk first.                                                                         |
 | `subject_names`        | all              | none             | [Names](#subject-names) for lesson titles, over the built-in ones.                                                                                                               |
@@ -152,6 +153,7 @@ A school day card in YAML, every option at its default but the children:
 type: custom:aula-connect-day-card
 children: [1001]
 switch_time: "12:00"
+group_by: block
 size: normal
 order: [] # task, pack, timetable, comment; those named come first
 show:
@@ -229,6 +231,13 @@ of its own, at least 340 px wide (460 px on a wall), alike for every child: as m
 side as the card has room for, and the rest below, in the same columns. With one child, an open
 day spreads its blocks over the width. In a sections view a card is as wide as its section: let the section span the view's
 columns (`column_span`) for the children to stand side by side.
+
+**Child by child** on the school day card: `group_by: child` gives each child its whole day, the
+header and the blocks, in a column of its own, alike for every child, at least 280 px wide
+(332 px on a wall). As many stand side by side as the card has room for, and the rest below, so a
+phone shows one child after the other. Children at schools with different days stand so anyway.
+
+![The school day card child by child](docs/day-thu-1930-800-light-blue-da-2child-by-child.png)
 
 **One card per child** shows them one after another: put a card for each child, each with its
 own `children`.

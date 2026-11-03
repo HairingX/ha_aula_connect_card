@@ -84,6 +84,7 @@ const LABELS: Readonly<Record<string, TextKey>> = {
   switch_time: "editorSwitch",
   size: "editorSize",
   notes: "editorNotes",
+  group_by: "editorGroupBy",
   packing: "editorPackingList",
   subject_names: "editorSubjectNamesList",
   expand_abbreviations: "editorExpand",
@@ -98,6 +99,7 @@ const HELPERS: Readonly<Record<string, TextKey>> = {
   switch_time: "editorSwitchHelper",
   size: "editorSizeHelper",
   notes: "editorNotesHelper",
+  group_by: "editorGroupByHelper",
   packing_group: "editorPackingHelper",
   subject_names_group: "editorSubjectNamesHelper",
 };
@@ -118,6 +120,7 @@ export type FieldName =
   | "switch_time"
   | "size"
   | "notes"
+  | "group_by"
   | "packing_group"
   | "subject_names_group";
 
@@ -214,6 +217,18 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
             { value: "tasks", label: t("notesTasks") },
             { value: "comments", label: t("notesComments") },
             { value: "all", label: t("notesAll") },
+          ],
+        },
+      },
+    },
+    group_by: {
+      name: "group_by",
+      selector: {
+        select: {
+          mode: "list",
+          options: [
+            { value: "block", label: t("groupByBlock") },
+            { value: "child", label: t("groupByChild") },
           ],
         },
       },
