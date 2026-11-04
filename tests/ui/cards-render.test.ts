@@ -297,6 +297,27 @@ describe("abbreviations", () => {
     expect(sport.textContent.replace(/\s+/g, " ").trim()).toBe("Idrætstøj, Håndklæde Idræt");
   });
 
+  it("stand in Vigtigt's box, over what the week plan marks or why it marks nothing", async () => {
+    const packing = [{ subject: "Idræt", items: ["Idrætstøj"] }];
+    const { card } = await mount(DAY, "thu-1010", {
+      config: { children: [1001], packing },
+      ...changed("thu-1010", (data) => ({ ...data, tasks: [] })),
+    });
+    expect(all(card, ".block").map((block) => block.getAttribute("data-block"))).toEqual([
+      "task",
+      "timetable",
+    ]);
+    const items = all(card, '[data-block="task"] .homework > li');
+    expect(items.map((item) => item.className.trim())).toEqual(["hw hw-pack", "hw"]);
+    expect(items[1]?.textContent.trim()).toBe("Ugeplanen for uge 44 er ikke i Aula endnu.");
+    const { card: alone } = await mount(DAY, "thu-1010", {
+      config: { children: [1001], packing, show: { task: false } },
+    });
+    expect(
+      all(alone, '[data-block="task"] .homework > li').map((item) => item.className.trim()),
+    ).toEqual(["hw hw-pack"]);
+  });
+
   it("name the subject of things to bring that has no colour", async () => {
     const { card } = await mount(DAY, "thu-1010", {
       config: {
@@ -450,7 +471,8 @@ describe("the school day card's blocks", () => {
       config: { children: [1001], show: { timetable: false } },
       language: "en",
     });
-    expect(text(card, ".pack-label")).toBe("Subjects:");
+    expect(text(card, ".hw-pack > .pack-label")).toBe("Remember:");
+    expect(text(card, ".pack-subjects .pack-label")).toBe("Subjects:");
     expect(text(card, '.pack-subjects [lang="da"]')).toBe("Matematik, Dansk, Engelsk, Historie");
   });
 

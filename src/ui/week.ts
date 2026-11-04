@@ -85,9 +85,7 @@ function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardStat
           [
             {
               content,
-              subjects: plan.subjects,
-              allDay: plan.allDay,
-              timed: plan.timed,
+              plan,
               empty: block.empty,
               child: undefined,
               key: childKey(child),
@@ -144,10 +142,10 @@ function summary(
   if (extra.length === 0) {
     if (shown("timetable"))
       facts.push(content.hours ? hours(content.hours, ctx) : ctx.t("allCancelled"));
-    if (shown("task"))
+    if (row.plan.homework.length > 0)
       facts.push(
         html`<span class="count" aria-label=${ctx.t("blockTask")}
-          >${icon(BLOCK_ICONS.task)}${content.homework.length}</span
+          >${icon(BLOCK_ICONS.task)}${row.plan.homework.length}</span
         >`,
       );
     if (facts.length === 0 && content.view.lessons.length === 0)

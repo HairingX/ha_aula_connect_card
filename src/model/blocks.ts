@@ -36,8 +36,16 @@ export type BlockId = (typeof BLOCKS)[number];
 /** The default order of the blocks: what to do and bring first. */
 export const DEFAULT_ORDER: readonly BlockId[] = BLOCKS;
 
+/** The blocks a card shows as one of their own: Husk is part of Vigtigt. */
+export const ORDERED: readonly BlockId[] = ["task", "timetable", "comment"];
+
 /** Which blocks are shown. */
 export type ShowConfig = Readonly<Partial<Record<BlockId, boolean>>>;
+
+/** Returns the blocks drawn as blocks of their own, in order: Husk is drawn in Vigtigt. */
+export function drawnBlocks(blocks: readonly BlockId[]): BlockId[] {
+  return [...new Set(blocks.map((id) => (id === "pack" ? "task" : id)))];
+}
 
 /** Tells whether a block is shown: its own switch, else yes. */
 export function isShown(id: BlockId, show: ShowConfig): boolean {
@@ -46,13 +54,10 @@ export function isShown(id: BlockId, show: ShowConfig): boolean {
 
 /**
  * Returns the blocks to show, in order: those `order` names first, in its order, then the rest in
- * the default order, without the hidden ones. An empty `order` is the default order. On a wall
- * screen the default order starts with Husk, which is read from across the room.
+ * the default order, without the hidden ones. An empty `order` is the default order.
  */
-export function orderBlocks(order: readonly BlockId[], show: ShowConfig, wall = false): BlockId[] {
-  return [...new Set([...order, ...(wall ? (["pack"] as const) : []), ...DEFAULT_ORDER])].filter(
-    (id) => isShown(id, show),
-  );
+export function orderBlocks(order: readonly BlockId[], show: ShowConfig): BlockId[] {
+  return [...new Set([...order, ...DEFAULT_ORDER])].filter((id) => isShown(id, show));
 }
 
 /** A lesson's status as shown: a substitute, or another change in Aula's own words. */
@@ -258,9 +263,17 @@ export interface PlannedBlock {
 
 /** The blocks a day shows, and what Husk and the timetable add to them. */
 export interface BlockPlan {
-  /** The blocks, in the configured order, without those that have nothing to show. */
+  /** The blocks, in the configured order, without those that have nothing to show; Husk is
+   * Vigtigt's, where either is shown. */
   readonly blocks: readonly PlannedBlock[];
-  /** The subjects Husk names: none while the timetable, which lists them, is shown. */
+  /** What the week plan marks, in Vigtigt; none while it is hidden. */
+  readonly homework: readonly NoteView[];
+  /** Why Vigtigt has no task to show beside Husk; undefined when it has, or shows none. */
+  readonly noHomework: EmptyKind | undefined;
+  /** The things to bring, in Vigtigt; none while Husk is hidden. */
+  readonly pack: readonly PackRow[];
+  /** The subjects Husk names: none while Husk is hidden, or while the timetable, which lists
+   * them, is shown. */
   readonly subjects: readonly SubjectLabel[];
   /** The events lasting the whole day the timetable shows first; none while events are hidden. */
   readonly allDay: readonly CalendarEvent[];
@@ -284,7 +297,11 @@ function homeworkEmpty(content: DayContent): EmptyKind | undefined {
  * nor birthdays are a block of their own.
  */
 export function planBlocks(content: DayContent, blocks: readonly BlockId[]): BlockPlan {
-  const subjects = blocks.includes("timetable") ? [] : content.subjects;
+  const packed = blocks.includes("pack");
+  const tasks = blocks.includes("task");
+  const subjects = packed && !blocks.includes("timetable") ? content.subjects : [];
+  const pack = packed ? content.pack : [];
+  const homework = tasks ? content.homework : [];
   const events = blocks.includes("events");
   const allDay = events
     ? content.facts.flatMap((fact) =>
@@ -293,8 +310,8 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
     : [];
   const timed = events ? content.timed : [];
   const has: Record<BlockId, boolean> = {
-    task: content.homework.length > 0,
-    pack: subjects.length > 0 || content.pack.length > 0,
+    task: homework.length > 0 || subjects.length > 0 || pack.length > 0,
+    pack: false,
     timetable: content.timetable.length > 0 || allDay.length > 0 || timed.length > 0,
     comment: content.plan.length > 0,
     events: false,
@@ -304,9 +321,9 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
   const other =
     visibleFacts(content, blocks).length > 0 || blocks.some((id) => id !== "timetable" && has[id]);
   const planned: PlannedBlock[] = [];
-  for (const id of blocks) {
+  for (const id of drawnBlocks(blocks)) {
     const empty =
-      id === "task"
+      id === "task" && tasks
         ? homeworkEmpty(content)
         : id === "timetable" && other && !isWeekend(content.view.day)
           ? "noTimetable"
@@ -316,6 +333,9 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
   }
   return {
     blocks: planned,
+    homework,
+    noHomework: tasks && homework.length === 0 ? homeworkEmpty(content) : undefined,
+    pack,
     subjects,
     allDay,
     timed,

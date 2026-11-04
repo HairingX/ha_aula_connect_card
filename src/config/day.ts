@@ -40,7 +40,7 @@ export function resolveDayConfig(config: unknown, lenient = false): DayCardConfi
   const common = resolveCommon(raw, lenient);
   return {
     ...common,
-    ...resolveBlocks(raw, common.size === "large"),
+    ...resolveBlocks(raw),
     groupBy: parseGroupBy(raw.group_by),
   };
 }

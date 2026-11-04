@@ -34,7 +34,7 @@ export function resolveWeekConfig(config: unknown, lenient = false): WeekCardCon
   const common = resolveCommon(raw, lenient);
   return {
     ...common,
-    ...resolveBlocks(raw, common.size === "large"),
+    ...resolveBlocks(raw),
     weeks: parseWeeks(raw.weeks),
   };
 }

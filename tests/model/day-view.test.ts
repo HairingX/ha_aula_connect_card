@@ -240,8 +240,7 @@ describe("several children", () => {
 
   it("answer each block for every child in turn, saying when a child has nothing", () => {
     expect(blocks(group("thu-1930", { children: [] }))).toEqual([
-      "task: content, noHomework",
-      "pack: none, content",
+      "task: content, content",
       "timetable: content, content",
       "comment: content, content",
     ]);

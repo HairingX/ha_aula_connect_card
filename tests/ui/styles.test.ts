@@ -60,11 +60,9 @@ describe("the things to bring", () => {
 });
 
 describe("the wall screen", () => {
-  it("sets what to bring as large as the rest, and the subjects at 24 px", () => {
+  it("sets what to bring and the day's subjects as large as the rest", () => {
     expect(declared(blocks, ".large .pack-what")).toEqual([]);
-    expect(declared(blocks, ".large .pack-subjects")).toContain(
-      "font-size: calc(var(--ha-font-size-l, 16px) * 1.5)",
-    );
+    expect(declared(blocks, ".large .pack-subjects")).toEqual([]);
   });
 
   it("lets a 12-hour span break before its dash where a column is too narrow", () => {

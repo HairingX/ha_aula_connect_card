@@ -25,15 +25,6 @@ describe("the order of the blocks", () => {
   ])("order %j and show %j give %j", (order, show, blocks) => {
     expect(orderBlocks(order, show)).toEqual(blocks);
   });
-
-  it.each<[BlockId[], ShowConfig, BlockId[]]>([
-    [[], {}, ["pack", "task", "timetable", "comment", "events", "birthdays"]],
-    [["timetable"], {}, ["timetable", "pack", "task", "comment", "events", "birthdays"]],
-    [["task", "pack"], {}, ["task", "pack", "timetable", "comment", "events", "birthdays"]],
-    [[], { pack: false }, ["task", "timetable", "comment", "events", "birthdays"]],
-  ])("on a wall screen, order %j and show %j give %j", (order, show, blocks) => {
-    expect(orderBlocks(order, show, true)).toEqual(blocks);
-  });
 });
 
 describe("the subjects in Husk", () => {
@@ -63,6 +54,24 @@ describe("the subjects in Husk", () => {
     expect(planBlocks(content, ["timetable", "events"]).blocks.map((block) => block.id)).toEqual([
       "timetable",
     ]);
+  });
+
+  it("hold Husk in Vigtigt, which says why it has no task where the week plan marks none", () => {
+    const pack = [{ subject: subjectNamer([])("IDR"), items: ["Idrætstøj"] }];
+    const bare = { ...content, homework: [], pack };
+    const plan = planBlocks(bare, DEFAULT_ORDER);
+    expect(plan.blocks.map((block) => block.id)).toEqual(["task", "timetable", "comment"]);
+    expect([plan.pack, plan.homework, plan.noHomework]).toEqual([pack, [], "noHomework"]);
+    const hidden = planBlocks(bare, ["pack", "timetable"]);
+    expect([hidden.blocks[0], hidden.noHomework]).toEqual([
+      { id: "task", empty: undefined },
+      undefined,
+    ]);
+    const none = planBlocks(bare, ["task", "timetable"]);
+    expect([none.pack, none.blocks[0]]).toEqual([[], { id: "task", empty: "noHomework" }]);
+    expect(
+      planBlocks(content, ["comment", "pack", "task"]).blocks.map((block) => block.id),
+    ).toEqual(["comment", "task"]);
   });
 
   it("are named only while the timetable, which lists them, is hidden", () => {

@@ -293,9 +293,9 @@ export function resolveCommon(config: Record<string, unknown>, lenient = false):
   };
 }
 
-/** Reads `order` and `show`, and the blocks they give, in a wall screen's order when `wall`. */
-export function resolveBlocks(config: Record<string, unknown>, wall: boolean): BlocksConfig {
+/** Reads `order` and `show`, and the blocks they give. */
+export function resolveBlocks(config: Record<string, unknown>): BlocksConfig {
   const order = parseOrder(config.order);
   const show = parseShow(config.show);
-  return { order, show, blocks: orderBlocks(order, show, wall) };
+  return { order, show, blocks: orderBlocks(order, show) };
 }
