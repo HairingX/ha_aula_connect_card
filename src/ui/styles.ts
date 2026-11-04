@@ -888,6 +888,10 @@ export const blocks = css`
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
+  /* Under the timetable its words sit as close as a line of it; the target reaches up behind it. */
+  .cols + .more {
+    margin-top: calc(-1 * var(--aula-space-3));
+  }
 
   /* An event in the timetable: its icon before its title, its time where a lesson's is. */
   .event-row .lesson-head {

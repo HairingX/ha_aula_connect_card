@@ -304,6 +304,20 @@ export const SCENARIOS: readonly Scenario[] = [
     })),
   ),
   scenario(
+    "thu-1930-two-teachers",
+    "Thursday 19:30: a second teacher in Friday's first lessons",
+    "2026-10-29",
+    "19:30",
+    fortnight("2026-10-26", (data) => ({
+      ...data,
+      lessons: data.lessons.flatMap((lesson) =>
+        lesson.start.startsWith("2026-10-30") && lesson.start < "2026-10-30T10:00"
+          ? [lesson, { ...lesson, id: `${String(lesson.id)}-2`, title: "2Lær", teachers: [] }]
+          : [lesson],
+      ),
+    })),
+  ),
+  scenario(
     "thu-1930-longplan",
     "Thursday 19:30: a plan for Friday of fifty lines",
     "2026-10-29",

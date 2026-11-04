@@ -55,7 +55,7 @@ describe("the folded timetable", () => {
       change([...dayContent(present(days[day]), rules, new Date(item.clock), false).timetable]),
     ).map(
       (row) =>
-        `${row.subject.name} ${row.block.start.slice(11, 16)}–${row.block.end.slice(11, 16)}`,
+        `${[row.subject, ...row.also].map((subject) => subject.name).join(", ")} ${row.block.start.slice(11, 16)}–${row.block.end.slice(11, 16)}`,
     );
 
   it("gives each lesson a line from its start to its end, so the breaks show between the times", () => {
@@ -86,6 +86,49 @@ describe("the folded timetable", () => {
       "Engelsk 10:50–11:35",
       "Historie 12:10–13:40",
     ]);
+  });
+
+  // A copy of each lesson at the very same time, as Aula lists a second teacher's.
+  const withSecond = (
+    rows: TimetableRow[],
+    change: (row: LessonRow) => LessonRow = (row) => row,
+  ): TimetableRow[] =>
+    rows.flatMap((row): TimetableRow[] =>
+      row.kind === "lesson" ? [row, change({ ...row, subject: subjectNamer([])("2Lær") })] : [row],
+    );
+
+  it("puts lessons at the very same time on one line", () => {
+    expect(lines(4, (rows) => withSecond(rows))).toEqual([
+      "Matematik, 2 lærere 08:00–08:45",
+      "Dansk, 2 lærere 08:45–09:30",
+      "Dansk, 2 lærere 10:05–10:50",
+      "Engelsk, 2 lærere 10:50–11:35",
+      "Historie, 2 lærere 12:10–13:40",
+    ]);
+  });
+
+  it("joins a subject's lessons with a second teacher, listed between them, into one line", () => {
+    expect(
+      lines(4, (rows) =>
+        withSecond(
+          rows.map((row, index) => {
+            const second = rows[1];
+            return index === 0 && row.kind === "lesson" && second?.kind === "lesson"
+              ? { ...row, subject: second.subject }
+              : row;
+          }),
+        ),
+      ).slice(0, 2),
+    ).toEqual(["Dansk, 2 lærere 08:00–09:30", "Dansk, 2 lærere 10:05–10:50"]);
+  });
+
+  it("keeps a lesson at the same time apart when its status differs, and names a subject once", () => {
+    const cancelled = lines(4, (rows) => withSecond(rows, (row) => ({ ...row, cancelled: true })));
+    expect(cancelled.slice(0, 2)).toEqual(["Matematik 08:00–08:45", "2 lærere 08:00–08:45"]);
+    const twice = lines(4, (rows) =>
+      rows.flatMap((row): TimetableRow[] => (row.kind === "lesson" ? [row, row] : [row])),
+    );
+    expect(twice[0]).toBe("Matematik 08:00–08:45");
   });
 
   it("gives a lesson a line of its own when its status is news", () => {

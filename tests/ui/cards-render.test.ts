@@ -306,6 +306,34 @@ describe("the school day card grouped by child", () => {
   });
 });
 
+describe("lessons at the very same time", () => {
+  it("share a line in the folded timetable, and keep their own in the whole one", async () => {
+    const { card } = await mount(DAY, "thu-1010", {
+      config: { children: [1001] },
+      ...changed("thu-1010", (data) => ({
+        ...data,
+        lessons: data.lessons.flatMap((lesson) =>
+          lesson.start.startsWith("2026-10-29")
+            ? [lesson, { ...lesson, id: `${String(lesson.id)}-2`, title: "2Lær", teachers: [] }]
+            : [lesson],
+        ),
+      })),
+    });
+    const subjects = all(card, ".lessons.folded .subject");
+    expect(subjects.map((subject) => subject.textContent)).toEqual([
+      "Idræt, 2 lærere",
+      "Dansk, 2 lærere",
+      "Engelsk, 2 lærere",
+    ]);
+    expect(subjects[1]?.getAttribute("title")).toBe("DAN, 2Lær");
+    present(
+      card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'),
+    ).click();
+    await card.updateComplete;
+    expect(texts(card, ".lessons:not(.folded) .subject")).toContain("2 lærere");
+  });
+});
+
 describe("the school day card's rows above", () => {
   it("names each child's time when school ends, never one child's as every child's", async () => {
     const { card } = await mount(DAY, "thu-1300");

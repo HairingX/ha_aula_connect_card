@@ -85,6 +85,14 @@ describe("the week card's rows", () => {
   });
 });
 
+describe("the timetable's button", () => {
+  it("sits as close under the timetable as a line of it, its target reaching up behind", () => {
+    expect(declared(blocks, ".cols + .more")).toContain(
+      "margin-top: calc(-1 * var(--aula-space-3))",
+    );
+  });
+});
+
 describe("the folded timetable", () => {
   it("puts the times under every subject where a part is too narrow for a long subject beside them", () => {
     expect(declared(blocks, ".part")).toContain("container: part / inline-size");
