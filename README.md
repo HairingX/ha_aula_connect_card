@@ -74,14 +74,19 @@ always as it should be.
     a thing to do - every one in full: it is never folded.
   - **Husk** (remember): the things to bring for the day's subjects, from your own
     [packing rules](#things-to-bring).
-  - **Skema** (timetable), as a calendar shows a day: the events lasting the whole day first,
-    marked "Hele dagen", then the lessons and the events with a time in the order they begin,
-    each event with its icon and its place under it. Folded, a lesson is a line with its start
-    and end - "Dansk 08.45–09.30" - and lessons of one subject with no break between them are
-    one line, so the breaks show. Lessons at the very same time share a line, as a subject and its
-    second teacher: "Dansk, 2 lærere 08.00–09.30". A substitute or a cancelled lesson has a line of its own. The
-    timetable is never cut short: "Vis hele skemaet" adds rooms, teachers, breaks and the lesson
-    going on now.
+  - **Skema** (timetable): the day as a bar from its first lesson to its last, with its start
+    and end under it, a faint line at each full hour and, today, a line at the time it is now.
+    Each lesson is a part of the bar in its subject's [colour](#subject-names), grey without one,
+    named in full where it has room, else by its abbreviation, else by its colour alone. Lessons
+    of one subject with no break between them are one part, so the breaks show. A lesson at the
+    time of another goes into it as its subject [merges](#subject-names) - "2 lærere" into the
+    lessons it overlaps - or gets a lane of its own under it. The events with a time have an
+    outlined lane under the lessons, and each event lasting the whole day a hatched one. A
+    substitute's part has a mark; a cancelled lesson's is an outline, struck through. "Vis hele
+    skemaet" opens the timetable as a calendar shows a day: the events lasting the whole day
+    first, marked "Hele dagen", then the lessons and the events with a time in the order they
+    begin, each lesson with its time first and a line in its subject's colour, its room and
+    teachers, the breaks and the lesson going on now.
   - **Noter** (notes): the week plan's other notes for the day, in a quieter column; each folds
     after six lines with its own "Vis mere", as a teacher may write fifty.
 
@@ -144,7 +149,7 @@ above the children.
 | `notes`                | week plan        | `tasks`          | `tasks`, `comments` or `all`: what the card shows of the week plan.                                                                                                              |
 | `order`                | school day, week | none             | The blocks to put first, in this order: `task`, `pack`, `timetable`, `comment`. The rest follow the standard order: Vigtigt, Husk, Skema, Noter; with `size: large`, Husk first. |
 | `show`                 | school day, week | everything shown | Hide a block with `false`: `task`, `pack`, `timetable`, `comment`; `events: false` leaves out the events, `birthdays: false` the birthdays.                                      |
-| `timetable`            | school day, week | `compact`        | `compact` folds the timetable to a line per lesson; `full` opens it whole, still to be folded.                                                                                   |
+| `timetable`            | school day, week | `compact`        | `compact` shows the timetable as a bar; `full` opens it whole, still to be folded.                                                                                               |
 | `packing`              | school day, week | none             | [Things to bring](#things-to-bring) when a subject is on the timetable.                                                                                                          |
 | `weeks`                | week             | `2`              | `1` shows the week of the day that matters now, `2` this week and next.                                                                                                          |
 
@@ -219,6 +224,36 @@ subject_names:
     name: Bevægelse
   - aula: KRI
     name: KRI
+```
+
+A subject's `color` paints its part of the bar and its line in the whole timetable, written
+`"#e57373"` or `[229, 115, 115]`; without one it is grey. The text on it is black or white,
+whichever reads better. A colour, and how a subject merges, goes with every name of the subject:
+a colour for `Dansk` also paints the lessons Aula calls `DAN`. The editor's colour picker writes
+the numbers; a card with a colour written `"#e57373"` is edited in YAML.
+
+`merge` says how a lesson goes into another at its time on the bar, as one part naming both:
+
+- `equal`, the default: into a lesson at the very same time.
+- `overlap`: into every lesson it overlaps, as "2 lærere" does unless you say otherwise.
+- `never`: it keeps a lane of its own.
+
+Only lessons alike go together: a substitute or a cancelled lesson never goes into one as
+planned. The pictures in this README colour ten subjects, these among them; here "2 lærere"
+also goes only into a lesson at the very same time:
+
+```yaml
+subject_names:
+  - aula: Dansk
+    color: "#e57373"
+  - aula: Matematik
+    color: "#64b5f6"
+  - aula: Engelsk
+    color: "#81c784"
+  - aula: Idræt
+    color: "#4db6ac"
+  - aula: 2Lær
+    merge: equal
 ```
 
 ## Several children

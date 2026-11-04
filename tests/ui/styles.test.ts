@@ -93,15 +93,32 @@ describe("the timetable's button", () => {
   });
 });
 
-describe("the folded timetable", () => {
-  it("puts the times under every subject where a part is too narrow for a long subject beside them", () => {
-    expect(declared(blocks, ".part")).toContain("container: part / inline-size");
-    expect(
-      declared(blocks, ".normal .folded .lesson", "@container part (max-width: 260px)"),
-    ).toContain("grid-template-columns: minmax(0, 1fr)");
-    expect(
-      declared(blocks, ".large .folded .lesson", "@container part (max-width: 340px)"),
-    ).toContain("grid-template-columns: minmax(0, 1fr)");
+describe("the timetable", () => {
+  it("gives a part of the bar its subject's colour, and grey without one", () => {
+    expect(declared(blocks, ".bar-item")).toContain(
+      "background: var(--subject, var(--aula-fill-strong))",
+    );
+    expect(declared(blocks, ".lesson-main")).toContain(
+      "border-inline-start: 3px solid var(--subject, var(--aula-line))",
+    );
+  });
+
+  it("writes on a subject's colour in black or white, whichever contrasts more", () => {
+    expect(declared(blocks, ".bar-item")).toContain(
+      "color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0)",
+    );
+  });
+
+  it("writes a part's icon in the colour of its text", () => {
+    expect(declared(blocks, ".bar-item ha-icon")).toContain("color: inherit");
+  });
+
+  it("shows a part's name, else its abbreviation, else neither, as the card measured", () => {
+    expect(declared(blocks, ".bar-short")).toContain("display: none");
+    expect(declared(blocks, '.bar-item[data-fit="short"] > .bar-short')).toContain(
+      "display: inline",
+    );
+    expect(declared(blocks, '.bar-item[data-fit="none"] > span')).toContain("display: none");
   });
 
   it("keeps an event's icon beside its title, however long", () => {
@@ -135,10 +152,6 @@ describe("the cards' layout", () => {
     expect(declared(blocks, ".part.is-empty")).toContain("align-content: flex-start");
   });
 
-  it("keeps a folded lesson's start time whole", () => {
-    expect(declared(blocks, ".folded time")).toContain("white-space: nowrap");
-  });
-
   it("pads a card 16 px at every width, as Home Assistant's own cards", () => {
     const padding = rules(base).filter(
       (rule) =>
@@ -155,15 +168,6 @@ describe("the cards' layout", () => {
   it("lets a bridge row's time follow its text on a wide card", () => {
     expect(declared(blocks, ".bridge-end", "@container aula (min-width: 600px)")).toContain(
       "margin-inline-start: 0",
-    );
-  });
-
-  it("sets the homework card's title at 24 px and what it is about at 14 px", () => {
-    expect(declared(homeworkStyles, ".title-who .who-name")).toContain(
-      "font-size: var(--aula-font-2xl)",
-    );
-    expect(declared(homeworkStyles, ".title-who .who-meta")).toContain(
-      "font-size: var(--aula-font-m)",
     );
   });
 

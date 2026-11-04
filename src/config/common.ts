@@ -8,7 +8,7 @@
 
 import { BLOCKS, orderBlocks, type BlockId, type ShowConfig } from "../model/blocks.ts";
 import type { PackRule } from "../model/pack.ts";
-import type { SubjectName } from "../model/subjects.ts";
+import type { MergeMode, SubjectName } from "../model/subjects.ts";
 
 /** The switch time when none is configured: noon, in minutes since midnight. */
 export const DEFAULT_SWITCH = 12 * 60;
@@ -27,7 +27,7 @@ export interface CommonConfig {
   readonly expandAbbreviations: boolean;
   /** The things to bring when a subject is on the timetable. */
   readonly packing: readonly PackRule[];
-  /** Whether the timetable opens folded to its subjects and their start times, or in full. */
+  /** Whether the timetable opens as a bar, or in full. */
   readonly timetable: "compact" | "full";
   /** The lines of a note of the plan shown before "Vis mere"; 0 shows every note whole. */
   readonly infoLines: number;
@@ -194,7 +194,8 @@ function entry(value: unknown, name: string, keys: readonly string[]): Record<st
   if (!isRecord(value)) throw new Error(`${name}: must be a mapping`);
   for (const key of Object.keys(value)) {
     if (!keys.includes(key)) {
-      throw new Error(`${name}: unknown key "${key}"; the keys are ${keys.join(" and ")}`);
+      const named = `${keys.slice(0, -1).join(", ")} and ${String(keys.at(-1))}`;
+      throw new Error(`${name}: unknown key "${key}"; the keys are ${named}`);
     }
   }
   return value;
@@ -232,25 +233,44 @@ export function parsePacking(value: unknown, lenient = false): PackRule[] {
   });
 }
 
+// A colour as a text such as "#e57373", or as the editor's colour picker gives it: [229, 115, 115].
+function color(value: unknown, name: string): string | undefined {
+  if (absent(value)) return undefined;
+  const hex = text(value)?.toLowerCase();
+  if (hex && /^#[0-9a-f]{6}$/.test(hex)) return hex;
+  if (Array.isArray(value) && value.length === 3) {
+    const parts = value.map((part) => (typeof part === "number" ? Math.round(part) : -1));
+    if (parts.every((part) => part >= 0 && part <= 255)) return `rgb(${parts.join(" ")})`;
+  }
+  throw new Error(`${name}.color: must be a colour such as "#e57373"`);
+}
+
+const MERGES: readonly MergeMode[] = ["overlap", "equal", "never"];
+
 /**
- * Reads `subject_names`: lesson titles in Aula, and the names to show for them. `lenient` leaves
- * out a row without either, as the editor has while one is being added.
+ * Reads `subject_names`: lesson titles in Aula, and the name, colour and way of merging to give
+ * them. `lenient` leaves out a row without a title, or with nothing to give it, as the editor has
+ * while one is being added.
  */
 export function parseSubjectNames(value: unknown, lenient = false): SubjectName[] {
   return list(value, "subject_names", "names").flatMap((item, index) => {
     const name = `subject_names[${String(index)}]`;
-    const names = entry(item, name, ["aula", "name"]);
-    const aula = text(names.aula);
-    const shown = text(names.name);
-    if (aula === undefined || shown === undefined) {
+    const row = entry(item, name, ["aula", "name", "color", "merge"]);
+    const aula = text(row.aula);
+    const shown = text(row.name);
+    const given = color(row.color, name);
+    const merge = text(row.merge);
+    if (merge !== undefined && !(MERGES as readonly string[]).includes(merge))
+      throw new Error(`${name}.merge: must be overlap, equal or never`);
+    if (aula === undefined || (shown ?? given ?? merge) === undefined) {
       if (lenient) return [];
       throw new Error(
         aula === undefined
           ? `${name}.aula: must be a lesson title`
-          : `${name}.name: must be a name`,
+          : `${name}: must give a name, a color or how it merges`,
       );
     }
-    return [{ aula, name: shown }];
+    return [{ aula, name: shown, color: given, merge: merge as MergeMode | undefined }];
   });
 }
 

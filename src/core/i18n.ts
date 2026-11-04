@@ -109,7 +109,6 @@ const TEXTS = {
   ],
   // The week plan card
   weekShort: ["week {n}", "uge {n}"],
-  weeksShort: ["weeks {from}–{to}", "uge {from}–{to}"],
   earlierHomework: ["Earlier ({n})", "Tidligere ({n})"],
   weekPlanNotYet: [
     "Week {n}'s plan isn't in Aula yet.",
@@ -157,12 +156,9 @@ const TEXTS = {
   groupByBlock: ["Block", "Blokke"],
   groupByChild: ["Child", "Barn"],
   editorTimetable: ["Timetable view", "Skemaets visning"],
-  editorTimetableHelper: ["Default: compact.", "Standard: kort."],
-  editorTimetableCompact: ["Compact – subjects and start times", "Kort – fag og starttider"],
-  editorTimetableFull: [
-    "Full – end times, rooms and breaks",
-    "Fuldt – sluttider, lokaler og frikvarterer",
-  ],
+  editorTimetableHelper: ["Default: bar.", "Standard: bjælke."],
+  editorTimetableCompact: ["Bar", "Bjælke"],
+  editorTimetableFull: ["List with rooms and teachers", "Liste med lokaler og lærere"],
   editorInfoLines: ["Lines of a note before Show more", "Linjer i en note før Vis mere"],
   editorInfoLinesHelper: [
     "Default: 6. 0 shows every note whole.",
@@ -198,6 +194,11 @@ const TEXTS = {
   editorSubjectNamesList: ["Your names", "Egne navne"],
   editorSubjectAula: ["Name in Aula", "Navn i Aula"],
   editorSubjectName: ["Show as", "Vis som"],
+  editorSubjectColor: ["Colour", "Farve"],
+  editorSubjectMerge: ["Join a lesson at its time", "Læg ind i en lektion på samme tid"],
+  mergeOverlap: ["Where they overlap", "Hvor de overlapper"],
+  mergeEqual: ["At the very same time", "Kun ved præcis samme tid"],
+  mergeNever: ["Never – a row of its own", "Aldrig – egen række"],
 } satisfies Record<string, readonly [english: Text, danish: Text]>;
 
 /** The keys of the cards' texts. */

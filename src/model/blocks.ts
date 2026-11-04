@@ -323,50 +323,6 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
   };
 }
 
-/**
- * Returns the folded timetable: a line for each subject as it comes, from the start of its first
- * lesson to the end of its last, joining only lessons with no break between them, so that the
- * breaks show as gaps between the times. A lesson whose status differs from the one before it
- * has a line of its own, as it is news.
- */
-export function foldTimetable(rows: readonly TimetableRow[]): LessonRow[] {
-  const alike = (a: LessonRow, b: LessonRow): boolean =>
-    a.cancelled === b.cancelled && JSON.stringify(a.status) === JSON.stringify(b.status);
-  const keyOf = (row: LessonRow): string =>
-    [row.subject, ...row.also].map((subject) => subject.key).join("|");
-  // Lessons at the very same time share a line, as a subject and its second teacher.
-  const slots: TimetableRow[] = [];
-  for (const row of rows) {
-    const same =
-      row.kind === "lesson"
-        ? slots.findLastIndex(
-            (slot) =>
-              slot.kind === "lesson" &&
-              slot.block.start === row.block.start &&
-              slot.block.end === row.block.end &&
-              alike(slot, row),
-          )
-        : -1;
-    const slot = slots[same];
-    if (row.kind === "lesson" && slot?.kind === "lesson") {
-      if (!keyOf(slot).split("|").includes(row.subject.key))
-        slots[same] = { ...slot, also: [...slot.also, row.subject] };
-    } else slots.push(row);
-  }
-  const lines: LessonRow[] = [];
-  let before: TimetableRow | undefined;
-  for (const row of slots) {
-    const last = lines[lines.length - 1];
-    if (row.kind === "lesson") {
-      if (before?.kind === "lesson" && last && keyOf(last) === keyOf(row) && alike(last, row))
-        lines[lines.length - 1] = { ...last, block: { ...last.block, end: row.block.end } };
-      else lines.push(row);
-    }
-    before = row;
-  }
-  return lines;
-}
-
 /** Returns what a day's header says: its holidays and birthdays, without a hidden one. */
 export function headerFacts(content: DayContent, blocks: readonly BlockId[]): Fact[] {
   return visibleFacts(content, blocks).filter(
