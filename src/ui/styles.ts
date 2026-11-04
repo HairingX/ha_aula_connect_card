@@ -577,6 +577,7 @@ export const blocks = css`
     min-width: 0;
   }
   .part {
+    container: part / inline-size;
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-2);
@@ -762,6 +763,19 @@ export const blocks = css`
   .folded .lesson {
     align-items: baseline;
   }
+  /* Where a long subject and its times cannot share a line, the times go under every subject. */
+  @container part (max-width: 260px) {
+    .normal .lessons.folded,
+    .normal .folded .lesson {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  @container part (max-width: 340px) {
+    .large .lessons.folded,
+    .large .folded .lesson {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
   .folded time {
     color: var(--aula-text-2);
     white-space: nowrap;
@@ -882,6 +896,7 @@ export const blocks = css`
   /* An event in the timetable: its icon before its title, its time where a lesson's is. */
   .event-row .lesson-head {
     display: flex;
+    flex-wrap: nowrap;
     align-items: baseline;
     gap: var(--aula-space-2);
     --mdc-icon-size: calc(18px * var(--aula-scale));

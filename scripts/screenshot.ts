@@ -419,7 +419,7 @@ const FIRST_SCREEN = 800 - 56;
  * set up or quoted, must be on the first screen, at least 30 px, the day's subjects at least
  * 24 px, and none of them cut short; and the children must stand side by side.
  */
-function glance(arg: { tag: string; screen: number }): string[] {
+function glance(arg: { tag: string; screen: number; packing: boolean }): string[] {
   const root = document.querySelector(arg.tag)?.shadowRoot;
   if (!root) return ["no card"];
   const problems: string[] = [];
@@ -427,9 +427,13 @@ function glance(arg: { tag: string; screen: number }): string[] {
   const size = (element: Element): number => parseFloat(getComputedStyle(element).fontSize);
   const below = (element: Element): number => element.getBoundingClientRect().bottom - top;
   const title = root.querySelector(".hero .title");
+  // Each child apart has a header of its own, its title the first's size.
+  const titles = [...root.querySelectorAll(".hero .title")];
   const largest = Math.max(
     ...[...root.querySelectorAll("*")]
-      .filter((element) => !title?.contains(element) && !element.closest(".sr"))
+      .filter(
+        (element) => !titles.some((each) => each.contains(element)) && !element.closest(".sr"),
+      )
       .filter((element) =>
         [...element.childNodes].some(
           (node) => node.nodeType === 3 && (node.textContent ?? "").trim() !== "",
@@ -450,7 +454,8 @@ function glance(arg: { tag: string; screen: number }): string[] {
       problems.push(`hours of ${String(size(item))} px end ${String(below(item))} px down`);
   }
   const husk = [...root.querySelectorAll('[data-block="pack"] .part')];
-  if (husk.length === 0) problems.push("Husk is not shown");
+  // Husk shows only the things to bring set up, so a card with none has no Husk to show.
+  if (husk.length === 0 && arg.packing) problems.push("Husk is not shown");
   for (const part of husk) {
     const things = [...part.querySelectorAll(".pack-what")];
     const subjects = part.querySelector(".pack-subjects");
@@ -679,7 +684,11 @@ for (const item of shots) {
   const problems = [
     ...((await tab.evaluate(layout, tag)) as string[]),
     ...(item.glance === true
-      ? ((await tab.evaluate(glance, { tag, screen: FIRST_SCREEN })) as string[])
+      ? ((await tab.evaluate(glance, {
+          tag,
+          screen: FIRST_SCREEN,
+          packing: ((item.config?.packing as unknown[] | undefined) ?? PACKING).length > 0,
+        })) as string[])
       : []),
   ];
   if (problems.length > 0) failed.push(`${name(item)}: ${problems.join("; ")}`);

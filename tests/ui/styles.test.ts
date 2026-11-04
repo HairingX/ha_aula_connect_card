@@ -93,6 +93,22 @@ describe("the timetable's button", () => {
   });
 });
 
+describe("the folded timetable", () => {
+  it("puts the times under every subject where a part is too narrow for a long subject beside them", () => {
+    expect(declared(blocks, ".part")).toContain("container: part / inline-size");
+    expect(
+      declared(blocks, ".normal .folded .lesson", "@container part (max-width: 260px)"),
+    ).toContain("grid-template-columns: minmax(0, 1fr)");
+    expect(
+      declared(blocks, ".large .folded .lesson", "@container part (max-width: 340px)"),
+    ).toContain("grid-template-columns: minmax(0, 1fr)");
+  });
+
+  it("keeps an event's icon beside its title, however long", () => {
+    expect(declared(blocks, ".event-row .lesson-head")).toContain("flex-wrap: nowrap");
+  });
+});
+
 describe("what is never cut", () => {
   it("clamps no quote of the week plan, only the plan's notes behind Vis mere", () => {
     const clamped = ALL.flatMap(rules)
