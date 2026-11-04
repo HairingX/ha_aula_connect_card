@@ -325,7 +325,7 @@ describe("the subjects' colours", () => {
     const parts = all(card, ".daybar .bar-item").map((part) => part.getAttribute("style") ?? "");
     expect(parts[0]).toContain("--subject: #0a2a4f");
     expect(parts[1]).toContain("--subject: #e57373");
-    expect(parts[2]).not.toContain("--subject");
+    expect(parts[2]).toContain("--subject: #81c784");
     present(
       card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'),
     ).click();

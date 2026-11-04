@@ -143,7 +143,7 @@ above the children.
 | `group_by`             | school day       | `block`          | `block`: each block holds every child. `child`: each child's whole day apart, in a [column of its own](#several-children).                                                       |
 | `switch_time`          | all              | `"12:00"`        | When the next school day takes over from today. `"00:00"` keeps today all day.                                                                                                   |
 | `size`                 | all              | `normal`         | `large` for a wall screen: text 1.5 times as large, the wall's sizes from a 480 px card, and Husk first.                                                                         |
-| `subject_names`        | all              | none             | [Names](#subject-names) for lesson titles, over the built-in ones.                                                                                                               |
+| `subject_names`        | all              | none             | [Names, colours and merging](#subject-names) for lesson titles, over the built-in ones.                                                                                          |
 | `expand_abbreviations` | all              | `true`           | `false` shows the subjects' abbreviations as Aula has them, in place of the [built-in names](#subject-names).                                                                    |
 | `info_lines`           | all              | `6`              | The lines of a note shown before "Vis mere", 0 to 50; `0` shows every note whole.                                                                                                |
 | `notes`                | week plan        | `tasks`          | `tasks`, `comments` or `all`: what the card shows of the week plan.                                                                                                              |
@@ -226,10 +226,31 @@ subject_names:
     name: KRI
 ```
 
-A subject's `color` paints its part of the bar and its line in the whole timetable, written
-`"#e57373"` or `[229, 115, 115]`; without one it is grey. The text on it is black or white,
-whichever reads better. A colour, and how a subject merges, goes with every name of the subject:
-a colour for `Dansk` also paints the lessons Aula calls `DAN`. The editor's colour picker writes
+A subject's `color` paints its part of the bar and its line in the whole timetable. Every
+built-in subject has one, but "2 lærere", which goes into another lesson; any other subject is
+grey. The text on it is black or white, whichever reads better.
+
+| Subject             | Colour    | Subject                     | Colour    |
+| ------------------- | --------- | --------------------------- | --------- |
+| Dansk               | `#e57373` | Fysik/kemi                  | `#9575cd` |
+| Matematik           | `#64b5f6` | Musik                       | `#ba68c8` |
+| Engelsk             | `#81c784` | Billedkunst                 | `#f06292` |
+| Tysk                | `#ffd54f` | Madkundskab                 | `#dce775` |
+| Fransk              | `#9fa8da` | Håndværk og design          | `#bcaaa4` |
+| Spansk              | `#ff8a65` | Klassens tid                | `#ce93d8` |
+| Idræt               | `#4db6ac` | Understøttende undervisning | `#b0bec5` |
+| Svømning            | `#4dd0e1` | Valgfag                     | `#80cbc4` |
+| Natur/teknologi     | `#aed581` | Børnehaveklasse             | `#ffcc80` |
+| Historie            | `#ffb74d` | Lektiecafé                  | `#fff176` |
+| Kristendomskundskab | `#a1887f` | Teknologiforståelse         | `#5c6bc0` |
+| Samfundsfag         | `#90a4ae` | Geografi                    | `#4fc3f7` |
+| Biologi             | `#66bb6a` |                             |           |
+
+A row in `subject_names` changes only what it gives; the rest stays as built in. Write a colour
+as `"#e57373"` or `[229, 115, 115]`, or write `color:` empty for none. A colour, and how a
+subject merges, goes with every name of the subject: a colour for `Dansk` also paints the lessons
+Aula calls `DAN`, and a subject named anew keeps its colour, as `DAN` named Dans stays red. Rows
+for one subject add up, a later one giving only what it says. The editor's colour picker writes
 the numbers; a card with a colour written `"#e57373"` is edited in YAML.
 
 `merge` says how a lesson goes into another at its time on the bar, as one part naming both:
@@ -239,19 +260,17 @@ the numbers; a card with a colour written `"#e57373"` is edited in YAML.
 - `never`: it keeps a lane of its own.
 
 Only lessons alike go together: a substitute or a cancelled lesson never goes into one as
-planned. The pictures in this README colour ten subjects, these among them; here "2 lærere"
-also goes only into a lesson at the very same time:
+planned. Here Dansk is dark blue, Matematik grey, Skak has a colour of its own, and "2 lærere"
+goes only into a lesson at the very same time:
 
 ```yaml
 subject_names:
   - aula: Dansk
-    color: "#e57373"
+    color: "#1565c0"
   - aula: Matematik
-    color: "#64b5f6"
-  - aula: Engelsk
-    color: "#81c784"
-  - aula: Idræt
-    color: "#4db6ac"
+    color:
+  - aula: Skak
+    color: "#8d6e63"
   - aula: 2Lær
     merge: equal
 ```

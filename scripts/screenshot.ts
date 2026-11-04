@@ -102,20 +102,6 @@ const PACKING = [
   { subject: "Svømning", items: ["Badetøj", "Håndklæde"] },
 ];
 
-// The colours a family would give its subjects.
-const COLORS = [
-  { aula: "Dansk", color: "#e57373" },
-  { aula: "Matematik", color: "#64b5f6" },
-  { aula: "Engelsk", color: "#81c784" },
-  { aula: "Idræt", color: "#4db6ac" },
-  { aula: "Historie", color: "#ffb74d" },
-  { aula: "Natur/teknologi", color: "#aed581" },
-  { aula: "Musik", color: "#ba68c8" },
-  { aula: "Billedkunst", color: "#f06292" },
-  { aula: "Tysk", color: "#ffd54f" },
-  { aula: "Geografi", color: "#4fc3f7" },
-];
-
 // The README's wall screen: the day card, large, with nothing else to set.
 const WALL = { large: true, glance: true } as const;
 
@@ -635,7 +621,6 @@ for (const item of shots) {
       type: `custom:${tag}`,
       children: item.children === 1 ? children.map((child) => child.child_id) : [],
       packing: PACKING,
-      subject_names: COLORS,
       ...(item.large ? { size: "large" } : {}),
       ...item.config,
     },

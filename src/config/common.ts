@@ -234,8 +234,10 @@ export function parsePacking(value: unknown, lenient = false): PackRule[] {
 }
 
 // A colour as a text such as "#e57373", or as the editor's colour picker gives it: [229, 115, 115].
-function color(value: unknown, name: string): string | undefined {
-  if (absent(value)) return undefined;
+// Written but empty, it takes the subject's colour away; left out, it keeps the built-in one.
+function color(value: unknown, name: string): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (absent(value)) return null;
   const hex = text(value)?.toLowerCase();
   if (hex && /^#[0-9a-f]{6}$/.test(hex)) return hex;
   if (Array.isArray(value) && value.length === 3) {
@@ -262,7 +264,7 @@ export function parseSubjectNames(value: unknown, lenient = false): SubjectName[
     const merge = text(row.merge);
     if (merge !== undefined && !(MERGES as readonly string[]).includes(merge))
       throw new Error(`${name}.merge: must be overlap, equal or never`);
-    if (aula === undefined || (shown ?? given ?? merge) === undefined) {
+    if (aula === undefined || (shown === undefined && given === undefined && merge === undefined)) {
       if (lenient) return [];
       throw new Error(
         aula === undefined
