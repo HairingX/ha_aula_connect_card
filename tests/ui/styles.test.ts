@@ -50,7 +50,7 @@ const ALL = [base, blocks, dayStyles, homeworkStyles, weekStyles];
 
 describe("the things to bring", () => {
   it("stand each in its subject's colour, its text black or white, grey without one", () => {
-    expect(declared(blocks, ".pack-item")).toEqual(
+    expect(declared(blocks, ".label.pack-item")).toEqual(
       expect.arrayContaining([
         "background: var(--subject, var(--aula-fill-strong))",
         "color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0)",
@@ -60,6 +60,10 @@ describe("the things to bring", () => {
 });
 
 describe("the wall screen", () => {
+  it("sets what to bring on the wall as large as the rest of its text", () => {
+    expect(declared(blocks, ".large .label.pack-item")).toContain("font-size: var(--aula-font-m)");
+  });
+
   it("sets what to bring and the day's subjects as large as the rest", () => {
     expect(declared(blocks, ".large .pack-what")).toEqual([]);
     expect(declared(blocks, ".large .pack-subjects")).toEqual([]);
