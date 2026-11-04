@@ -212,7 +212,6 @@ function bar(part: Part, ctx: ViewContext): unknown {
     ctx.zone,
     today ? ctx.now : undefined,
   );
-  if (!day) return nothing;
   const span = Math.max(1, day.end - day.start);
   const at = (minute: number): string => `${String(((minute - day.start) / span) * 100)}%`;
   const place = (from: number, to: number): string =>
@@ -220,15 +219,17 @@ function bar(part: Part, ctx: ViewContext): unknown {
   const item = (entry: BarItem): TemplateResult =>
     entry.kind === "lesson"
       ? html`<span
-          class="seg ${entry.row.cancelled ? "cancelled" : ""}"
+          class="bar-item ${entry.row.cancelled ? "cancelled" : ""}"
           style="${place(entry.from, entry.to)}; ${subjectColor(entry.row.subject)}"
           >${entry.row.status ? icon(entry.row.status.kind === "substitute" ? "mdi:account-switch-outline" : "mdi:alert-circle-outline") : nothing}<span
-            class="seg-full"
+            class="bar-name"
             >${aula(entry.row.subject.name, ctx)}</span
-          ><span class="seg-short">${aula(entry.row.subject.short, ctx)}</span></span
+          ><span class="bar-short">${aula(entry.row.subject.short, ctx)}</span></span
         >`
-      : html`<span class="seg ev" style=${place(entry.from, entry.to)}
-          ><span class="seg-full">${aula(entry.event.title, ctx)}</span></span
+      : html`<span class="bar-item ev" style=${place(entry.from, entry.to)}
+          >${icon(eventIcon(entry.event.type))}<span class="bar-name"
+            >${aula(entry.event.title, ctx)}</span
+          ></span
         >`;
   const spoken = (entry: BarItem): string =>
     entry.kind === "lesson"
@@ -247,13 +248,17 @@ function bar(part: Part, ctx: ViewContext): unknown {
         ${day.allDay.map(
           (event) =>
             html`<div class="lane thin">
-              <span class="seg ev all-day" style="left: 0; width: 100%"
-                ><span class="seg-full">${aula(event.title, ctx)}</span></span
+              <span class="bar-item ev all-day" style="left: 0; width: 100%"
+                ><span class="bar-name">${aula(event.title, ctx)}</span></span
               >
             </div>`,
         )}
       </div>
-      <div class="ticks">${time(day.from, ctx)}${time(day.until, ctx)}</div>
+      ${
+        day.from === undefined || day.until === undefined
+          ? nothing
+          : html`<div class="ticks">${time(day.from, ctx)}${time(day.until, ctx)}</div>`
+      }
     </div>
     <ul class="sr">
       ${day.allDay.map((event) => html`<li>${event.title}, ${ctx.t("allDay")}</li>`)}

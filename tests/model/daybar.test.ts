@@ -150,7 +150,7 @@ describe("how a lesson at another's time goes into it", () => {
     };
   };
   const lanes = (rows: TimetableRow[]) =>
-    present(dayBar(rows, [], [], ZONE, undefined)).lanes.map((lane) =>
+    dayBar(rows, [], [], ZONE, undefined).lanes.map((lane) =>
       lane.map((entry) =>
         entry.kind === "lesson"
           ? [entry.row.subject, ...entry.row.also].map((subject) => subject.name).join(", ")
@@ -220,15 +220,18 @@ describe("the day's bar", () => {
   );
 
   it("runs from the first thing of the day to the last, its full hours marked between", () => {
-    const bar = present(dayBar(rows.timetable, rows.timed, [], ZONE, undefined));
+    const bar = dayBar(rows.timetable, rows.timed, [], ZONE, undefined);
     expect([bar.start / 60, bar.end / 60]).toEqual([8, 15.5]);
-    expect([bar.from.slice(11, 16), bar.until.slice(11, 16)]).toEqual(["08:00", "15:30"]);
+    expect([present(bar.from).slice(11, 16), present(bar.until).slice(11, 16)]).toEqual([
+      "08:00",
+      "15:30",
+    ]);
     expect(bar.hours.map((minute) => minute / 60)).toEqual([9, 10, 11, 12, 13, 14, 15]);
     expect(bar.now).toBeUndefined();
   });
 
   it("puts the events with a time in lanes of their own under the lessons", () => {
-    const bar = present(dayBar(rows.timetable, rows.timed, [], ZONE, undefined));
+    const bar = dayBar(rows.timetable, rows.timed, [], ZONE, undefined);
     expect(bar.lanes.map((lane) => lane.map((entry) => entry.kind))).toEqual([
       ["lesson", "lesson", "lesson", "lesson", "lesson"],
       ["event", "event", "event", "event"],
@@ -237,7 +240,7 @@ describe("the day's bar", () => {
 
   it("marks now while it is within the bar", () => {
     const at = (time: string) =>
-      dayBar(rows.timetable, [], [], ZONE, new Date(`2026-10-30T${time}:00+01:00`))?.now;
+      dayBar(rows.timetable, [], [], ZONE, new Date(`2026-10-30T${time}:00+01:00`)).now;
     expect(at("10:00")).toBe(600);
     expect(at("07:00")).toBeUndefined();
   });
@@ -263,7 +266,18 @@ describe("the day's bar", () => {
     expect(bar.end).toBe(13 * 60 + 40);
   });
 
-  it("has nothing to show without lessons or events with a time", () => {
-    expect(dayBar([], [], [], ZONE, undefined)).toBeUndefined();
+  it("has nothing to show without lessons or events, and only lanes with events of the whole day", () => {
+    const [event] = rows.timed;
+    const only = dayBar([], [], [present(event).event], ZONE, undefined);
+    expect([only.lanes, only.hours, only.from, only.until]).toEqual([[], [], undefined, undefined]);
+  });
+
+  it("leaves a lesson whose time cannot be read off the bar's ends", () => {
+    const [first] = rows.timetable;
+    const lesson = present(first);
+    if (lesson.kind !== "lesson") throw new Error("not a lesson");
+    const broken = { ...lesson, block: { ...lesson.block, start: "", end: "" } };
+    const bar = dayBar([...rows.timetable, broken], [], [], ZONE, undefined);
+    expect(bar.start).toBe(8 * 60);
   });
 });

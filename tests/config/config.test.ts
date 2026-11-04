@@ -119,6 +119,10 @@ describe("checking a configuration", () => {
       'subject_names[0].color: must be a colour such as "#e57373"',
     ],
     [
+      { subject_names: [{ aula: "DAN", color: ["a", 2, 3] }] },
+      'subject_names[0].color: must be a colour such as "#e57373"',
+    ],
+    [
       { subject_names: [{ aula: "DAN", color: [1, 2, 300] }] },
       'subject_names[0].color: must be a colour such as "#e57373"',
     ],
@@ -571,6 +575,19 @@ describe("the editor", () => {
     }).toThrow('order[0]: unknown block "lunch"');
     expect(() => {
       weekplanConfigForm().assertConfig({ order: ["lunch"] });
+    }).not.toThrow();
+  });
+
+  it("leaves a colour written as text to YAML, as its colour picker shows [r, g, b] only", () => {
+    const form = dayConfigForm();
+    expect(() => {
+      form.assertConfig({ subject_names: [{ aula: "DAN", color: "#e57373" }] });
+    }).toThrow("subject_names: write a colour as [229, 115, 115] to set it here");
+    expect(() => {
+      form.assertConfig({ subject_names: [{ aula: "DAN", color: [229, 115, 115] }, null] });
+    }).toThrow();
+    expect(() => {
+      form.assertConfig({ subject_names: [{ aula: "DAN", color: [229, 115, 115] }] });
     }).not.toThrow();
   });
 });

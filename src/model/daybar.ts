@@ -40,10 +40,10 @@ export interface DayBar {
   readonly start: number;
   /** Where it ends. */
   readonly end: number;
-  /** When it begins and ends, as the ISO 8601 times of what begins and ends it. */
-  readonly from: string;
-  /** When it ends. */
-  readonly until: string;
+  /** When it begins, as the ISO 8601 time of what begins it; undefined with no time of day. */
+  readonly from: string | undefined;
+  /** When it ends, likewise. */
+  readonly until: string | undefined;
   /** The lanes, the lessons' first, then the events'. */
   readonly lanes: readonly (readonly BarItem[])[];
   /** The events of the whole day, a lane each under the others. */
@@ -105,14 +105,11 @@ export function barLessons(rows: readonly TimetableRow[], zone: string): Lesson[
   }
   // A lesson that joins where it overlaps goes into every lesson it overlaps, once they are known.
   for (const guest of guests) {
-    let hosted = false;
-    kept.forEach((host, index) => {
-      if (host.from < guest.to && guest.from < host.to && alike(host.row, guest.row)) {
-        kept[index] = join(host, guest.row);
-        hosted = true;
-      }
-    });
-    if (!hosted) kept.push(guest);
+    const hosts = kept.filter(
+      (host) => host.from < guest.to && guest.from < host.to && alike(host.row, guest.row),
+    );
+    if (hosts.length === 0) kept.push(guest);
+    for (const host of hosts) kept[kept.indexOf(host)] = join(host, guest.row);
   }
   const joined: Lesson[] = [];
   for (const item of kept.sort((a, b) => a.from - b.from)) {
@@ -135,17 +132,20 @@ export function barLessons(rows: readonly TimetableRow[], zone: string): Lesson[
 // Each item in the first lane where the one before it has ended.
 function lanes<Item extends BarItem>(items: readonly Item[]): Item[][] {
   const result: Item[][] = [];
+  const ends: number[] = [];
   for (const item of [...items].sort((a, b) => a.from - b.from)) {
-    const lane = result.find((each) => (each.at(-1)?.to ?? 0) <= item.from);
+    const index = ends.findIndex((end) => end <= item.from);
+    const lane = result[index];
     if (lane) lane.push(item);
     else result.push([item]);
+    ends[index < 0 ? result.length - 1 : index] = item.to;
   }
   return result;
 }
 
 /**
- * Builds a day's bar, from its lessons and its events; undefined when it has neither lessons nor
- * events with a time.
+ * Builds a day's bar from its lessons and events; one with no time of day, its ends undefined,
+ * when it has only events lasting the whole day.
  */
 export function dayBar(
   rows: readonly TimetableRow[],
@@ -153,7 +153,7 @@ export function dayBar(
   allDay: readonly CalendarEvent[],
   zone: string,
   now: Date | undefined,
-): DayBar | undefined {
+): DayBar {
   const lessons = barLessons(rows, zone);
   const events = timed.map(({ event, span }): Extract<BarItem, { kind: "event" }> => ({
     kind: "event",
@@ -174,11 +174,11 @@ export function dayBar(
   ]
     .filter(([minute]) => minute > 0 && minute < DAY)
     .sort((a, b) => a[0] - b[0]);
+  // A day of events lasting the whole of it only has their lanes.
   const first = marks[0];
   const last = marks.at(-1);
-  if (!first || !last) return undefined;
-  const [start, from] = first;
-  const [end, until] = last;
+  const start = first?.[0] ?? 0;
+  const end = last?.[0] ?? DAY;
   const clamp = (item: BarItem): BarItem => ({
     ...item,
     from: Math.max(start, item.from),
@@ -186,12 +186,13 @@ export function dayBar(
   });
   const minute = now && localTime(now, zone).minute;
   const hours: number[] = [];
-  for (let hour = Math.floor(start / 60) + 1; hour * 60 < end; hour++) hours.push(hour * 60);
+  if (first)
+    for (let hour = Math.floor(start / 60) + 1; hour * 60 < end; hour++) hours.push(hour * 60);
   return {
     start,
     end,
-    from,
-    until,
+    from: first?.[1],
+    until: last?.[1],
     lanes: [...lanes(lessons), ...lanes(events.map(clamp))],
     allDay,
     hours,

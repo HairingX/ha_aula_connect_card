@@ -75,7 +75,7 @@ const BUILT_IN = new Map<string, string>(
 
 // A subject's first abbreviation, by the key of its name.
 const ABBREVIATION = new Map<string, string>(
-  ROWS.flatMap(([name = "", first]) => (first ? [[subjectKey(name), first] as const] : [])),
+  ROWS.map(([name = "", first = name]) => [subjectKey(name), first] as const),
 );
 
 // A second teacher only ever joins another lesson, wherever the two overlap.

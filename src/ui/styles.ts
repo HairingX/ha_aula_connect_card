@@ -768,13 +768,14 @@ export const blocks = css`
   .lane.thin {
     height: calc(18px * var(--aula-scale));
   }
-  .seg {
+  .bar-item {
     position: absolute;
     top: 0;
     bottom: 0;
     display: flex;
     align-items: center;
     gap: 2px;
+    box-sizing: border-box;
     padding: 0 var(--aula-space-1);
     overflow: hidden;
     white-space: nowrap;
@@ -786,27 +787,27 @@ export const blocks = css`
     --mdc-icon-size: 1em;
   }
   /* Its name where it has room, else its abbreviation, else its colour alone. */
-  .seg-short,
-  .seg[data-fit="short"] > .seg-full,
-  .seg[data-fit="none"] > span {
+  .bar-short,
+  .bar-item[data-fit="short"] > .bar-name,
+  .bar-item[data-fit="none"] > span {
     display: none;
   }
-  .seg[data-fit="short"] > .seg-short {
+  .bar-item[data-fit="short"] > .bar-short {
     display: inline;
   }
-  .seg.cancelled {
+  .bar-item.cancelled {
     background: none;
     box-shadow: inset 0 0 0 2px var(--subject, var(--aula-fill-strong));
     color: var(--aula-text-2);
     text-decoration: line-through;
   }
-  .seg.ev {
+  .bar-item.ev {
     background: none;
     box-shadow: inset 0 0 0 1px var(--aula-text-2);
     color: var(--aula-text);
     font-weight: var(--aula-normal);
   }
-  .seg.all-day {
+  .bar-item.all-day {
     background: repeating-linear-gradient(
       135deg,
       var(--aula-fill-strong) 0 6px,

@@ -118,7 +118,7 @@ describe("the school day card", () => {
     expect(texts(card, ".strip .kid-name")).toEqual(["Ida", "Oskar"]);
     expect(texts(card, '[data-block="task"] .part-who span:last-child')).toEqual(["Ida", "Oskar"]);
     expect(texts(card, '[data-block="task"] .empty')).toEqual(["Intet i ugeplanen."]);
-    expect(texts(card, ".lesson.cancelled .subject")).toEqual(["Klassens tid"]);
+    expect(texts(card, ".daybar .bar-item.cancelled .bar-name")).toEqual(["Klassens tid"]);
   });
 
   it("says birthdays in the header as words with icons, and events in the timetable", async () => {
@@ -127,7 +127,9 @@ describe("the school day card", () => {
     expect(all(card, ".hero .fact")).toHaveLength(1);
     expect(text(card, ".hero-text > .hours")).toBe("08.00–13.40");
     expect(texts(card, ".hero .facts > li")).toEqual(["Alma har fødselsdag"]);
-    expect(texts(card, '[data-block="timetable"] .event-text')).toEqual(["Skolefoto"]);
+    expect(texts(card, '[data-block="timetable"] .daybar .bar-item.ev .bar-name')).toEqual([
+      "Skolefoto",
+    ]);
     expect(all(card, '[data-block="events"], [data-block="birthdays"]')).toEqual([]);
   });
 
@@ -146,7 +148,9 @@ describe("the school day card", () => {
   it("puts a day's events in the timetable when it has no lessons, as a calendar does", async () => {
     const { card } = await mount(DAY, "motionsdag", { config: { children: [1001] } });
     expect(texts(card, ".block .empty")).toEqual(["Intet i ugeplanen."]);
-    expect(texts(card, '[data-block="timetable"] .event-text')).toEqual(["Motionsdag"]);
+    expect(texts(card, '[data-block="timetable"] .daybar .bar-item.ev .bar-name')).toEqual([
+      "Motionsdag",
+    ]);
   });
 
   it("names the weekdays passed over in one row, and counts the days that do not fit", async () => {
@@ -248,8 +252,8 @@ describe("the school day card", () => {
     });
     expect(text(card, ".above")).toContain("Lejrskole i Thy 8:00 AM →");
     expect(all(card, ".hero .fact")).toEqual([]);
-    expect(texts(card, '[data-block="timetable"] .event-text')).toEqual([
-      "Lejrskole i ThyThy Lejren",
+    expect(texts(card, '[data-block="timetable"] .daybar .bar-item.all-day .bar-name')).toEqual([
+      "Lejrskole i Thy",
     ]);
   });
 
@@ -278,7 +282,8 @@ describe("abbreviations", () => {
         packing: [{ subject: "Idræt", items: ["Idrætstøj"] }],
       },
     });
-    expect(texts(card, ".lessons.folded .subject")).toEqual(["IDR", "DAN", "ENG"]);
+    expect(texts(card, ".daybar .bar-short")).toEqual(["IDR", "DAN", "ENG"]);
+    expect(texts(card, ".daybar .bar-name")).toEqual(["IDR", "DAN", "ENG"]);
     expect(texts(card, ".pack-item")).toEqual(["Idrætstøj"]);
     expect(texts(card, ".pack-source")).toEqual(["IDR"]);
   });
@@ -306,8 +311,31 @@ describe("the school day card grouped by child", () => {
   });
 });
 
+describe("the subjects' colours", () => {
+  it("colour a subject's part of the bar and its line of the whole timetable, its text readable", async () => {
+    const { card } = await mount(DAY, "thu-1010", {
+      config: {
+        children: [1001],
+        subject_names: [
+          { aula: "Dansk", color: "#e57373" },
+          { aula: "IDR", color: "#0a2a4f" },
+        ],
+      },
+    });
+    const parts = all(card, ".daybar .bar-item").map((part) => part.getAttribute("style") ?? "");
+    expect(parts[0]).toContain("--subject: #0a2a4f; --on: #fff");
+    expect(parts[1]).toContain("--subject: #e57373; --on: #000");
+    expect(parts[2]).not.toContain("--subject");
+    present(
+      card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'),
+    ).click();
+    await card.updateComplete;
+    expect(all(card, ".lessons .lesson")[1]?.getAttribute("style")).toContain("--subject: #e57373");
+  });
+});
+
 describe("lessons at the very same time", () => {
-  it("share a line in the folded timetable, and keep their own in the whole one", async () => {
+  it("share a part of the bar, and keep their own lines in the whole timetable", async () => {
     const { card } = await mount(DAY, "thu-1010", {
       config: { children: [1001] },
       ...changed("thu-1010", (data) => ({
@@ -319,13 +347,12 @@ describe("lessons at the very same time", () => {
         ),
       })),
     });
-    const subjects = all(card, ".lessons.folded .subject");
-    expect(subjects.map((subject) => subject.textContent)).toEqual([
-      "Idræt, 2 lærere",
-      "Dansk, 2 lærere",
-      "Engelsk, 2 lærere",
+    expect(texts(card, ".daybar .bar-name")).toEqual(["Idræt", "Dansk", "Engelsk"]);
+    expect(texts(card, ".daybar + .sr li")).toEqual([
+      "Idræt, 2 lærere 08.00–09.30",
+      "Dansk, 2 lærere 10.05–11.35",
+      "Engelsk, 2 lærere 12.10–12.55",
     ]);
-    expect(subjects[1]?.getAttribute("title")).toBe("DAN, 2Lær");
     present(
       card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'),
     ).click();
@@ -424,6 +451,10 @@ describe("the school day card's blocks", () => {
         ],
       })),
     });
+    present(
+      card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'),
+    ).click();
+    await card.updateComplete;
     expect(text(card, '[data-block="timetable"] .event-place')).toBe("Kantinen");
     expect(texts(card, '[data-block="timetable"] .event-text')).toContain("HøstfestKantinen");
   });
@@ -647,7 +678,9 @@ describe("the week card", () => {
     expect(texts(card, ".weekend-title")).toEqual(["Lørdag 31. okt.", "Søndag 1. nov."]);
     const days = all(card, ".weekend-day");
     expect(
-      days.map((day) => day.querySelector('[data-block="timetable"] .event-text')?.textContent),
+      days.map(
+        (day) => day.querySelector('[data-block="timetable"] .bar-item.all-day')?.textContent,
+      ),
     ).toEqual(["Spejdertur", "Spejdertur"]);
     expect(spokenOf(present(days[0]), ".facts")).toBe("Karl har fødselsdag");
     expect(days[1]?.querySelector(".facts")).toBeNull();
@@ -742,38 +775,57 @@ describe("the folded day", () => {
   const button = (card: Card): HTMLButtonElement =>
     present(card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'));
 
-  it("folds the timetable to each subject's start and end, keeping what is news", async () => {
+  it("shows the timetable as a bar of its subjects, keeping what is news", async () => {
     const { card } = await mount(DAY, "thu-0715", { config: { children: [1001] } });
-    expect(texts(card, ".lessons.folded .lesson")).toEqual([
+    expect(texts(card, ".daybar .bar-name")).toEqual(["Idræt", "Dansk", "Engelsk"]);
+    expect(all(card, ".daybar .bar-item ha-icon").map((item) => item.getAttribute("icon"))).toEqual(
+      ["mdi:account-switch-outline"],
+    );
+    expect(texts(card, ".daybar .ticks time")).toEqual(["08.00", "12.55"]);
+    expect(texts(card, ".daybar + .sr li")).toEqual([
       "Idræt 08.00–09.30",
       "Dansk 10.05–11.35",
-      "Engelsk Vikar 12.10–12.55",
+      "Engelsk 12.10–12.55",
     ]);
-    expect(all(card, '[data-block="timetable"] .break, [data-block="timetable"] .end')).toEqual([]);
+    expect(all(card, '[data-block="timetable"] .break')).toEqual([]);
     expect(text(card, '[data-block="timetable"] .more')).toBe("Vis hele skemaet");
   });
 
-  it("strikes a cancelled lesson through when folded, with its label", async () => {
+  it("outlines a cancelled lesson on the bar, and marks one with other news", async () => {
     const { card } = await mount(DAY, "thu-1930", { config: { children: [1002] } });
-    expect(texts(card, ".lessons.folded .lesson.cancelled")).toEqual([
-      "Klassens tid Aflyst 13.45–14.30",
-    ]);
+    expect(texts(card, ".daybar .bar-item.cancelled .bar-name")).toEqual(["Klassens tid"]);
+    unmountAll();
+    const { card: stress } = await mount(DAY, "thu-1930-stress", { config: { children: [1001] } });
+    expect(
+      all(stress, ".daybar .bar-item ha-icon").map((item) => item.getAttribute("icon")),
+    ).toEqual(["mdi:account-switch-outline", "mdi:alert-circle-outline"]);
   });
 
-  it("sets a folded lesson's label beside its subject, where a long one has the room to wrap", async () => {
-    const { card } = await mount(DAY, "thu-1930-stress", { config: { children: [1001] } });
-    expect(texts(card, ".lessons.folded .lesson-head .label")).toEqual([
-      "Vikar",
-      "Flyttet til lokale 117 pga. vandskade",
-    ]);
-    expect(all(card, ".lessons.folded .lesson > .span")).toHaveLength(3);
+  it("names a part of the bar where it has room, else abbreviates it, else gives its colour alone", async () => {
+    // Idræt fits, Dansk only as DAN, and Engelsk not even so.
+    const room: Record<string, Record<string, number>> = {
+      Idræt: { full: 40 },
+      Dansk: { full: 90, short: 40 },
+      Engelsk: { full: 90, short: 90, none: 0 },
+    };
+    vi.spyOn(Element.prototype, "scrollWidth", "get").mockImplementation(function (this: Element) {
+      const fit = (this as HTMLElement).dataset.fit ?? "full";
+      return room[this.querySelector(".bar-name")?.textContent ?? ""]?.[fit] ?? 0;
+    });
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(50);
+    const { card } = await mount(DAY, "thu-0715", { config: { children: [1001] } });
+    await card.updateComplete;
+    expect(all(card, ".daybar .bar-item").map((part) => (part as HTMLElement).dataset.fit)).toEqual(
+      ["full", "short", "none"],
+    );
+    vi.restoreAllMocks();
   });
 
   it("unfolds the whole timetable on a tap, and folds it again", async () => {
     const { card } = await mount(DAY, "thu-0715", { config: { children: [1001] } });
     button(card).click();
     await card.updateComplete;
-    expect(all(card, ".lessons.folded")).toEqual([]);
+    expect(all(card, ".daybar")).toEqual([]);
     expect(texts(card, '[data-block="timetable"] .break')).toEqual([
       "Frikvarter · 35 min",
       "Frikvarter · 35 min",
@@ -782,17 +834,17 @@ describe("the folded day", () => {
     expect(text(card, '[data-block="timetable"] .more')).toBe("Vis mindre");
     button(card).click();
     await card.updateComplete;
-    expect(all(card, ".lessons.folded")).toHaveLength(1);
+    expect(all(card, ".daybar")).toHaveLength(1);
   });
 
   it("opens the timetable in full with timetable: full, still to be folded", async () => {
     const { card } = await mount(DAY, "thu-0715", {
       config: { children: [1001], timetable: "full" },
     });
-    expect(all(card, ".lessons.folded")).toEqual([]);
+    expect(all(card, ".daybar")).toEqual([]);
     button(card).click();
     await card.updateComplete;
-    expect(all(card, ".lessons.folded")).toHaveLength(1);
+    expect(all(card, ".daybar")).toHaveLength(1);
   });
 
   it("unfolds one timetable for every child of the block", async () => {
@@ -800,7 +852,7 @@ describe("the folded day", () => {
     expect(all(card, '[data-block="timetable"] .more')).toHaveLength(1);
     button(card).click();
     await card.updateComplete;
-    expect(all(card, ".lessons.folded")).toEqual([]);
+    expect(all(card, ".daybar")).toEqual([]);
     expect(all(card, '[data-block="timetable"] .lessons')).toHaveLength(2);
   });
 
@@ -810,7 +862,7 @@ describe("the folded day", () => {
     await card.updateComplete;
     await vi.advanceTimersByTimeAsync(IDLE_RESET_MS + 60_000);
     await card.updateComplete;
-    expect(all(card, ".lessons.folded")).toHaveLength(1);
+    expect(all(card, ".daybar")).toHaveLength(1);
   });
 
   it("folds each note of the plan after the configured lines, or never with 0", async () => {
@@ -829,11 +881,7 @@ describe("the folded day", () => {
 
   it("folds the week card's open day as the day card's", async () => {
     const { card } = await mount(WEEK, "thu-0715", { config: { children: [1001] } });
-    expect(texts(card, ".focus-day .lessons.folded .lesson")).toEqual([
-      "Idræt 08.00–09.30",
-      "Dansk 10.05–11.35",
-      "Engelsk Vikar 12.10–12.55",
-    ]);
+    expect(texts(card, ".focus-day .daybar .bar-name")).toEqual(["Idræt", "Dansk", "Engelsk"]);
   });
 
   it("names the child on every part of a block, in columns too", async () => {
@@ -1090,7 +1138,7 @@ describe("rarer days", () => {
 describe("several events and birthdays", () => {
   const facts = (card: Card, selector = ".hero .facts > li"): string[] => texts(card, selector);
   const events = (card: Card, scope = ""): string[] =>
-    texts(card, `${scope} [data-block="timetable"] .event-row .event-text`);
+    texts(card, `${scope} [data-block="timetable"] .daybar .bar-item.ev .bar-name`);
 
   it("give the hours a line of their own and the birthdays one, and the events the timetable", async () => {
     const { card } = await mount(DAY, "thu-1930-events3", { config: { children: [1001] } });
@@ -1198,7 +1246,7 @@ describe("several events and birthdays", () => {
         ],
       })),
     });
-    expect(texts(card, '[data-block="timetable"] .event-row.all-day .event-text')).toContain(
+    expect(texts(card, '[data-block="timetable"] .daybar .bar-item.all-day .bar-name')).toContain(
       "Lejrskole",
     );
   });
@@ -1261,7 +1309,7 @@ describe("several events and birthdays", () => {
     expect(all(card, `${friday} .day-body .blocks`)).toHaveLength(0);
   });
 
-  it("put an event that began the day before first, before the lessons", async () => {
+  it("let an event that began the day before reach the bar's start", async () => {
     const { card } = await mount(DAY, "thu-1930", {
       config: { children: [1001] },
       ...changed("thu-1930", (data) => ({
@@ -1280,7 +1328,14 @@ describe("several events and birthdays", () => {
         ],
       })),
     });
-    expect(texts(card, '[data-block="timetable"] li').at(0)).toContain("Overnatning");
+    const night = present(card.shadowRoot?.querySelector<HTMLElement>(".daybar .bar-item.ev"));
+    expect(night.textContent).toBe("Overnatning");
+    expect(night.getAttribute("style")).toMatch(/^left: 0%/);
+    present(
+      card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'),
+    ).click();
+    await card.updateComplete;
+    expect(texts(card, '[data-block="timetable"] .lessons > li').at(0)).toContain("Overnatning");
   });
 
   it("give an event its time in a column of its own in the whole timetable", async () => {
@@ -1294,9 +1349,11 @@ describe("several events and birthdays", () => {
     ).toHaveLength(4);
   });
 
-  it("put timed events in the timetable among the lessons, by when they begin", async () => {
+  it("put timed events on lanes of their own under the lessons", async () => {
     const { card } = await mount(DAY, "thu-1930-timed4", { config: { children: [1001] } });
-    expect(all(card, '[data-block="timetable"] .event-row:not(.all-day)')).toHaveLength(4);
+    expect(all(card, '[data-block="timetable"] .daybar .bar-item.ev:not(.all-day)')).toHaveLength(
+      4,
+    );
   });
 });
 
