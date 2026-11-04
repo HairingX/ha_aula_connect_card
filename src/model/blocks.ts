@@ -76,6 +76,8 @@ export interface LessonRow {
   readonly block: LessonBlock;
   /** Their subject, named. */
   readonly subject: SubjectLabel;
+  /** The subjects of other lessons at the very same time, such as a second teacher's. */
+  readonly also: readonly SubjectLabel[];
   /** Where the lessons are in time; undefined on a day that is not today. */
   readonly time: LessonTime | undefined;
   /** A change Aula reports, such as a substitute. */
@@ -204,6 +206,7 @@ export function dayContent(
           kind: "lesson",
           block: entry.block,
           subject: namer(entry.block.lesson.title),
+          also: [],
           time: isToday ? lessonTime(entry.block, now) : undefined,
           status: status(entry.block.lesson.status),
           cancelled: isCancelled(entry.block.lesson),
@@ -327,17 +330,35 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
  * has a line of its own, as it is news.
  */
 export function foldTimetable(rows: readonly TimetableRow[]): LessonRow[] {
+  const alike = (a: LessonRow, b: LessonRow): boolean =>
+    a.cancelled === b.cancelled && JSON.stringify(a.status) === JSON.stringify(b.status);
+  const keyOf = (row: LessonRow): string =>
+    [row.subject, ...row.also].map((subject) => subject.key).join("|");
+  // Lessons at the very same time share a line, as a subject and its second teacher.
+  const slots: TimetableRow[] = [];
+  for (const row of rows) {
+    const same =
+      row.kind === "lesson"
+        ? slots.findLastIndex(
+            (slot) =>
+              slot.kind === "lesson" &&
+              slot.block.start === row.block.start &&
+              slot.block.end === row.block.end &&
+              alike(slot, row),
+          )
+        : -1;
+    const slot = slots[same];
+    if (row.kind === "lesson" && slot?.kind === "lesson") {
+      if (!keyOf(slot).split("|").includes(row.subject.key))
+        slots[same] = { ...slot, also: [...slot.also, row.subject] };
+    } else slots.push(row);
+  }
   const lines: LessonRow[] = [];
   let before: TimetableRow | undefined;
-  for (const row of rows) {
+  for (const row of slots) {
     const last = lines[lines.length - 1];
     if (row.kind === "lesson") {
-      const joins =
-        before?.kind === "lesson" &&
-        last?.subject.key === row.subject.key &&
-        last.cancelled === row.cancelled &&
-        JSON.stringify(last.status) === JSON.stringify(row.status);
-      if (joins)
+      if (before?.kind === "lesson" && last && keyOf(last) === keyOf(row) && alike(last, row))
         lines[lines.length - 1] = { ...last, block: { ...last.block, end: row.block.end } };
       else lines.push(row);
     }

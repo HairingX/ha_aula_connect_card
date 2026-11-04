@@ -85,6 +85,14 @@ describe("the week card's rows", () => {
   });
 });
 
+describe("the timetable's button", () => {
+  it("sits as close under the timetable as a line of it, its target reaching up behind", () => {
+    expect(declared(blocks, ".cols + .more")).toContain(
+      "margin-top: calc(-1 * var(--aula-space-3))",
+    );
+  });
+});
+
 describe("what is never cut", () => {
   it("clamps no quote of the week plan, only the plan's notes behind Vis mere", () => {
     const clamped = ALL.flatMap(rules)

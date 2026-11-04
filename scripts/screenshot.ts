@@ -269,6 +269,7 @@ const SETS: Record<string, () => Shot[]> = {
     shot("day", "thu-1930-events5", 380, { click: ".hero .facts .more", tag: "facts-open" }),
     shot("week", "thu-1930-events5", 380),
     shot("day", "thu-1930-timed4", 380),
+    shot("day", "thu-1930-two-teachers", 380),
     shot("day", "thu-1930-longplan", 380),
     shot("day", "thu-1930-longplan", 380, { click: ".plan .more", tag: "plan-open" }),
     shot("week", "thu-1930-satlesson", 380),

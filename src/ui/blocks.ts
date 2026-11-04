@@ -176,7 +176,9 @@ function statusLabel(status: LessonStatus | undefined, ctx: ViewContext): unknow
 }
 
 function subjectName(row: LessonRow, ctx: ViewContext): TemplateResult {
-  const { name, raw } = row.subject;
+  const subjects = [row.subject, ...row.also];
+  const name = subjects.map((subject) => subject.name).join(", ");
+  const raw = subjects.map((subject) => subject.raw).join(", ");
   return html`<span class="subject" title=${name === raw ? nothing : raw}
     >${aula(name, ctx)}</span
   >`;

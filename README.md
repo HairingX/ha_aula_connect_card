@@ -78,7 +78,8 @@ always as it should be.
     marked "Hele dagen", then the lessons and the events with a time in the order they begin,
     each event with its icon and its place under it. Folded, a lesson is a line with its start
     and end - "Dansk 08.45–09.30" - and lessons of one subject with no break between them are
-    one line, so the breaks show; a substitute or a cancelled lesson has a line of its own. The
+    one line, so the breaks show. Lessons at the very same time share a line, as a subject and its
+    second teacher: "Dansk, 2 lærere 08.00–09.30". A substitute or a cancelled lesson has a line of its own. The
     timetable is never cut short: "Vis hele skemaet" adds rooms, teachers, breaks and the lesson
     going on now.
   - **Noter** (notes): the week plan's other notes for the day, in a quieter column; each folds
@@ -201,7 +202,7 @@ Engelsk, Musik".
 
 Aula's timetable often has abbreviations where the week plan has names. The cards write the
 common ones out - `DAN` Dansk, `MAT` Matematik, `IDR` Idræt, `N/T` Natur/teknologi, `UUV`
-Understøttende undervisning, `BHK` Børnehaveklasse, and more - and compare subjects by them.
+Understøttende undervisning, `BHK` Børnehaveklasse, `2Lær` 2 lærere, and more - and compare subjects by them.
 Correct or add names, or keep an abbreviation as it is by naming it itself; at a dance school,
 `DAN` is Dans:
 
