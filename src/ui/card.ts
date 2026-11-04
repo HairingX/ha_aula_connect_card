@@ -273,6 +273,16 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
         this.requestUpdate();
       });
     }
+    // A part of the day's bar names its subject where the name has room, else its abbreviation.
+    for (const bar of this.renderRoot.querySelectorAll<HTMLElement>(".daybar")) {
+      this.#resized?.observe(bar);
+      for (const part of bar.querySelectorAll<HTMLElement>(".seg")) {
+        for (const fit of ["full", "short", "none"]) {
+          part.dataset.fit = fit;
+          if (part.scrollWidth <= part.clientWidth + 1) break;
+        }
+      }
+    }
     for (const text of this.renderRoot.querySelectorAll<HTMLElement>(".clamp[data-cut]")) {
       this.#resized?.observe(text);
       const key = String(text.dataset.cut);

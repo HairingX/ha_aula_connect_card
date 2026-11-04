@@ -287,7 +287,21 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
                     select: { mode: "dropdown", custom_value: true, options: knownLessonTitles() },
                   },
                 },
-                name: { label: t("editorSubjectName"), required: true, selector: { text: {} } },
+                name: { label: t("editorSubjectName"), selector: { text: {} } },
+                color: { label: t("editorSubjectColor"), selector: { color_rgb: {} } },
+                merge: {
+                  label: t("editorSubjectMerge"),
+                  selector: {
+                    select: {
+                      mode: "dropdown",
+                      options: [
+                        { value: "overlap", label: t("mergeOverlap") },
+                        { value: "equal", label: t("mergeEqual") },
+                        { value: "never", label: t("mergeNever") },
+                      ],
+                    },
+                  },
+                },
               },
             },
           },
@@ -301,6 +315,11 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
 function assertShown(raw: Record<string, unknown>): void {
   if (typeof raw.switch_time === "number" || /^\s*\d+\s*$/.test(String(raw.switch_time))) {
     throw new Error('switch_time: write the time as "12:00" to set it here');
+  }
+  // The colour picker shows a colour given as [r, g, b] only.
+  const names = Array.isArray(raw.subject_names) ? (raw.subject_names as unknown[]) : [];
+  if (names.some((row) => typeof (row as { color?: unknown } | null)?.color === "string")) {
+    throw new Error("subject_names: write a colour as [229, 115, 115] to set it here");
   }
 }
 

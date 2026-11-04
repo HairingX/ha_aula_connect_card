@@ -6,12 +6,19 @@
  * @packageDocumentation
  */
 
-/** A name given in the configuration to a lesson title as Aula has it. */
+/** How a lesson at the time of another goes into it: where they overlap, at the same time, or never. */
+export type MergeMode = "overlap" | "equal" | "never";
+
+/** What the configuration gives a lesson title as Aula has it: a name, a colour, how it merges. */
 export interface SubjectName {
   /** The lesson's title in Aula, such as "UUV". */
   readonly aula: string;
   /** The name to show, such as "Bevægelse"; the title itself turns writing it out off. */
-  readonly name: string;
+  readonly name?: string | undefined;
+  /** The subject's colour, as "#rrggbb", for every title of the subject. */
+  readonly color?: string | undefined;
+  /** How the subject's lessons go into another lesson at their time. */
+  readonly merge?: MergeMode | undefined;
 }
 
 /**
@@ -47,16 +54,32 @@ export interface SubjectLabel {
   readonly raw: string;
   /** The key of `name`: the same for every name of one subject. */
   readonly key: string;
+  /** A short name, where the name has no room: Aula's own abbreviation or the built-in one. */
+  readonly short: string;
+  /** The colour configured for the subject, as "#rrggbb". */
+  readonly color: string | undefined;
+  /** How its lessons go into another lesson at their time: a second teacher's where they overlap. */
+  readonly merge: MergeMode;
 }
 
 /** Returns a subject's label from the text Aula or the week plan has for it. */
 export type SubjectNamer = (raw: string) => SubjectLabel;
 
+const ROWS = DANISH_SUBJECTS.split(";").map((row) => row.split(","));
+
 const BUILT_IN = new Map<string, string>(
-  DANISH_SUBJECTS.split(";").flatMap((row) =>
-    row.split(",").map((alias) => [subjectKey(alias), row.replace(/,.*/, "")] as const),
+  ROWS.flatMap(([name = "", ...aliases]) =>
+    [name, ...aliases].map((alias) => [subjectKey(alias), name] as const),
   ),
 );
+
+// A subject's first abbreviation, by the key of its name.
+const ABBREVIATION = new Map<string, string>(
+  ROWS.flatMap(([name = "", first]) => (first ? [[subjectKey(name), first] as const] : [])),
+);
+
+// A second teacher only ever joins another lesson, wherever the two overlap.
+const SUPPORT = new Set([subjectKey("2 lærere")]);
 
 /**
  * Returns a namer: the configured names first, then the built-in Danish ones unless `expand` is
@@ -65,17 +88,35 @@ const BUILT_IN = new Map<string, string>(
  * "Idræt" are one subject whether written out or not.
  */
 export function subjectNamer(overrides: readonly SubjectName[], expand = true): SubjectNamer {
-  const configured = new Map(overrides.map((item) => [subjectKey(item.aula), item.name.trim()]));
+  const configured = new Map(
+    overrides.flatMap((item) => (item.name ? [[subjectKey(item.aula), item.name.trim()]] : [])),
+  );
+  // The class is the child's own, so its marker says nothing; Aula's title stays the tooltip.
+  const known = (raw: string): string =>
+    configured.get(subjectKey(raw)) ??
+    BUILT_IN.get(subjectKey(raw)) ??
+    raw.trim().replace(CLASS_MARKER, "");
+  // A colour or a way to merge is the subject's, whichever of its titles it was given for.
+  const bySubject = new Map(overrides.map((item) => [subjectKey(known(item.aula)), item]));
   const named = new Map<string, SubjectLabel>();
   return (raw) => {
     let label = named.get(raw);
     if (!label) {
-      const key = subjectKey(raw);
-      // The class is the child's own, so its marker says nothing; Aula's title stays the tooltip.
-      const own = configured.get(key);
+      const own = configured.get(subjectKey(raw));
       const plain = raw.trim().replace(CLASS_MARKER, "");
-      const known = own ?? BUILT_IN.get(key) ?? plain;
-      label = { name: expand ? known : (own ?? plain), raw, key: subjectKey(known) };
+      const full = known(raw);
+      const key = subjectKey(full);
+      const name = expand ? full : (own ?? plain);
+      const given = bySubject.get(key);
+      label = {
+        name,
+        raw,
+        key,
+        short:
+          plain !== name && plain.length <= 4 ? plain : (ABBREVIATION.get(key) ?? name.slice(0, 3)),
+        color: given?.color,
+        merge: given?.merge ?? (SUPPORT.has(key) ? "overlap" : "equal"),
+      };
       named.set(raw, label);
     }
     return label;

@@ -104,11 +104,48 @@ describe("checking a configuration", () => {
       { packing: [{ subject: "Idræt", item: "Tøj" }] },
       'packing[0]: unknown key "item"; the keys are subject and items',
     ],
-    [{ subject_names: [{ aula: "UUV" }] }, "subject_names[0].name: must be a name"],
+    [
+      { subject_names: [{ aula: "UUV" }] },
+      "subject_names[0]: must give a name, a color or how it merges",
+    ],
     [{ expand_abbreviations: "no" }, "expand_abbreviations: must be true or false"],
     [{ subject_names: [{ name: "Bevægelse" }] }, "subject_names[0].aula: must be a lesson title"],
+    [
+      { subject_names: [{ aula: "DAN", color: "red" }] },
+      'subject_names[0].color: must be a colour such as "#e57373"',
+    ],
+    [
+      { subject_names: [{ aula: "DAN", color: [1, 2] }] },
+      'subject_names[0].color: must be a colour such as "#e57373"',
+    ],
+    [
+      { subject_names: [{ aula: "DAN", color: [1, 2, 300] }] },
+      'subject_names[0].color: must be a colour such as "#e57373"',
+    ],
+    [
+      { subject_names: [{ aula: "2Lær", merge: "always" }] },
+      "subject_names[0].merge: must be overlap, equal or never",
+    ],
+    [
+      { subject_names: [{ aula: "DAN", colour: "#ffffff" }] },
+      'subject_names[0]: unknown key "colour"; the keys are aula, name, color and merge',
+    ],
   ])("refuses %j: %s", (config, message) => {
     expect(() => resolveWeekConfig(config)).toThrow(message);
+  });
+
+  it("gives a subject a colour, as text or as the colour picker's, and a way to merge", () => {
+    expect(
+      resolveDayConfig({
+        subject_names: [
+          { aula: "DAN", color: "#E57373" },
+          { aula: "MAT", color: [100, 181, 246.2], merge: "never" },
+        ],
+      }).subjectNames,
+    ).toEqual([
+      { aula: "DAN", name: undefined, color: "#e57373", merge: undefined },
+      { aula: "MAT", name: undefined, color: "#64b5f6", merge: "never" },
+    ]);
   });
 
   it("drops repeated blocks and counts emptied editor fields as absent", () => {
@@ -309,7 +346,7 @@ describe("rows the editor is still filling in", () => {
       "packing[0].items: must name at least one thing",
     );
     expect(() => resolveDayConfig({ subject_names: unfinished.subject_names })).toThrow(
-      "subject_names[0].name: must be a name",
+      "subject_names[0]: must give a name, a color or how it merges",
     );
   });
 

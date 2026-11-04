@@ -577,7 +577,6 @@ export const blocks = css`
     min-width: 0;
   }
   .part {
-    container: part / inline-size;
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-2);
@@ -755,30 +754,89 @@ export const blocks = css`
     grid-template-columns: subgrid;
     column-gap: var(--aula-space-3);
   }
-  /* Folded, a line is the subject and when it begins, the times in a column after the names. */
-  .lessons.folded {
-    grid-template-columns: minmax(0, max-content) 1fr;
-    row-gap: var(--aula-space-1);
+  /* The compact timetable: the day's lanes in the subjects' colours over the hours. */
+  .bar-lanes {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
   }
-  .folded .lesson {
-    align-items: baseline;
+  .lane {
+    position: relative;
+    height: calc(28px * var(--aula-scale));
   }
-  /* Where a long subject and its times cannot share a line, the times go under every subject. */
-  @container part (max-width: 260px) {
-    .normal .lessons.folded,
-    .normal .folded .lesson {
-      grid-template-columns: minmax(0, 1fr);
-    }
+  .lane.thin {
+    height: calc(18px * var(--aula-scale));
   }
-  @container part (max-width: 340px) {
-    .large .lessons.folded,
-    .large .folded .lesson {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-  .folded time {
-    color: var(--aula-text-2);
+  .seg {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 var(--aula-space-1);
+    overflow: hidden;
     white-space: nowrap;
+    border-radius: calc(6px * var(--aula-scale));
+    background: var(--subject, var(--aula-fill-strong));
+    color: var(--on, var(--aula-text));
+    font-size: var(--aula-font-s);
+    font-weight: var(--aula-medium);
+    --mdc-icon-size: 1em;
+  }
+  /* Its name where it has room, else its abbreviation, else its colour alone. */
+  .seg-short,
+  .seg[data-fit="short"] > .seg-full,
+  .seg[data-fit="none"] > span {
+    display: none;
+  }
+  .seg[data-fit="short"] > .seg-short {
+    display: inline;
+  }
+  .seg.cancelled {
+    background: none;
+    box-shadow: inset 0 0 0 2px var(--subject, var(--aula-fill-strong));
+    color: var(--aula-text-2);
+    text-decoration: line-through;
+  }
+  .seg.ev {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--aula-text-2);
+    color: var(--aula-text);
+    font-weight: var(--aula-normal);
+  }
+  .seg.all-day {
+    background: repeating-linear-gradient(
+      135deg,
+      var(--aula-fill-strong) 0 6px,
+      var(--aula-fill-muted) 6px 12px
+    );
+    box-shadow: none;
+  }
+  .hour {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--aula-line);
+  }
+  .now-mark {
+    position: absolute;
+    z-index: 1;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    margin-inline-start: -1px;
+    border-radius: 1px;
+    background: var(--aula-text);
+  }
+  .ticks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--aula-space-1);
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
   }
   .lesson-time {
     display: flex;
@@ -799,7 +857,7 @@ export const blocks = css`
     justify-content: center;
     gap: 2px;
     min-width: 0;
-    border-inline-start: 2px solid var(--aula-line);
+    border-inline-start: 3px solid var(--subject, var(--aula-line));
     padding-inline-start: var(--aula-space-3);
   }
   .lesson.now .lesson-main {
@@ -914,10 +972,6 @@ export const blocks = css`
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
   }
-  .event-when {
-    color: var(--aula-text-2);
-    white-space: nowrap;
-  }
 `;
 
 /** The school day card. */
@@ -988,35 +1042,9 @@ export const homeworkStyles = css`
     container: child / inline-size;
     gap: var(--aula-space-6);
   }
-  .meta-icon {
-    --mdc-icon-size: calc(18px * var(--aula-scale));
-    margin-inline-end: var(--aula-space-1);
-    vertical-align: -3px;
-  }
   /* What the week plan marks stands on a surface; its other notes follow quietly below. */
   .part > .homework + .plan {
     margin-top: var(--aula-space-4);
-  }
-  .avatars {
-    display: flex;
-  }
-  .title-who .avatar {
-    width: calc(32px * var(--aula-scale));
-    height: calc(32px * var(--aula-scale));
-    font-size: var(--aula-font-s);
-  }
-  /* Children's initials overlap, each ringed in the card's colour. */
-  .title-who .avatar + .avatar {
-    margin-inline-start: calc(-6px * var(--aula-scale));
-    box-shadow: 0 0 0 2px var(--aula-surface);
-  }
-  .title-who .who-name {
-    font-size: var(--aula-font-2xl);
-    font-weight: var(--aula-normal);
-    letter-spacing: -0.012em;
-  }
-  .title-who .who-meta {
-    font-size: var(--aula-font-m);
   }
   .strip .who-name {
     font-size: var(--aula-font-l);

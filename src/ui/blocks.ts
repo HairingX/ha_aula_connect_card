@@ -12,7 +12,6 @@ import type { ViewContext } from "../core/context.ts";
 import { initials } from "../core/text.ts";
 import type { Child, Day } from "../core/types.ts";
 import {
-  foldTimetable,
   type BlockId,
   type DayContent,
   type EmptyKind,
@@ -22,6 +21,7 @@ import {
   type TimetableRow,
 } from "../model/blocks.ts";
 import type { CalendarEvent } from "../core/types.ts";
+import { dayBar, type BarItem } from "../model/daybar.ts";
 import type { NoteView } from "../model/notes.ts";
 import type { SubjectLabel } from "../model/subjects.ts";
 import type { CardState } from "./card.ts";
@@ -37,7 +37,7 @@ import {
   nowLabel,
   segments,
   time,
-  timeSpan,
+  timeText,
 } from "./primitives.ts";
 
 /** A child's part of a block. */
@@ -184,13 +184,81 @@ function subjectName(row: LessonRow, ctx: ViewContext): TemplateResult {
   >`;
 }
 
-// Folded, a subject's line holds when it begins and a change of the usual, which is news: beside
-// the subject, where a long one wraps at its words, the times keeping their column.
-function foldedRow(row: LessonRow, ctx: ViewContext): TemplateResult {
-  return html`<li class="lesson ${row.cancelled ? "cancelled" : ""}">
-    <span class="lesson-head">${subjectName(row, ctx)} ${statusLabel(row.status, ctx)}</span>
-    ${timeSpan(row.block.start, row.block.end, ctx)}
-  </li>`;
+// Black or white, whichever reads on the colour: by its relative luminance, as WCAG has it.
+function onColor(hex: string): string {
+  const channel = (at: number): number => {
+    const value = parseInt(hex.slice(at, at + 2), 16) / 255;
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5) > 0.179 ? "#000" : "#fff";
+}
+
+/** The style that gives a subject's colour, and the text's that reads on it. */
+export function subjectColor(subject: SubjectLabel): string {
+  return subject.color ? `--subject: ${subject.color}; --on: ${onColor(subject.color)}` : "";
+}
+
+/**
+ * Shows the day as a bar in the subjects' colours: a lane of lessons, a lane for each lesson at
+ * another's time that does not go into it, then the events. A part names its subject where it
+ * has room, else by its abbreviation, else by its colour alone; the card measures which.
+ */
+function bar(part: Part, ctx: ViewContext): unknown {
+  const today = part.content.view.day === ctx.today;
+  const day = dayBar(
+    part.content.timetable,
+    part.timed,
+    part.allDay,
+    ctx.zone,
+    today ? ctx.now : undefined,
+  );
+  if (!day) return nothing;
+  const span = Math.max(1, day.end - day.start);
+  const at = (minute: number): string => `${String(((minute - day.start) / span) * 100)}%`;
+  const place = (from: number, to: number): string =>
+    `left: ${at(from)}; width: calc(${String(((to - from) / span) * 100)}% - 2px)`;
+  const item = (entry: BarItem): TemplateResult =>
+    entry.kind === "lesson"
+      ? html`<span
+          class="seg ${entry.row.cancelled ? "cancelled" : ""}"
+          style="${place(entry.from, entry.to)}; ${subjectColor(entry.row.subject)}"
+          >${entry.row.status ? icon(entry.row.status.kind === "substitute" ? "mdi:account-switch-outline" : "mdi:alert-circle-outline") : nothing}<span
+            class="seg-full"
+            >${aula(entry.row.subject.name, ctx)}</span
+          ><span class="seg-short">${aula(entry.row.subject.short, ctx)}</span></span
+        >`
+      : html`<span class="seg ev" style=${place(entry.from, entry.to)}
+          ><span class="seg-full">${aula(entry.event.title, ctx)}</span></span
+        >`;
+  const spoken = (entry: BarItem): string =>
+    entry.kind === "lesson"
+      ? `${[entry.row.subject, ...entry.row.also].map((subject) => subject.name).join(", ")} ${timeText(entry.row.block.start, ctx)}–${timeText(entry.row.block.end, ctx)}`
+      : `${entry.event.title} ${timeText(entry.event.start, ctx)}–${timeText(entry.event.end, ctx)}`;
+  return html`<div class="daybar" aria-hidden="true">
+      <div class="bar-lanes">
+        ${day.hours.map((hour) => html`<span class="hour" style="left: ${at(hour)}"></span>`)}
+        ${day.now === undefined ? nothing : html`<span class="now-mark" style="left: ${at(day.now)}"></span>`}
+        ${day.lanes.map(
+          (lane) =>
+            html`<div class="lane ${lane[0]?.kind === "event" ? "thin" : ""}">
+              ${lane.map(item)}
+            </div>`,
+        )}
+        ${day.allDay.map(
+          (event) =>
+            html`<div class="lane thin">
+              <span class="seg ev all-day" style="left: 0; width: 100%"
+                ><span class="seg-full">${aula(event.title, ctx)}</span></span
+              >
+            </div>`,
+        )}
+      </div>
+      <div class="ticks">${time(day.from, ctx)}${time(day.until, ctx)}</div>
+    </div>
+    <ul class="sr">
+      ${day.allDay.map((event) => html`<li>${event.title}, ${ctx.t("allDay")}</li>`)}
+      ${day.lanes.flat().map((entry) => html`<li>${spoken(entry)}</li>`)}
+    </ul>`;
 }
 
 function lessonRow(row: TimetableRow, ctx: ViewContext, detailed: boolean): TemplateResult {
@@ -213,7 +281,10 @@ function lessonRow(row: TimetableRow, ctx: ViewContext, detailed: boolean): Temp
     );
   }
   if (room) meta.push(html`<span class="sr">${ctx.t("room")}: </span>${aula(room, ctx)}`);
-  return html`<li class="lesson ${row.time ?? ""} ${row.cancelled ? "cancelled" : ""}">
+  return html`<li
+    class="lesson ${row.time ?? ""} ${row.cancelled ? "cancelled" : ""}"
+    style=${subjectColor(row.subject)}
+  >
     <span class="lesson-time"
       >${time(block.start, ctx, "start")}<span class="sr">–</span
       >${time(block.end, ctx, "end")}</span
@@ -237,16 +308,15 @@ function startOf(item: TimedEvent): string {
  * Shows a day as a calendar does: the events lasting the whole day first, then the lessons and
  * the events with a time in the order they begin, an event before a lesson beginning with it.
  */
-function timeline<Row extends TimetableRow>(
+function timeline(
   part: Part,
-  rows: readonly Row[],
-  row: (item: Row) => TemplateResult,
-  full: boolean,
+  rows: readonly TimetableRow[],
+  row: (item: TimetableRow) => TemplateResult,
   ctx: ViewContext,
 ): unknown[] {
-  const event = (item: TimedEvent): TemplateResult => eventRow(item, ctx, full);
+  const event = (item: TimedEvent): TemplateResult => eventRow(item, ctx);
   const timed = [...part.timed].sort((a, b) => startOf(a).localeCompare(startOf(b)));
-  const lines: unknown[] = part.allDay.map((item) => allDayRow(item, ctx, full));
+  const lines: unknown[] = part.allDay.map((item) => allDayRow(item, ctx));
   const before = (start: string): void => {
     for (let first = timed[0]; first !== undefined && startOf(first) <= start; first = timed[0]) {
       lines.push(event(first));
@@ -273,26 +343,18 @@ function eventText(event: CalendarEvent, ctx: ViewContext): TemplateResult {
   >`;
 }
 
-function allDayRow(item: CalendarEvent, ctx: ViewContext, full: boolean): TemplateResult {
-  return full
-    ? html`<li class="lesson event-row all-day">
-        <span class="lesson-time">${ctx.t("allDay")}</span>
-        <span class="lesson-main">${eventText(item, ctx)}</span>
-      </li>`
-    : html`<li class="lesson event-row all-day">
-        ${eventText(item, ctx)}<span class="event-when">${ctx.t("allDay")}</span>
-      </li>`;
+function allDayRow(item: CalendarEvent, ctx: ViewContext): TemplateResult {
+  return html`<li class="lesson event-row all-day">
+    <span class="lesson-time">${ctx.t("allDay")}</span>
+    <span class="lesson-main">${eventText(item, ctx)}</span>
+  </li>`;
 }
 
-function eventRow(item: TimedEvent, ctx: ViewContext, full: boolean): TemplateResult {
-  return full
-    ? html`<li class="lesson event-row">
-        <span class="lesson-time">${eventWhen(item, ctx)}</span>
-        <span class="lesson-main">${eventText(item.event, ctx)}</span>
-      </li>`
-    : html`<li class="lesson event-row">
-        ${eventText(item.event, ctx)}<span class="event-when">${eventWhen(item, ctx)}</span>
-      </li>`;
+function eventRow(item: TimedEvent, ctx: ViewContext): TemplateResult {
+  return html`<li class="lesson event-row">
+    <span class="lesson-time">${eventWhen(item, ctx)}</span>
+    <span class="lesson-main">${eventText(item.event, ctx)}</span>
+  </li>`;
 }
 
 /**
@@ -355,19 +417,10 @@ function body(
               part,
               part.content.timetable,
               (row) => lessonRow(row, ctx, options.detailed),
-              true,
               ctx,
             )}
           </ol>`
-        : html`<ol class="lessons folded">
-            ${timeline(
-              part,
-              foldTimetable(part.content.timetable),
-              (row) => foldedRow(row, ctx),
-              false,
-              ctx,
-            )}
-          </ol>`;
+        : bar(part, ctx);
     default:
       return plan(part, ctx, options);
   }
