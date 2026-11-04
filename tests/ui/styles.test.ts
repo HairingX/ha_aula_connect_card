@@ -92,7 +92,7 @@ describe("the folded timetable", () => {
       declared(blocks, ".normal .folded .lesson", "@container part (max-width: 260px)"),
     ).toContain("grid-template-columns: minmax(0, 1fr)");
     expect(
-      declared(blocks, ".large .folded .lesson", "@container part (max-width: 400px)"),
+      declared(blocks, ".large .folded .lesson", "@container part (max-width: 340px)"),
     ).toContain("grid-template-columns: minmax(0, 1fr)");
   });
 
