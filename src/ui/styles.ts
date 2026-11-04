@@ -712,31 +712,27 @@ export const blocks = css`
     flex-direction: column;
     gap: 2px;
   }
+  /* Each thing in its subject's colour, as the subject's part of the day's bar is. */
   .pack-what {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--aula-space-2);
     font-weight: var(--aula-medium);
-    line-height: var(--aula-paragraph);
+    line-height: var(--aula-condensed);
     overflow-wrap: anywhere;
   }
-  .pack-item + .pack-item::before {
-    content: ", ";
+  .pack-item {
+    padding: 2px calc(10px * var(--aula-scale));
+    border-radius: 999px;
+    background: var(--subject, var(--aula-fill-strong));
+    color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0);
   }
   .pack-source {
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
   }
-  /* On the wall what to bring is read from across the kitchen. */
-  .large .pack-what {
-    font-size: calc(var(--ha-font-size-xl, 20px) * 1.5);
-    line-height: var(--aula-condensed);
-  }
   .large .pack-subjects {
     font-size: calc(var(--ha-font-size-l, 16px) * 1.5);
-  }
-  .large .pack-item {
-    display: block;
-  }
-  .large .pack-item + .pack-item::before {
-    content: none;
   }
 
   .lessons {

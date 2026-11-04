@@ -48,11 +48,20 @@ function declared(sheet: string, selector: string, within = ""): string[] {
 
 const ALL = [base, blocks, dayStyles, homeworkStyles, weekStyles];
 
-describe("the wall screen", () => {
-  it("sets what to bring, set up or quoted, at 30 px, and the subjects at 24 px", () => {
-    expect(declared(blocks, ".large .pack-what")).toContain(
-      "font-size: calc(var(--ha-font-size-xl, 20px) * 1.5)",
+describe("the things to bring", () => {
+  it("stand each in its subject's colour, its text black or white, grey without one", () => {
+    expect(declared(blocks, ".pack-item")).toEqual(
+      expect.arrayContaining([
+        "background: var(--subject, var(--aula-fill-strong))",
+        "color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0)",
+      ]),
     );
+  });
+});
+
+describe("the wall screen", () => {
+  it("sets what to bring as large as the rest, and the subjects at 24 px", () => {
+    expect(declared(blocks, ".large .pack-what")).toEqual([]);
     expect(declared(blocks, ".large .pack-subjects")).toContain(
       "font-size: calc(var(--ha-font-size-l, 16px) * 1.5)",
     );

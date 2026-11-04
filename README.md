@@ -73,7 +73,8 @@ always as it should be.
   - **Vigtigt** (important): what the week plan marks as a task for that day - homework, a test,
     a thing to do - every one in full: it is never folded.
   - **Husk** (remember): the things to bring for the day's subjects, from your own
-    [packing rules](#things-to-bring).
+    [packing rules](#things-to-bring), each in its subject's [colour](#subject-names) as in the
+    timetable's bar; a subject with no colour is named under its things.
   - **Skema** (timetable): the day as a bar from its first lesson to its last, with its start
     and end under it, a faint line at each full hour and, today, a line at the time it is now.
     Each lesson is a part of the bar in its subject's [colour](#subject-names), grey without one,
@@ -316,8 +317,8 @@ sections:
       - type: custom:aula-connect-weekplan-card
 ```
 
-With `size: large` the header's title is 56 px, each child's hours 36 px and the things to bring
-30 px, read from across a kitchen, and Husk comes first. The first screen of a 1280 × 800 tablet
+With `size: large` the header's title is 56 px, each child's hours 36 px and the rest of the text
+21 px, read from across a kitchen, and Husk comes first. The first screen of a 1280 × 800 tablet
 holds the day, each child's hours and what each child is to bring.
 
 ## The API it uses

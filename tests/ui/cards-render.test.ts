@@ -287,6 +287,28 @@ describe("abbreviations", () => {
     expect(texts(card, ".pack-item")).toEqual(["Idrætstøj"]);
     expect(texts(card, ".pack-source")).toEqual(["IDR"]);
   });
+
+  it("show what to bring in its subject's colour, naming the subject only to a screen reader", async () => {
+    const packing = [{ subject: "Idræt", items: ["Idrætstøj", "Håndklæde"] }];
+    const { card } = await mount(DAY, "thu-1010", { config: { children: [1001], packing } });
+    const sport = present(card.shadowRoot?.querySelector(".pack-row"));
+    expect(sport.getAttribute("style")).toBe("--subject: #4db6ac");
+    expect(present(sport.querySelector(".pack-source")).classList.contains("sr")).toBe(true);
+    expect(sport.textContent.replace(/\s+/g, " ").trim()).toBe("Idrætstøj, Håndklæde Idræt");
+  });
+
+  it("name the subject of things to bring that has no colour", async () => {
+    const { card } = await mount(DAY, "thu-1010", {
+      config: {
+        children: [1001],
+        packing: [{ subject: "Idræt", items: ["Idrætstøj"] }],
+        subject_names: [{ aula: "Idræt", color: null }],
+      },
+    });
+    const sport = present(card.shadowRoot?.querySelector(".pack-row"));
+    expect(sport.getAttribute("style")).toBe("");
+    expect(present(sport.querySelector(".pack-source")).classList.contains("sr")).toBe(false);
+  });
 });
 
 describe("the school day card grouped by child", () => {
