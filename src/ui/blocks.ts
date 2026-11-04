@@ -136,12 +136,20 @@ export function emptyText(
 }
 
 /**
- * Shows Vigtigt on one surface: first what to bring, each thing in its subject's colour after
- * "Husk:", then what the week plan marks, or why it marks nothing.
+ * Shows Vigtigt on one surface: what the week plan marks, or why it marks nothing, then what to
+ * bring, each thing in its subject's colour after "Husk:".
  */
 function important(part: Part, ctx: ViewContext): TemplateResult {
   const { homework, noHomework, pack, subjects } = part.plan;
   return html`<ul class="homework">
+    ${homeworkItems(homework, ctx)}
+    ${
+      homework.length === 0 && noHomework
+        ? html`<li class="hw">
+            <p class="empty">${emptyText("task", noHomework, part.content, ctx)}</p>
+          </li>`
+        : nothing
+    }
     ${
       pack.length > 0 || subjects.length > 0
         ? html`<li class="hw hw-pack">
@@ -169,14 +177,6 @@ function important(part: Part, ctx: ViewContext): TemplateResult {
                   >`
                 : nothing
             }
-          </li>`
-        : nothing
-    }
-    ${homeworkItems(homework, ctx)}
-    ${
-      homework.length === 0 && noHomework
-        ? html`<li class="hw">
-            <p class="empty">${emptyText("task", noHomework, part.content, ctx)}</p>
           </li>`
         : nothing
     }

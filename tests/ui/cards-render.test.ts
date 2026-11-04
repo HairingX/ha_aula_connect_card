@@ -297,7 +297,7 @@ describe("abbreviations", () => {
     expect(sport.textContent.replace(/\s+/g, " ").trim()).toBe("Idrætstøj, Håndklæde Idræt");
   });
 
-  it("stand in Vigtigt's box, over what the week plan marks or why it marks nothing", async () => {
+  it("stand last in Vigtigt's box, under what the week plan marks or why it marks nothing", async () => {
     const packing = [{ subject: "Idræt", items: ["Idrætstøj"] }];
     const { card } = await mount(DAY, "thu-1010", {
       config: { children: [1001], packing },
@@ -308,8 +308,8 @@ describe("abbreviations", () => {
       "timetable",
     ]);
     const items = all(card, '[data-block="task"] .homework > li');
-    expect(items.map((item) => item.className.trim())).toEqual(["hw hw-pack", "hw"]);
-    expect(items[1]?.textContent.trim()).toBe("Ugeplanen for uge 44 er ikke i Aula endnu.");
+    expect(items.map((item) => item.className.trim())).toEqual(["hw", "hw hw-pack"]);
+    expect(items[0]?.textContent.trim()).toBe("Ugeplanen for uge 44 er ikke i Aula endnu.");
     const { card: alone } = await mount(DAY, "thu-1010", {
       config: { children: [1001], packing, show: { task: false } },
     });

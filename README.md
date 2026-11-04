@@ -70,12 +70,11 @@ always as it should be.
   the day's birthdays as one line: "Alma, Bo og Carl har fødselsdag". Before a holiday it names
   the holiday, its dates and the day school starts again.
 - **The blocks**, in this order unless you choose another:
-  - **Vigtigt** (important), in one box: first "Husk:" and the things to bring for the day's
-    subjects, from your own [packing rules](#things-to-bring), each in its subject's
-    [colour](#subject-names) as in the timetable's bar - a subject with no colour is named after
-    its things - then what the week plan marks as a task for that day - homework, a test, a thing
-    to do - every one in full: it is never folded. Where it marks none, the box says so under
-    Husk.
+  - **Vigtigt** (important), in one box: what the week plan marks as a task for that day -
+    homework, a test, a thing to do - every one in full, as it is never folded, or why it marks
+    none; then "Husk:" and the things to bring for the day's subjects, from your own
+    [packing rules](#things-to-bring), each in its subject's [colour](#subject-names) as in the
+    timetable's bar - a subject with no colour is named after its things.
   - **Skema** (timetable): the day as a bar from its first lesson to its last, with its start
     and end under it, a faint line at each full hour and, today, a line at the time it is now.
     Each lesson is a part of the bar in its subject's [colour](#subject-names), grey without one,
@@ -190,7 +189,7 @@ The child ids are the integration's; the card's editor lists the children by nam
 
 ### Things to bring
 
-**Husk**, at the top of Vigtigt, shows your own **packing rules**: what to bring when a subject is on the day's
+**Husk**, at the end of Vigtigt, shows your own **packing rules**: what to bring when a subject is on the day's
 timetable. Nothing is read from the week plan's text. A rule matches the subject by any of its
 names, so `Idræt` matches lessons Aula calls `IDR` or `3.B IDR`:
 
