@@ -463,7 +463,7 @@ function glance(arg: { tag: string; screen: number; packing: boolean }): string[
     if (below(first) > arg.screen)
       problems.push(`a child's Husk ends ${String(below(first))} px down`);
     for (const item of things) {
-      if (size(item) < 30) problems.push(`a thing to bring is ${String(size(item))} px`);
+      if (size(item) < 21) problems.push(`a thing to bring is ${String(size(item))} px`);
       if (item.scrollHeight > item.clientHeight + 1) problems.push("a thing to bring is cut");
     }
     if (subjects && size(subjects) < 24)

@@ -157,11 +157,19 @@ function pack(part: Part, ctx: ViewContext): TemplateResult {
     }
     ${content.pack.map(
       (row) =>
-        html`<li class="pack-row">
+        html`<li class="pack-row" style=${subjectColor(row.subject)}>
           <span class="pack-what"
-            >${row.items.map((item) => html`<span class="pack-item">${aula(item, ctx)}</span>`)}</span
+            >${row.items.map(
+              (item, index) =>
+                html`${index > 0 ? html`<span class="sr">, </span>` : nothing}<span
+                    class="pack-item"
+                    >${aula(item, ctx)}</span
+                  >`,
+            )}</span
           >
-          <span class="pack-source">${aula(row.subject.name, ctx)}</span>
+          <span class="pack-source ${row.subject.color ? "sr" : ""}"
+            >${aula(row.subject.name, ctx)}</span
+          >
         </li>`,
     )}
   </ul>`;
