@@ -201,8 +201,8 @@ describe("checking a configuration", () => {
       size: "large",
     });
     expect(resolveDayConfig(shared).blocks).toEqual([
-      "pack",
       "task",
+      "pack",
       "timetable",
       "comment",
       "events",
@@ -210,14 +210,26 @@ describe("checking a configuration", () => {
     ]);
   });
 
-  it("puts Husk first on a wall screen, unless order says otherwise", () => {
-    expect(resolveDayConfig({ size: "large" }).blocks.slice(0, 2)).toEqual(["pack", "task"]);
-    expect(resolveWeekConfig({ size: "large" }).blocks.slice(0, 2)).toEqual(["pack", "task"]);
-    expect(resolveDayConfig({ size: "large", order: ["task"] }).blocks.slice(0, 2)).toEqual([
-      "task",
-      "pack",
-    ]);
-    expect(resolveDayConfig({}).blocks.slice(0, 2)).toEqual(["task", "pack"]);
+  it("puts Vigtigt, with Husk in it, first on a wall screen as anywhere, unless order says otherwise", () => {
+    expect(resolveDayConfig({ size: "large" }).blocks.slice(0, 2)).toEqual(["task", "pack"]);
+    expect(resolveWeekConfig({ size: "large" }).blocks.slice(0, 2)).toEqual(["task", "pack"]);
+    expect(resolveDayConfig({ size: "large", order: ["timetable"] }).blocks[0]).toBe("timetable");
+  });
+
+  it("offers the editor the blocks that can move: Husk is Vigtigt's", () => {
+    rememberLanguage("en");
+    const order = dayConfigForm().schema.find((item) => item.name === "order");
+    expect(order).toMatchObject({
+      selector: {
+        select: {
+          options: [
+            { value: "task", label: "Important" },
+            { value: "timetable", label: "Timetable" },
+            { value: "comment", label: "Notes" },
+          ],
+        },
+      },
+    });
   });
 });
 
@@ -536,7 +548,7 @@ describe("the editor", () => {
     const da = weekConfigForm();
     expect(da.computeLabel({ name: "order" })).toBe("Flyt en blok øverst");
     expect(da.computeHelper({ name: "order" })).toContain(
-      "Resten følger standardrækkefølgen: Vigtigt, Husk, Skema, Noter; med stor tekst Husk først.",
+      "Resten følger standardrækkefølgen: Vigtigt med Husk, Skema, Noter.",
     );
     expect(da.computeLabel({ name: "timetable", selector: { boolean: {} } })).toBe("Skema");
     expect(da.computeLabel({ name: "timetable", selector: { select: {} } })).toBe(

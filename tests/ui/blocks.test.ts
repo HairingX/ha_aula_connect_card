@@ -1,7 +1,7 @@
 import { render } from "lit";
 import { describe, expect, it } from "vitest";
 
-import { BLOCKS, DEFAULT_ORDER } from "../../src/model/blocks.ts";
+import { ORDERED, DEFAULT_ORDER } from "../../src/model/blocks.ts";
 import { dayCardView } from "../../src/model/day-view.ts";
 import { emptyText, homeworkList } from "../../src/ui/blocks.ts";
 import { present } from "../fake-hass.ts";
@@ -34,10 +34,8 @@ function shown(notes: Parameters<typeof homeworkList>[0]): HTMLElement {
 
 describe("a block a child has nothing for", () => {
   it("says so in the block's own words", () => {
-    const drawn = BLOCKS.filter((id) => id !== "birthdays" && id !== "events");
-    expect(drawn.map((id) => emptyText(id, "none", content, ctx))).toEqual([
+    expect(ORDERED.map((id) => emptyText(id, "none", content, ctx))).toEqual([
       "Intet i ugeplanen.",
-      "Intet ekstra at huske.",
       "Intet skema i Aula.",
       "Intet i ugeplanen.",
     ]);

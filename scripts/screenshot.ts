@@ -415,9 +415,9 @@ const FIRST_SCREEN = 800 - 56;
 
 /**
  * Runs in the page: tells what is wrong with the first glance at a wall screen, if anything. The
- * header's title must be the largest text, at least 56 px; each child's hours and things to bring,
- * set up or quoted, must be on the first screen, at least 30 px, the day's subjects at least
- * 24 px, and none of them cut short; and the children must stand side by side.
+ * header's title must be the largest text, at least 56 px; each child's hours must be on the
+ * first screen, at least 30 px, and so must the things to bring, set up or quoted, and the day's
+ * subjects, at least 21 px, none of them cut short; and the children must stand side by side.
  */
 function glance(arg: { tag: string; screen: number; packing: boolean }): string[] {
   const root = document.querySelector(arg.tag)?.shadowRoot;
@@ -453,21 +453,16 @@ function glance(arg: { tag: string; screen: number; packing: boolean }): string[
     if (size(item) < 30 || below(item) > arg.screen)
       problems.push(`hours of ${String(size(item))} px end ${String(below(item))} px down`);
   }
-  const husk = [...root.querySelectorAll('[data-block="pack"] .part')];
+  const husk = [...root.querySelectorAll('[data-block="task"] .hw-pack')];
   // Husk shows only the things to bring set up, so a card with none has no Husk to show.
   if (husk.length === 0 && arg.packing) problems.push("Husk is not shown");
-  for (const part of husk) {
-    const things = [...part.querySelectorAll(".pack-what")];
-    const subjects = part.querySelector(".pack-subjects");
-    const first = things[0] ?? subjects ?? part.querySelector(".empty") ?? part;
-    if (below(first) > arg.screen)
-      problems.push(`a child's Husk ends ${String(below(first))} px down`);
-    for (const item of things) {
+  for (const line of husk) {
+    if (below(line) > arg.screen)
+      problems.push(`a child's Husk ends ${String(below(line))} px down`);
+    for (const item of line.querySelectorAll(".pack-item, .pack-subjects")) {
       if (size(item) < 21) problems.push(`a thing to bring is ${String(size(item))} px`);
-      if (item.scrollHeight > item.clientHeight + 1) problems.push("a thing to bring is cut");
     }
-    if (subjects && size(subjects) < 24)
-      problems.push(`the subjects are ${String(size(subjects))} px`);
+    if (line.scrollHeight > line.clientHeight + 1) problems.push("a thing to bring is cut");
   }
   const kids = [...root.querySelectorAll(".strip .kid")];
   const tops = new Set(kids.map((kid) => Math.round(kid.getBoundingClientRect().top)));
@@ -567,7 +562,7 @@ function layout(tag: string): string[] {
     const lines = new Set([...time.getClientRects()].map((rect) => Math.round(rect.bottom)));
     if (lines.size > 1) problems.push(`the time "${time.textContent}" is broken across lines`);
   }
-  for (const thing of root.querySelectorAll(".pack-what")) {
+  for (const thing of root.querySelectorAll(".hw-pack")) {
     if (thing.scrollHeight > thing.clientHeight + 1)
       problems.push(`"${thing.textContent.slice(0, 24)}" is cut short`);
   }

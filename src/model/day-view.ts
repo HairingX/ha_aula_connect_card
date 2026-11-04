@@ -13,6 +13,7 @@ import type { CalendarEvent, Child, Day } from "../core/types.ts";
 import {
   dayContent,
   planBlocks,
+  drawnBlocks,
   headerFacts,
   visibleFacts,
   type BlockId,
@@ -375,7 +376,7 @@ function group(bases: readonly ChildBasis[], options: DayViewOptions, ctx: ViewC
   const planned = own.filter(
     (child): child is Planned => child.content !== undefined && child.plan !== undefined,
   );
-  const blocks = options.blocks
+  const blocks = drawnBlocks(options.blocks)
     .filter((id) => planned.some((child) => child.plan.blocks.some((block) => block.id === id)))
     .map((id) => ({
       id,

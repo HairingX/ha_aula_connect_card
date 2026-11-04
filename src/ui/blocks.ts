@@ -13,6 +13,7 @@ import { initials } from "../core/text.ts";
 import type { Child, Day } from "../core/types.ts";
 import {
   type BlockId,
+  type BlockPlan,
   type DayContent,
   type EmptyKind,
   type LessonRow,
@@ -44,12 +45,8 @@ import {
 export interface Part {
   /** What the child's day holds. */
   readonly content: DayContent;
-  /** The subjects Husk names: none beside the timetable. */
-  readonly subjects: readonly SubjectLabel[];
-  /** The events lasting the whole day, first in the timetable. */
-  readonly allDay: readonly CalendarEvent[];
-  /** The events with a time, among the timetable's lessons. */
-  readonly timed: readonly TimedEvent[];
+  /** What the child's blocks show of it. */
+  readonly plan: BlockPlan;
   /** Why the part says it has nothing; "none" for the block's own sentence. */
   readonly empty: EmptyKind | "none" | undefined;
   /** The child, named above the part when the block is for several. */
@@ -86,8 +83,6 @@ function title(id: BlockId, ctx: ViewContext): string {
   switch (id) {
     case "task":
       return ctx.t("blockTask");
-    case "pack":
-      return ctx.t("blockPack");
     case "timetable":
       return ctx.t("blockTimetable");
     default:
@@ -95,23 +90,27 @@ function title(id: BlockId, ctx: ViewContext): string {
   }
 }
 
+function homeworkItems(notes: readonly NoteView[], ctx: ViewContext): unknown {
+  return notes.map(
+    (note) =>
+      html`<li class="hw">
+        ${
+          note.subject || note.title
+            ? html`<div class="hw-head">
+                ${note.subject ? label(aula(note.subject.name, ctx), "subject") : nothing}
+                ${note.title ? html`<span class="hw-title">${aula(note.title, ctx)}</span>` : nothing}
+              </div>`
+            : nothing
+        }
+        ${note.text ? html`<p class="hw-text">${aula(note.text, ctx)}</p>` : nothing}
+      </li>`,
+  );
+}
+
 /** Shows homework notes on one surface: the subject as a label, Meebook's title, the text. */
 export function homeworkList(notes: readonly NoteView[], ctx: ViewContext): TemplateResult {
   return html`<ul class="homework">
-    ${notes.map(
-      (note) =>
-        html`<li class="hw">
-          ${
-            note.subject || note.title
-              ? html`<div class="hw-head">
-                  ${note.subject ? label(aula(note.subject.name, ctx), "subject") : nothing}
-                  ${note.title ? html`<span class="hw-title">${aula(note.title, ctx)}</span>` : nothing}
-                </div>`
-              : nothing
-          }
-          ${note.text ? html`<p class="hw-text">${aula(note.text, ctx)}</p>` : nothing}
-        </li>`,
-    )}
+    ${homeworkItems(notes, ctx)}
   </ul>`;
 }
 
@@ -132,46 +131,55 @@ export function emptyText(
     case "noHomework":
       return ctx.t("noHomework");
     default:
-      return ctx.t(
-        id === "task"
-          ? "noHomework"
-          : id === "pack"
-            ? "noPack"
-            : id === "timetable"
-              ? "noLessons"
-              : "noPlan",
-      );
+      return ctx.t(id === "task" ? "noHomework" : id === "timetable" ? "noLessons" : "noPlan");
   }
 }
 
-function pack(part: Part, ctx: ViewContext): TemplateResult {
-  const { content, subjects } = part;
-  return html`<ul class="pack">
+/**
+ * Shows Vigtigt on one surface: what the week plan marks, or why it marks nothing, then what to
+ * bring, each thing in its subject's colour after "Husk:".
+ */
+function important(part: Part, ctx: ViewContext): TemplateResult {
+  const { homework, noHomework, pack, subjects } = part.plan;
+  return html`<ul class="homework">
+    ${homeworkItems(homework, ctx)}
     ${
-      subjects.length > 0
-        ? html`<li class="pack-subjects">
-            <span class="pack-label">${ctx.t("subjects")}</span>
-            ${aula(subjects.map((item) => item.name).join(", "), ctx)}
+      homework.length === 0 && noHomework
+        ? html`<li class="hw">
+            <p class="empty">${emptyText("task", noHomework, part.content, ctx)}</p>
           </li>`
         : nothing
     }
-    ${content.pack.map(
-      (row) =>
-        html`<li class="pack-row" style=${subjectColor(row.subject)}>
-          <span class="pack-what"
-            >${row.items.map(
-              (item, index) =>
-                html`${index > 0 ? html`<span class="sr">, </span>` : nothing}<span
-                    class="pack-item"
-                    >${aula(item, ctx)}</span
-                  >`,
-            )}</span
-          >
-          <span class="pack-source ${row.subject.color ? "sr" : ""}"
-            >${aula(row.subject.name, ctx)}</span
-          >
-        </li>`,
-    )}
+    ${
+      pack.length > 0 || subjects.length > 0
+        ? html`<li class="hw hw-pack">
+            <span class="pack-label">${ctx.t("remember")}</span>
+            ${pack.map(
+              (row) =>
+                html`<span class="pack-row" style=${subjectColor(row.subject)}
+                  >${row.items.map(
+                    (item, index) =>
+                      html`${index > 0 ? html`<span class="sr">, </span>` : nothing}<span
+                          class="pack-item"
+                          >${aula(item, ctx)}</span
+                        >`,
+                  )}
+                  <span class="pack-source ${row.subject.color ? "sr" : ""}"
+                    >${aula(row.subject.name, ctx)}</span
+                  ></span
+                >`,
+            )}
+            ${
+              subjects.length > 0
+                ? html`<span class="pack-subjects"
+                    ><span class="pack-label">${ctx.t("subjects")}</span>
+                    ${aula(subjects.map((item) => item.name).join(", "), ctx)}</span
+                  >`
+                : nothing
+            }
+          </li>`
+        : nothing
+    }
   </ul>`;
 }
 
@@ -213,8 +221,8 @@ function bar(part: Part, ctx: ViewContext): unknown {
   const today = part.content.view.day === ctx.today;
   const day = dayBar(
     part.content.timetable,
-    part.timed,
-    part.allDay,
+    part.plan.timed,
+    part.plan.allDay,
     ctx.zone,
     today ? ctx.now : undefined,
   );
@@ -333,8 +341,8 @@ function timeline(
   ctx: ViewContext,
 ): unknown[] {
   const event = (item: TimedEvent): TemplateResult => eventRow(item, ctx);
-  const timed = [...part.timed].sort((a, b) => startOf(a).localeCompare(startOf(b)));
-  const lines: unknown[] = part.allDay.map((item) => allDayRow(item, ctx));
+  const timed = [...part.plan.timed].sort((a, b) => startOf(a).localeCompare(startOf(b)));
+  const lines: unknown[] = part.plan.allDay.map((item) => allDayRow(item, ctx));
   const before = (start: string): void => {
     for (let first = timed[0]; first !== undefined && startOf(first) <= start; first = timed[0]) {
       lines.push(event(first));
@@ -425,9 +433,7 @@ function body(
 ): unknown {
   switch (id) {
     case "task":
-      return homeworkList(part.content.homework, ctx);
-    case "pack":
-      return pack(part, ctx);
+      return important(part, ctx);
     case "timetable":
       return unfolded
         ? html`<ol class="lessons">
@@ -477,28 +483,27 @@ export function renderBlock(
     ${
       once === undefined
         ? html`<div class="cols">
-              ${parts.map((part, index) =>
-                id === "pack" && texts[index] !== undefined
-                  ? nothing
-                  : html`<div
-                      class="part ${texts[index] === undefined ? "" : "is-empty"}"
-                      style="--col: ${part.col}"
-                    >
-                      ${
-                        part.child
-                          ? headingOf(
-                              options.level + 1,
-                              html`${avatar(part.child)}<span>${part.child.first_name}</span>`,
-                              "part-who",
-                            )
-                          : nothing
-                      }
-                      ${
-                        texts[index] === undefined
-                          ? body(id, part, ctx, options, unfolded)
-                          : html`<p class="empty">${texts[index]}</p>`
-                      }
-                    </div>`,
+              ${parts.map(
+                (part, index) =>
+                  html`<div
+                    class="part ${texts[index] === undefined ? "" : "is-empty"}"
+                    style="--col: ${part.col}"
+                  >
+                    ${
+                      part.child
+                        ? headingOf(
+                            options.level + 1,
+                            html`${avatar(part.child)}<span>${part.child.first_name}</span>`,
+                            "part-who",
+                          )
+                        : nothing
+                    }
+                    ${
+                      texts[index] === undefined
+                        ? body(id, part, ctx, options, unfolded)
+                        : html`<p class="empty">${texts[index]}</p>`
+                    }
+                  </div>`,
               )}
             </div>
             ${

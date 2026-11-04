@@ -695,31 +695,21 @@ export const blocks = css`
     overflow-wrap: anywhere;
   }
 
-  .pack {
-    display: flex;
-    flex-direction: column;
-    gap: var(--aula-space-2);
-  }
-  .pack-subjects {
-    line-height: var(--aula-paragraph);
-  }
-  .pack-label {
-    color: var(--aula-text-2);
-    font-weight: var(--aula-medium);
-  }
-  .pack-row {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-  /* Each thing in its subject's colour, as the subject's part of the day's bar is. */
-  .pack-what {
-    display: flex;
+  /* Husk heads Vigtigt: each thing in its subject's colour, as its part of the day's bar. */
+  .hw-pack {
+    flex-direction: row;
     flex-wrap: wrap;
+    align-items: center;
     gap: var(--aula-space-2);
     font-weight: var(--aula-medium);
     line-height: var(--aula-condensed);
     overflow-wrap: anywhere;
+  }
+  .pack-label {
+    color: var(--aula-text-2);
+  }
+  .pack-row {
+    display: contents;
   }
   .pack-item {
     padding: 2px calc(10px * var(--aula-scale));
@@ -730,9 +720,12 @@ export const blocks = css`
   .pack-source {
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
+    font-weight: var(--aula-normal);
   }
-  .large .pack-subjects {
-    font-size: calc(var(--ha-font-size-l, 16px) * 1.5);
+  .pack-subjects {
+    flex-basis: 100%;
+    font-weight: var(--aula-normal);
+    line-height: var(--aula-paragraph);
   }
 
   .lessons {

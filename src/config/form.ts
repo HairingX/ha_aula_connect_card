@@ -13,7 +13,7 @@ import {
   rememberedLanguage,
 } from "../core/memory.ts";
 import { translator, type TextKey, type Translate } from "../core/i18n.ts";
-import { BLOCKS, type BlockId } from "../model/blocks.ts";
+import { BLOCKS, ORDERED, type BlockId } from "../model/blocks.ts";
 import { subjectNamer } from "../model/subjects.ts";
 import { configRecord } from "./common.ts";
 
@@ -165,9 +165,9 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
         select: {
           multiple: true,
           reorder: true,
-          // Birthdays are said in the day's header and events in the timetable, never as a block
-          // that could move.
-          options: BLOCKS.filter((id) => id !== "birthdays" && id !== "events").map((id) => ({
+          // Husk is Vigtigt's, birthdays are said in the day's header and events in the
+          // timetable: none is a block that could move.
+          options: ORDERED.map((id) => ({
             value: id,
             label: t(BLOCK_LABELS[id]),
           })),
