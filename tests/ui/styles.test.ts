@@ -103,6 +103,16 @@ describe("the timetable", () => {
     );
   });
 
+  it("writes on a subject's colour in black or white, whichever contrasts more", () => {
+    expect(declared(blocks, ".bar-item")).toContain(
+      "color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0)",
+    );
+  });
+
+  it("writes a part's icon in the colour of its text", () => {
+    expect(declared(blocks, ".bar-item ha-icon")).toContain("color: inherit");
+  });
+
   it("shows a part's name, else its abbreviation, else neither, as the card measured", () => {
     expect(declared(blocks, ".bar-short")).toContain("display: none");
     expect(declared(blocks, '.bar-item[data-fit="short"] > .bar-short')).toContain(

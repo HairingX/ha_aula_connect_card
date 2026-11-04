@@ -148,7 +148,7 @@ describe("checking a configuration", () => {
       }).subjectNames,
     ).toEqual([
       { aula: "DAN", name: undefined, color: "#e57373", merge: undefined },
-      { aula: "MAT", name: undefined, color: "#64b5f6", merge: "never" },
+      { aula: "MAT", name: undefined, color: "rgb(100 181 246)", merge: "never" },
     ]);
   });
 
@@ -267,8 +267,8 @@ describe("the folded timetable and plan", () => {
         select: {
           mode: "list",
           options: [
-            { value: "compact", label: "Compact – subjects and start times" },
-            { value: "full", label: "Full – end times, rooms and breaks" },
+            { value: "compact", label: "Bar" },
+            { value: "full", label: "List with rooms and teachers" },
           ],
         },
       },
@@ -525,7 +525,7 @@ describe("the editor", () => {
     );
     expect(da.computeLabel({ name: "info_lines" })).toBe("Linjer i en note før Vis mere");
     expect(da.computeHelper({ name: "timetable", selector: { select: {} } })).toBe(
-      "Standard: kort.",
+      "Standard: bjælke.",
     );
     expect(da.computeHelper({ name: "info_lines" })).toBe(
       "Standard: 6. 0 viser altid hele teksten.",

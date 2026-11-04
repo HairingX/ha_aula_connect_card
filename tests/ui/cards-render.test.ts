@@ -312,7 +312,7 @@ describe("the school day card grouped by child", () => {
 });
 
 describe("the subjects' colours", () => {
-  it("colour a subject's part of the bar and its line of the whole timetable, its text readable", async () => {
+  it("colour a subject's part of the bar and its line of the whole timetable", async () => {
     const { card } = await mount(DAY, "thu-1010", {
       config: {
         children: [1001],
@@ -323,8 +323,8 @@ describe("the subjects' colours", () => {
       },
     });
     const parts = all(card, ".daybar .bar-item").map((part) => part.getAttribute("style") ?? "");
-    expect(parts[0]).toContain("--subject: #0a2a4f; --on: #fff");
-    expect(parts[1]).toContain("--subject: #e57373; --on: #000");
+    expect(parts[0]).toContain("--subject: #0a2a4f");
+    expect(parts[1]).toContain("--subject: #e57373");
     expect(parts[2]).not.toContain("--subject");
     present(
       card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'),
@@ -351,7 +351,7 @@ describe("lessons at the very same time", () => {
     expect(texts(card, ".daybar + .sr li")).toEqual([
       "Idræt, 2 lærere 08.00–09.30",
       "Dansk, 2 lærere 10.05–11.35",
-      "Engelsk, 2 lærere 12.10–12.55",
+      "Engelsk, 2 lærere 12.10–12.55, Vikar",
     ]);
     present(
       card.shadowRoot?.querySelector<HTMLButtonElement>('[data-block="timetable"] .more'),
@@ -785,7 +785,7 @@ describe("the folded day", () => {
     expect(texts(card, ".daybar + .sr li")).toEqual([
       "Idræt 08.00–09.30",
       "Dansk 10.05–11.35",
-      "Engelsk 12.10–12.55",
+      "Engelsk 12.10–12.55, Vikar",
     ]);
     expect(all(card, '[data-block="timetable"] .break')).toEqual([]);
     expect(text(card, '[data-block="timetable"] .more')).toBe("Vis hele skemaet");
@@ -799,24 +799,27 @@ describe("the folded day", () => {
     expect(
       all(stress, ".daybar .bar-item ha-icon").map((item) => item.getAttribute("icon")),
     ).toEqual(["mdi:account-switch-outline", "mdi:alert-circle-outline"]);
+    expect(texts(stress, ".daybar + .sr li")).toContain(
+      "Håndværk og design 10.05–11.35, Flyttet til lokale 117 pga. vandskade",
+    );
   });
 
   it("names a part of the bar where it has room, else abbreviates it, else gives its colour alone", async () => {
     // Idræt fits, Dansk only as DAN, and Engelsk not even so.
     const room: Record<string, Record<string, number>> = {
-      Idræt: { full: 40 },
-      Dansk: { full: 90, short: 40 },
-      Engelsk: { full: 90, short: 90, none: 0 },
+      Idræt: { "": 40 },
+      Dansk: { "": 90, short: 40 },
+      Engelsk: { "": 90, short: 90, none: 0 },
     };
     vi.spyOn(Element.prototype, "scrollWidth", "get").mockImplementation(function (this: Element) {
-      const fit = (this as HTMLElement).dataset.fit ?? "full";
+      const fit = (this as HTMLElement).dataset.fit ?? "";
       return room[this.querySelector(".bar-name")?.textContent ?? ""]?.[fit] ?? 0;
     });
     vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(50);
     const { card } = await mount(DAY, "thu-0715", { config: { children: [1001] } });
     await card.updateComplete;
     expect(all(card, ".daybar .bar-item").map((part) => (part as HTMLElement).dataset.fit)).toEqual(
-      ["full", "short", "none"],
+      ["", "short", "none"],
     );
     vi.restoreAllMocks();
   });

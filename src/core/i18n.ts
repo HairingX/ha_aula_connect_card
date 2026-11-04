@@ -156,12 +156,9 @@ const TEXTS = {
   groupByBlock: ["Block", "Blokke"],
   groupByChild: ["Child", "Barn"],
   editorTimetable: ["Timetable view", "Skemaets visning"],
-  editorTimetableHelper: ["Default: compact.", "Standard: kort."],
-  editorTimetableCompact: ["Compact – subjects and start times", "Kort – fag og starttider"],
-  editorTimetableFull: [
-    "Full – end times, rooms and breaks",
-    "Fuldt – sluttider, lokaler og frikvarterer",
-  ],
+  editorTimetableHelper: ["Default: bar.", "Standard: bjælke."],
+  editorTimetableCompact: ["Bar", "Bjælke"],
+  editorTimetableFull: ["List with rooms and teachers", "Liste med lokaler og lærere"],
   editorInfoLines: ["Lines of a note before Show more", "Linjer i en note før Vis mere"],
   editorInfoLinesHelper: [
     "Default: 6. 0 shows every note whole.",

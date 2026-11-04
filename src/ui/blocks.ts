@@ -167,11 +167,17 @@ function pack(part: Part, ctx: ViewContext): TemplateResult {
   </ul>`;
 }
 
+function statusIcon(status: LessonStatus): unknown {
+  return icon(
+    status.kind === "substitute" ? "mdi:account-switch-outline" : "mdi:alert-circle-outline",
+  );
+}
+
 function statusLabel(status: LessonStatus | undefined, ctx: ViewContext): unknown {
   return status?.kind === "substitute"
-    ? label(html`${icon("mdi:account-switch-outline")}${ctx.t("substitute")}`)
+    ? label(html`${statusIcon(status)}${ctx.t("substitute")}`)
     : status
-      ? label(html`${icon("mdi:alert-circle-outline")}${aula(status.text, ctx)}`, "warning")
+      ? label(html`${statusIcon(status)}${aula(status.text, ctx)}`, "warning")
       : nothing;
 }
 
@@ -185,17 +191,9 @@ function subjectName(row: LessonRow, ctx: ViewContext): TemplateResult {
 }
 
 // Black or white, whichever reads on the colour: by its relative luminance, as WCAG has it.
-function onColor(hex: string): string {
-  const channel = (at: number): number => {
-    const value = parseInt(hex.slice(at, at + 2), 16) / 255;
-    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-  };
-  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5) > 0.179 ? "#000" : "#fff";
-}
-
-/** The style that gives a subject's colour, and the text's that reads on it. */
+/** The style that gives a subject's colour. */
 export function subjectColor(subject: SubjectLabel): string {
-  return subject.color ? `--subject: ${subject.color}; --on: ${onColor(subject.color)}` : "";
+  return subject.color ? `--subject: ${subject.color}` : "";
 }
 
 /**
@@ -221,8 +219,7 @@ function bar(part: Part, ctx: ViewContext): unknown {
       ? html`<span
           class="bar-item ${entry.row.cancelled ? "cancelled" : ""}"
           style="${place(entry.from, entry.to)}; ${subjectColor(entry.row.subject)}"
-          >${entry.row.status ? icon(entry.row.status.kind === "substitute" ? "mdi:account-switch-outline" : "mdi:alert-circle-outline") : nothing}<span
-            class="bar-name"
+          >${entry.row.status ? statusIcon(entry.row.status) : nothing}<span class="bar-name"
             >${aula(entry.row.subject.name, ctx)}</span
           ><span class="bar-short">${aula(entry.row.subject.short, ctx)}</span></span
         >`
@@ -231,10 +228,18 @@ function bar(part: Part, ctx: ViewContext): unknown {
             >${aula(entry.event.title, ctx)}</span
           ></span
         >`;
+  // What the bar shows of an item, said: its subjects or title, when, and a lesson's change.
+  const say = (title: string, start: string, end: string, status = ""): string =>
+    `${title} ${timeText(start, ctx)}–${timeText(end, ctx)}${status && `, ${status}`}`;
   const spoken = (entry: BarItem): string =>
-    entry.kind === "lesson"
-      ? `${[entry.row.subject, ...entry.row.also].map((subject) => subject.name).join(", ")} ${timeText(entry.row.block.start, ctx)}–${timeText(entry.row.block.end, ctx)}`
-      : `${entry.event.title} ${timeText(entry.event.start, ctx)}–${timeText(entry.event.end, ctx)}`;
+    entry.kind === "event"
+      ? say(entry.event.title, entry.event.start, entry.event.end)
+      : say(
+          [entry.row.subject, ...entry.row.also].map((subject) => subject.name).join(", "),
+          entry.row.block.start,
+          entry.row.block.end,
+          entry.row.status?.kind === "substitute" ? ctx.t("substitute") : entry.row.status?.text,
+        );
   return html`<div class="daybar" aria-hidden="true">
       <div class="bar-lanes">
         ${day.hours.map((hour) => html`<span class="hour" style="left: ${at(hour)}"></span>`)}

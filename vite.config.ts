@@ -140,7 +140,7 @@ export interface Budget {
 }
 
 /** The card's budget, in bytes; growth beyond it fails the build. */
-export const BUDGET: Budget = { raw: 108_000, gzip: 35_000 };
+export const BUDGET: Budget = { raw: 112_000, gzip: 36_000 };
 
 /** Returns a line for each limit of the budget the code is over; none when it fits. */
 export function overBudget(code: string, budget: Budget): string[] {

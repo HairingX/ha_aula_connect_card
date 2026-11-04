@@ -27,7 +27,7 @@ export interface CommonConfig {
   readonly expandAbbreviations: boolean;
   /** The things to bring when a subject is on the timetable. */
   readonly packing: readonly PackRule[];
-  /** Whether the timetable opens folded to its subjects and their start times, or in full. */
+  /** Whether the timetable opens as a bar, or in full. */
   readonly timetable: "compact" | "full";
   /** The lines of a note of the plan shown before "Vis mere"; 0 shows every note whole. */
   readonly infoLines: number;
@@ -240,8 +240,7 @@ function color(value: unknown, name: string): string | undefined {
   if (hex && /^#[0-9a-f]{6}$/.test(hex)) return hex;
   if (Array.isArray(value) && value.length === 3) {
     const parts = value.map((part) => (typeof part === "number" ? Math.round(part) : -1));
-    if (parts.every((part) => part >= 0 && part <= 255))
-      return `#${parts.map((part) => part.toString(16).padStart(2, "0")).join("")}`;
+    if (parts.every((part) => part >= 0 && part <= 255)) return `rgb(${parts.join(" ")})`;
   }
   throw new Error(`${name}.color: must be a colour such as "#e57373"`);
 }

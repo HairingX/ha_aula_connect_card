@@ -23,7 +23,7 @@ export interface CardConfigBase {
   readonly children: readonly number[];
   /** `large` for a wall screen. */
   readonly size: "normal" | "large";
-  /** Whether the timetable opens folded to its subjects and their start times, or in full. */
+  /** Whether the timetable opens as a bar, or in full. */
   readonly timetable: "compact" | "full";
   /** The lines of a note of the plan shown before "Vis mere"; 0 shows every note whole. */
   readonly infoLines: number;
@@ -31,7 +31,7 @@ export interface CardConfigBase {
 
 /** How a day's timetable and plan are folded. */
 export interface Folding {
-  /** Whether the timetable opens in full rather than folded to subjects and start times. */
+  /** Whether the timetable opens in full rather than as a bar. */
   readonly full: boolean;
   /** The lines of a note of the plan shown before "Vis mere"; 0 shows every note whole. */
   readonly lines: number;
@@ -277,7 +277,7 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     for (const bar of this.renderRoot.querySelectorAll<HTMLElement>(".daybar")) {
       this.#resized?.observe(bar);
       for (const part of bar.querySelectorAll<HTMLElement>(".bar-item")) {
-        for (const fit of ["full", "short", "none"]) {
+        for (const fit of ["", "short", "none"]) {
           part.dataset.fit = fit;
           if (part.scrollWidth <= part.clientWidth + 1) break;
         }

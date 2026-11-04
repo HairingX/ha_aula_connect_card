@@ -781,10 +781,14 @@ export const blocks = css`
     white-space: nowrap;
     border-radius: calc(6px * var(--aula-scale));
     background: var(--subject, var(--aula-fill-strong));
-    color: var(--on, var(--aula-text));
+    /* Black or white, whichever reads better on the subject (alike at lightness 49.4). */
+    color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0);
     font-size: var(--aula-font-s);
     font-weight: var(--aula-medium);
     --mdc-icon-size: 1em;
+  }
+  .bar-item ha-icon {
+    color: inherit;
   }
   /* Its name where it has room, else its abbreviation, else its colour alone. */
   .bar-short,
