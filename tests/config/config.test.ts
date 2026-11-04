@@ -152,6 +152,25 @@ describe("checking a configuration", () => {
     ]);
   });
 
+  it("reads a colour written empty as none, and one left out as the built-in one", () => {
+    expect(
+      resolveDayConfig({
+        subject_names: [
+          { aula: "DAN", color: null },
+          { aula: "MAT", color: "" },
+          { aula: "ENG", name: "Engelsk", color: undefined },
+        ],
+      }).subjectNames,
+    ).toEqual([
+      { aula: "DAN", name: undefined, color: null, merge: undefined },
+      { aula: "MAT", name: undefined, color: null, merge: undefined },
+      { aula: "ENG", name: "Engelsk", color: undefined, merge: undefined },
+    ]);
+    expect(() => resolveDayConfig({ subject_names: [{ aula: "ENG", color: undefined }] })).toThrow(
+      "subject_names[0]: must give a name, a color or how it merges",
+    );
+  });
+
   it("drops repeated blocks and counts emptied editor fields as absent", () => {
     const config = resolveDayConfig({
       order: ["comment", "comment", "", null, "task"],
@@ -588,6 +607,14 @@ describe("the editor", () => {
     }).toThrow();
     expect(() => {
       form.assertConfig({ subject_names: [{ aula: "DAN", color: [229, 115, 115] }] });
+    }).not.toThrow();
+    expect(() => {
+      form.assertConfig({
+        subject_names: [
+          { aula: "DAN", color: "" },
+          { aula: "MAT", color: null },
+        ],
+      });
     }).not.toThrow();
   });
 });

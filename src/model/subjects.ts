@@ -15,8 +15,8 @@ export interface SubjectName {
   readonly aula: string;
   /** The name to show, such as "Bevægelse"; the title itself turns writing it out off. */
   readonly name?: string | undefined;
-  /** The subject's colour, as "#rrggbb", for every title of the subject. */
-  readonly color?: string | undefined;
+  /** The subject's colour, for every title of the subject; null for none, over the built-in one. */
+  readonly color?: string | null | undefined;
   /** How the subject's lessons go into another lesson at their time. */
   readonly merge?: MergeMode | undefined;
 }
@@ -56,7 +56,7 @@ export interface SubjectLabel {
   readonly key: string;
   /** A short name, where the name has no room: Aula's own abbreviation or the built-in one. */
   readonly short: string;
-  /** The colour configured for the subject, as "#rrggbb". */
+  /** The subject's colour: the configured one, else the built-in one. */
   readonly color: string | undefined;
   /** How its lessons go into another lesson at their time: a second teacher's where they overlap. */
   readonly merge: MergeMode;
@@ -66,6 +66,19 @@ export interface SubjectLabel {
 export type SubjectNamer = (raw: string) => SubjectLabel;
 
 const ROWS = DANISH_SUBJECTS.split(";").map((row) => row.split(","));
+
+// The subjects' colours, in their order: a second teacher has none, as it goes into a lesson.
+const COLORS =
+  "e57373 64b5f6 81c784 ffd54f 9fa8da ff8a65 4db6ac 4dd0e1 aed581 ffb74d a1887f 90a4ae 4fc3f7 66bb6a 9575cd ba68c8 f06292 dce775 bcaaa4 ce93d8 b0bec5 80cbc4 ffcc80 fff176 5c6bc0".split(
+    " ",
+  );
+
+const COLOR = new Map(
+  ROWS.flatMap(([name = ""], index) => {
+    const color = COLORS[index];
+    return color ? [[subjectKey(name), `#${color}`] as const] : [];
+  }),
+);
 
 const BUILT_IN = new Map<string, string>(
   ROWS.flatMap(([name = "", ...aliases]) =>
@@ -96,8 +109,17 @@ export function subjectNamer(overrides: readonly SubjectName[], expand = true): 
     configured.get(subjectKey(raw)) ??
     BUILT_IN.get(subjectKey(raw)) ??
     raw.trim().replace(CLASS_MARKER, "");
-  // A colour or a way to merge is the subject's, whichever of its titles it was given for.
-  const bySubject = new Map(overrides.map((item) => [subjectKey(known(item.aula)), item]));
+  // A colour or a way to merge is the subject's, whichever of its titles it was given for; a
+  // later row gives only what it says.
+  const bySubject = new Map<string, Pick<SubjectName, "color" | "merge">>();
+  for (const item of overrides) {
+    const key = subjectKey(known(item.aula));
+    const before = bySubject.get(key);
+    bySubject.set(key, {
+      color: item.color === undefined ? before?.color : item.color,
+      merge: item.merge ?? before?.merge,
+    });
+  }
   const named = new Map<string, SubjectLabel>();
   return (raw) => {
     let label = named.get(raw);
@@ -108,14 +130,16 @@ export function subjectNamer(overrides: readonly SubjectName[], expand = true): 
       const key = subjectKey(full);
       const name = expand ? full : (own ?? plain);
       const given = bySubject.get(key);
+      // What is not configured comes from the built-in subject, even when it is named anew.
+      const base = subjectKey(BUILT_IN.get(subjectKey(raw)) ?? full);
       label = {
         name,
         raw,
         key,
         short:
           plain !== name && plain.length <= 4 ? plain : (ABBREVIATION.get(key) ?? name.slice(0, 3)),
-        color: given?.color,
-        merge: given?.merge ?? (SUPPORT.has(key) ? "overlap" : "equal"),
+        color: given?.color === null ? undefined : (given?.color ?? COLOR.get(base)),
+        merge: given?.merge ?? (SUPPORT.has(base) ? "overlap" : "equal"),
       };
       named.set(raw, label);
     }

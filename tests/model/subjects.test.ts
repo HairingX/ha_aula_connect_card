@@ -68,4 +68,52 @@ describe("the namer", () => {
       for (const alias of aliases) expect(namer(alias).name).toBe(name);
     }
   });
+
+  it("gives every built-in subject but a second teacher a colour of its own, under each of its names", () => {
+    const colours = new Set<string>();
+    for (const row of DANISH_SUBJECTS.split(";")) {
+      const [name = "", ...aliases] = row.split(",");
+      const color = namer(name).color;
+      if (name === "2 lærere") {
+        expect(color).toBeUndefined();
+        continue;
+      }
+      expect(color).toMatch(/^#[0-9a-f]{6}$/);
+      colours.add(String(color));
+      for (const alias of aliases) expect(namer(`3.B ${alias}`).color).toBe(color);
+    }
+    expect(colours.size).toBe(DANISH_SUBJECTS.split(";").length - 1);
+    expect(namer("Dansk").color).toBe("#e57373");
+    expect(namer("Skak").color).toBeUndefined();
+  });
+
+  it("takes a configured colour over the built-in one, and an empty one as no colour", () => {
+    const given = subjectNamer([
+      { aula: "DAN", color: "#000000" },
+      { aula: "Matematik", color: null },
+      { aula: "Skak", color: "#123456" },
+    ]);
+    expect(given("Dansk").color).toBe("#000000");
+    expect(given("MAT").color).toBeUndefined();
+    expect(given("Skak").color).toBe("#123456");
+    expect(given("ENG").color).toBe("#81c784");
+  });
+
+  it("keeps the built-in colour and merging of a subject named anew", () => {
+    const renamed = subjectNamer([
+      { aula: "DAN", name: "Dans" },
+      { aula: "2Lær", name: "Ekstra lærer" },
+    ]);
+    expect(renamed("DAN")).toMatchObject({ name: "Dans", color: "#e57373" });
+    expect(renamed("2Lær")).toMatchObject({ name: "Ekstra lærer", merge: "overlap" });
+  });
+
+  it("takes from each row for a subject only what it gives", () => {
+    const rows = subjectNamer([
+      { aula: "Dansk", color: "#000000" },
+      { aula: "DAN", merge: "never" },
+      { aula: "DA", name: undefined },
+    ]);
+    expect(rows("DA")).toMatchObject({ color: "#000000", merge: "never" });
+  });
 });

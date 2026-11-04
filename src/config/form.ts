@@ -316,9 +316,10 @@ function assertShown(raw: Record<string, unknown>): void {
   if (typeof raw.switch_time === "number" || /^\s*\d+\s*$/.test(String(raw.switch_time))) {
     throw new Error('switch_time: write the time as "12:00" to set it here');
   }
-  // The colour picker shows a colour given as [r, g, b] only.
+  // The colour picker shows a colour given as [r, g, b], or none, only.
   const names = Array.isArray(raw.subject_names) ? (raw.subject_names as unknown[]) : [];
-  if (names.some((row) => typeof (row as { color?: unknown } | null)?.color === "string")) {
+  const written = (row: unknown): unknown => (row as { color?: unknown } | null)?.color;
+  if (names.map(written).some((color) => typeof color === "string" && color !== "")) {
     throw new Error("subject_names: write a colour as [229, 115, 115] to set it here");
   }
 }
