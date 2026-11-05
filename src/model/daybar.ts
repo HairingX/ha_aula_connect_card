@@ -52,6 +52,18 @@ export interface DayBar {
   readonly hours: readonly number[];
   /** The minute it is now, while it is within the bar on its day. */
   readonly now: number | undefined;
+  /** The times along the bar where a lesson or an event begins or ends, a time once, in order. */
+  readonly marks: readonly BarMark[];
+}
+
+/** A time along the bar. */
+export interface BarMark {
+  /** The minute, since midnight. */
+  readonly minute: number;
+  /** The time as ISO 8601, as what begins or ends there has it. */
+  readonly at: string;
+  /** Whether something begins there, which a mark is shown for before one where things only end. */
+  readonly start: boolean;
 }
 
 const DAY = 24 * 60;
@@ -163,17 +175,22 @@ export function dayBar(
   }));
   // An event running on from another day, or into the next, says nothing of the day's ends.
   const marks = [
-    ...lessons.flatMap((item): [number, string][] => [
-      [item.from, item.row.block.start],
-      [item.to, item.row.block.end],
+    ...lessons.flatMap((item): [number, string, boolean][] => [
+      [item.from, item.row.block.start, true],
+      [item.to, item.row.block.end, false],
     ]),
-    ...events.flatMap((item): [number, string][] => [
-      [item.from, item.event.start],
-      [item.to, item.event.end],
+    ...events.flatMap((item): [number, string, boolean][] => [
+      [item.from, item.event.start, true],
+      [item.to, item.event.end, false],
     ]),
   ]
     .filter(([minute]) => minute > 0 && minute < DAY)
     .sort((a, b) => a[0] - b[0]);
+  const times = new Map<number, BarMark>();
+  for (const [minute, at, start] of marks) {
+    const known = times.get(minute);
+    times.set(minute, { minute, at: known?.at ?? at, start: start || (known?.start ?? false) });
+  }
   // A day of events lasting the whole of it only has their lanes.
   const first = marks[0];
   const last = marks.at(-1);
@@ -197,5 +214,6 @@ export function dayBar(
     allDay,
     hours,
     now: minute !== undefined && minute >= start && minute <= end ? minute : undefined,
+    marks: [...times.values()],
   };
 }

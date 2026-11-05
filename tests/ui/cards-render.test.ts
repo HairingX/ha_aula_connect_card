@@ -825,7 +825,17 @@ describe("the folded day", () => {
     expect(all(card, ".daybar .bar-item ha-icon").map((item) => item.getAttribute("icon"))).toEqual(
       ["mdi:account-switch-outline"],
     );
-    expect(texts(card, ".daybar .ticks time")).toEqual(["08.00", "12.55"]);
+    expect(texts(card, ".daybar .ticks time")).toEqual([
+      "8.00",
+      "9.30",
+      "10.05",
+      "11.35",
+      "12.10",
+      "12.55",
+    ]);
+    expect(all(card, ".daybar .ticks time").map((mark) => (mark as HTMLElement).dataset.p)).toEqual(
+      ["0", "2", "1", "2", "1", "0"],
+    );
     expect(texts(card, ".daybar + .sr li")).toEqual([
       "Idræt 08.00–09.30",
       "Dansk 10.05–11.35",
@@ -846,6 +856,51 @@ describe("the folded day", () => {
     expect(texts(stress, ".daybar + .sr li")).toContain(
       "Håndværk og design 10.05–11.35, Flyttet til lokale 117 pga. vandskade",
     );
+  });
+
+  it("shows the bar's first and last time, then the starts and the ends that touch no other", async () => {
+    // Each time 10 px wide where it falls: 8.00 at 0, then each lesson's start and end.
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: Element,
+    ) {
+      const left = parseFloat((this as HTMLElement).style.left || "0");
+      return {
+        left,
+        right: left + 10,
+        top: 0,
+        bottom: 0,
+        width: 10,
+        height: 0,
+        x: left,
+        y: 0,
+        toJSON: () => ({}),
+      };
+    });
+    const { card } = await mount(DAY, "thu-1010", { config: { children: [1001] } });
+    await card.updateComplete;
+    const shown = all(card, ".daybar .ticks time")
+      .filter((mark) => !(mark as HTMLElement).hidden)
+      .map((mark) => mark.textContent);
+    expect(shown).toEqual(
+      ["8.00", "9.30", "10.05", "11.35", "12.10", "12.55"].filter((time) => shown.includes(time)),
+    );
+    expect(shown).toEqual(expect.arrayContaining(["8.00", "12.55"]));
+    expect(shown.length).toBeLessThan(6);
+    vi.restoreAllMocks();
+  });
+
+  it("names Vigtigt and the timetable to a screen reader only, and Noter quietly", async () => {
+    const { card } = await mount(DAY, "thu-1010", { config: { children: [1001] } });
+    const heads = all(card, ".block-head").map((head) => [
+      head.textContent.trim(),
+      head.classList.contains("sr"),
+    ]);
+    expect(heads).toEqual([
+      ["Vigtigt", true],
+      ["Skema", true],
+      ["Noter", false],
+    ]);
+    expect(all(card, '[data-block="task"] .vital-flag ha-icon')).toHaveLength(1);
   });
 
   it("names a part of the bar where it has room, else abbreviates it, else gives its colour alone", async () => {

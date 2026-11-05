@@ -69,14 +69,16 @@ always as it should be.
 - **The header**: the day, its date, and under it the school hours on a line of their own; then
   the day's birthdays as one line: "Alma, Bo og Carl har fødselsdag". Before a holiday it names
   the holiday, its dates and the day school starts again.
-- **The blocks**, in this order unless you choose another:
+- **The blocks**, in this order unless you choose another. Vigtigt's box, with a flag in its
+  corner, and the timetable's bar need no heading; Noter has a quiet one:
   - **Vigtigt** (important), in one box: what the week plan marks as a task for that day -
     homework, a test, a thing to do - every one in full, as it is never folded, or why it marks
     none; then "Husk:" and the things to bring for the day's subjects, from your own
     [packing rules](#things-to-bring), each in its subject's [colour](#subject-names) as in the
     timetable's bar - a subject with no colour is named after its things.
-  - **Skema** (timetable): the day as a bar from its first lesson to its last, with its start
-    and end under it, a faint line at each full hour and, today, a line at the time it is now.
+  - **Skema** (timetable): the day as a bar from its first lesson to its last, with the times
+    under it where lessons begin and end - its first and last, then every start, then every end,
+    as many as have room - a faint line at each full hour and, today, a line at the time it is now.
     Each lesson is a part of the bar in its subject's [colour](#subject-names), grey without one,
     named in full where it has room, else by its abbreviation, else by its colour alone. Lessons
     of one subject with no break between them are one part, so the breaks show. A lesson at the

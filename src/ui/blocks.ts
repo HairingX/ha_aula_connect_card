@@ -141,46 +141,49 @@ export function emptyText(
  */
 function important(part: Part, ctx: ViewContext): TemplateResult {
   const { homework, noHomework, pack, subjects } = part.plan;
-  return html`<ul class="homework">
-    ${homeworkItems(homework, ctx)}
-    ${
-      homework.length === 0 && noHomework
-        ? html`<li class="hw">
-            <p class="empty">${emptyText("task", noHomework, part.content, ctx)}</p>
-          </li>`
-        : nothing
-    }
-    ${
-      pack.length > 0 || subjects.length > 0
-        ? html`<li class="hw hw-pack">
-            <span class="pack-label">${ctx.t("remember")}</span>
-            ${pack.map(
-              (row) =>
-                html`<span class="pack-row" style=${subjectColor(row.subject)}
-                  >${row.items.map(
-                    (item, index) =>
-                      html`${index > 0 ? html`<span class="sr">, </span>` : nothing}<span
-                          class="pack-item"
-                          >${aula(item, ctx)}</span
-                        >`,
-                  )}
-                  <span class="pack-source ${row.subject.color ? "sr" : ""}"
-                    >${aula(row.subject.name, ctx)}</span
-                  ></span
-                >`,
-            )}
-            ${
-              subjects.length > 0
-                ? html`<span class="pack-subjects"
-                    ><span class="pack-label">${ctx.t("subjects")}</span>
-                    ${aula(subjects.map((item) => item.name).join(", "), ctx)}</span
-                  >`
-                : nothing
-            }
-          </li>`
-        : nothing
-    }
-  </ul>`;
+  return html`<div class="vital">
+    <span class="vital-flag" aria-hidden="true">${icon(BLOCK_ICONS.task)}</span>
+    <ul class="homework">
+      ${homeworkItems(homework, ctx)}
+      ${
+        homework.length === 0 && noHomework
+          ? html`<li class="hw">
+              <p class="empty">${emptyText("task", noHomework, part.content, ctx)}</p>
+            </li>`
+          : nothing
+      }
+      ${
+        pack.length > 0 || subjects.length > 0
+          ? html`<li class="hw hw-pack">
+              <span class="pack-label">${ctx.t("remember")}</span>
+              ${pack.map(
+                (row) =>
+                  html`<span class="pack-row" style=${subjectColor(row.subject)}
+                    >${row.items.map(
+                      (item, index) =>
+                        html`${index > 0 ? html`<span class="sr">, </span>` : nothing}${label(
+                          aula(item, ctx),
+                          "pack-item",
+                        )}`,
+                    )}
+                    <span class="pack-source ${row.subject.color ? "sr" : ""}"
+                      >${aula(row.subject.name, ctx)}</span
+                    ></span
+                  >`,
+              )}
+              ${
+                subjects.length > 0
+                  ? html`<span class="pack-subjects"
+                      ><span class="pack-label">${ctx.t("subjects")}</span>
+                      ${aula(subjects.map((item) => item.name).join(", "), ctx)}</span
+                    >`
+                  : nothing
+              }
+            </li>`
+          : nothing
+      }
+    </ul>
+  </div>`;
 }
 
 function statusIcon(status: LessonStatus): unknown {
@@ -278,7 +281,18 @@ function bar(part: Part, ctx: ViewContext): unknown {
       ${
         day.from === undefined || day.until === undefined
           ? nothing
-          : html`<div class="ticks">${time(day.from, ctx)}${time(day.until, ctx)}</div>`
+          : html`<div class="ticks">
+              ${day.marks.map((mark, index) => {
+                const edge = index === 0 ? "first" : index === day.marks.length - 1 ? "last" : "";
+                return html`<time
+                  class=${edge}
+                  datetime=${mark.at}
+                  style="left: ${at(mark.minute)}"
+                  data-p=${edge ? 0 : mark.start ? 1 : 2}
+                  >${timeText(mark.at, ctx).replace(/^0(?=\d)/, "")}</time
+                >`;
+              })}
+            </div>`
       }
     </div>
     <ul class="sr">
@@ -479,7 +493,12 @@ export function renderBlock(
   const { full } = options.state.folding;
   const unfolded = options.state.isOpen(key, full);
   return html`<section class="block" data-block=${id}>
-    ${headingOf(options.level, html`${icon(BLOCK_ICONS[id])}<span>${title(id, ctx)}</span>`, "block-head")}
+    ${headingOf(
+      options.level,
+      html`${icon(BLOCK_ICONS[id])}<span>${title(id, ctx)}</span>`,
+      // Vigtigt's box and the day's bar say what they are; the others are named, quietly.
+      id === "comment" ? "block-head" : "block-head sr",
+    )}
     ${
       once === undefined
         ? html`<div class="cols">

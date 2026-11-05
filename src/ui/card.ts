@@ -282,6 +282,19 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
           if (part.scrollWidth <= part.clientWidth + 1) break;
         }
       }
+      // The bar's first and last time first, then where lessons begin, then where they end.
+      const marks = [...bar.querySelectorAll<HTMLElement>(".ticks time")].sort(
+        (a, b) => Number(a.dataset.p) - Number(b.dataset.p),
+      );
+      const placed: DOMRect[] = [];
+      for (const mark of marks) {
+        mark.hidden = false;
+        const box = mark.getBoundingClientRect();
+        mark.hidden = placed.some(
+          (other) => box.left < other.right + 6 && other.left < box.right + 6,
+        );
+        if (!mark.hidden) placed.push(box);
+      }
     }
     for (const text of this.renderRoot.querySelectorAll<HTMLElement>(".clamp[data-cut]")) {
       this.#resized?.observe(text);

@@ -701,8 +701,6 @@ export const blocks = css`
     flex-wrap: wrap;
     align-items: center;
     gap: var(--aula-space-2);
-    font-weight: var(--aula-medium);
-    line-height: var(--aula-condensed);
     overflow-wrap: anywhere;
   }
   .pack-label {
@@ -711,11 +709,33 @@ export const blocks = css`
   .pack-row {
     display: contents;
   }
-  .pack-item {
-    padding: 2px calc(10px * var(--aula-scale));
-    border-radius: 999px;
+  .label.pack-item {
     background: var(--subject, var(--aula-fill-strong));
     color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0);
+  }
+  /* On the wall what to bring is read from across the kitchen. */
+  .large .label.pack-item {
+    font-size: var(--aula-font-m);
+  }
+  /* Vigtigt's box is named by a flag in its corner, not a heading over it. */
+  .vital {
+    position: relative;
+  }
+  .vital-flag {
+    position: absolute;
+    top: var(--aula-space-3);
+    inset-inline-end: var(--aula-space-3);
+    color: var(--aula-text-2);
+    --mdc-icon-size: calc(16px * var(--aula-scale));
+  }
+  .vital .hw:first-child {
+    padding-inline-end: calc(var(--aula-space-3) * 2 + 16px * var(--aula-scale));
+  }
+  [data-block="comment"] .block-head {
+    min-height: 0;
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+    --mdc-icon-size: calc(16px * var(--aula-scale));
   }
   .pack-source {
     color: var(--aula-text-2);
@@ -825,12 +845,26 @@ export const blocks = css`
     border-radius: 1px;
     background: var(--aula-text);
   }
+  /* Each time where it falls; those that would touch another are hidden by the card. */
   .ticks {
-    display: flex;
-    justify-content: space-between;
+    position: relative;
+    height: calc(var(--aula-font-s) * var(--aula-condensed));
     margin-top: var(--aula-space-1);
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
+    line-height: var(--aula-condensed);
+    white-space: nowrap;
+  }
+  .ticks time {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+  }
+  .ticks .first {
+    transform: none;
+  }
+  .ticks .last {
+    transform: translateX(-100%);
   }
   .lesson-time {
     display: flex;
