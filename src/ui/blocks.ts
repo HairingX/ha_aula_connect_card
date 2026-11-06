@@ -114,6 +114,25 @@ export function homeworkList(notes: readonly NoteView[], ctx: ViewContext): Temp
   </ul>`;
 }
 
+/**
+ * Says why a part has nothing. A week plan not yet in Aula stands out, with its icon: its
+ * homework is unknown, not none.
+ */
+export function emptyNote(text: string, empty: EmptyKind | "none" | undefined): TemplateResult {
+  return empty === "planMissing"
+    ? html`<p class="empty missing">${icon("mdi:clock-alert-outline")}<span>${text}</span></p>`
+    : html`<p class="empty">${text}</p>`;
+}
+
+/** Shows a part's content, or why it has none where `text` says so. */
+export function partOrNote(
+  text: string | undefined,
+  empty: EmptyKind | "none" | undefined,
+  content: () => unknown,
+): unknown {
+  return text === undefined ? content() : emptyNote(text, empty);
+}
+
 /** Returns the sentence a part says when it has nothing. */
 export function emptyText(
   id: BlockId,
@@ -148,7 +167,7 @@ function important(part: Part, ctx: ViewContext): TemplateResult {
       ${
         homework.length === 0 && noHomework
           ? html`<li class="hw">
-              <p class="empty">${emptyText("task", noHomework, part.content, ctx)}</p>
+              ${emptyNote(emptyText("task", noHomework, part.content, ctx), noHomework)}
             </li>`
           : nothing
       }
@@ -517,11 +536,9 @@ export function renderBlock(
                           )
                         : nothing
                     }
-                    ${
-                      texts[index] === undefined
-                        ? body(id, part, ctx, options, unfolded)
-                        : html`<p class="empty">${texts[index]}</p>`
-                    }
+                    ${partOrNote(texts[index], part.empty, () =>
+                      body(id, part, ctx, options, unfolded),
+                    )}
                   </div>`,
               )}
             </div>
@@ -530,7 +547,7 @@ export function renderBlock(
                 ? more(key, unfolded, full, ctx.t("showTimetable"), options.state, ctx)
                 : nothing
             }`
-        : html`<p class="empty">${once}</p>`
+        : emptyNote(once, parts[0]?.empty)
     }
   </section>`;
 }

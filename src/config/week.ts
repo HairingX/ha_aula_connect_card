@@ -34,7 +34,8 @@ export function resolveWeekConfig(config: unknown, lenient = false): WeekCardCon
   const common = resolveCommon(raw, lenient);
   return {
     ...common,
-    ...resolveBlocks(raw),
+    // An open day shows its timetable first, unless the card names an order of its own.
+    ...resolveBlocks(raw.order === undefined ? { ...raw, order: ["timetable"] } : raw),
     weeks: parseWeeks(raw.weeks),
   };
 }

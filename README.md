@@ -124,7 +124,12 @@ This week and next, a row a day: the day that matters now opened, with its block
 school day card and the teachers' initials in the timetable; the days before it folded into one
 row; the rest closed, each summed up in a line: the hours, a flag with how many things the
 plan marks as important ("08.00–13.40 · ⚑ 2"), and an event and a birthday, or "2 begivenheder"
-and "3 fødselsdage" when there are more. A weekend with something on is one
+and "3 fødselsdage" when there are more. The opened day names itself on one line, with how far
+away it is on the other side ("Mandag", "om 3 dage") and its hours under it, and shows its
+timetable first, between thin lines, with only a chevron to open it whole. A day the week plan
+marks nothing for says nothing of it. Where the week's plan is not in Aula yet, the opened day
+says so first, with a mark, and each closed row has "⚑ ?" in place of its count, so that a day
+without homework is never taken for one whose plan is still to come. A weekend with something on is one
 row, and a holiday's days are one row with its dates. From Friday afternoon this week collapses
 and next week opens at Monday:
 
@@ -140,21 +145,21 @@ above the children.
 
 ## Configuration
 
-| Option                 | Cards            | Default          | What it does                                                                                                                                                       |
-| ---------------------- | ---------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `children`             | all              | every child      | The children to show, by Aula's child id, in this order.                                                                                                           |
-| `group_by`             | school day       | `block`          | `block`: each block holds every child. `child`: each child's whole day apart, in a [column of its own](#several-children).                                         |
-| `switch_time`          | all              | `"12:00"`        | When the next school day takes over from today. `"00:00"` keeps today all day.                                                                                     |
-| `size`                 | all              | `normal`         | `large` for a wall screen: text 1.5 times as large, and the wall's sizes from a 480 px card.                                                                       |
-| `subject_names`        | all              | none             | [Names, colours and merging](#subject-names) for lesson titles, over the built-in ones.                                                                            |
-| `expand_abbreviations` | all              | `true`           | `false` shows the subjects' abbreviations as Aula has them, in place of the [built-in names](#subject-names).                                                      |
-| `info_lines`           | all              | `6`              | The lines of a note shown before "Vis mere", 0 to 50; `0` shows every note whole.                                                                                  |
-| `notes`                | week plan        | `tasks`          | `tasks`, `comments` or `all`: what the card shows of the week plan.                                                                                                |
-| `order`                | school day, week | none             | The blocks to put first, in this order: `task`, `timetable`, `comment`. The rest follow the standard order: Vigtigt with Husk in it, Skema, Noter.                 |
-| `show`                 | school day, week | everything shown | Hide a block with `false`: `task`, `timetable`, `comment`; `pack: false` leaves Husk out of Vigtigt, `events: false` the events, `birthdays: false` the birthdays. |
-| `timetable`            | school day, week | `compact`        | `compact` shows the timetable as a bar; `full` opens it whole, still to be folded.                                                                                 |
-| `packing`              | school day, week | none             | [Things to bring](#things-to-bring) when a subject is on the timetable.                                                                                            |
-| `weeks`                | week             | `2`              | `1` shows the week of the day that matters now, `2` this week and next.                                                                                            |
+| Option                 | Cards            | Default                   | What it does                                                                                                                                                       |
+| ---------------------- | ---------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `children`             | all              | every child               | The children to show, by Aula's child id, in this order.                                                                                                           |
+| `group_by`             | school day       | `block`                   | `block`: each block holds every child. `child`: each child's whole day apart, in a [column of its own](#several-children).                                         |
+| `switch_time`          | all              | `"12:00"`                 | When the next school day takes over from today. `"00:00"` keeps today all day.                                                                                     |
+| `size`                 | all              | `normal`                  | `large` for a wall screen: text 1.5 times as large, and the wall's sizes from a 480 px card.                                                                       |
+| `subject_names`        | all              | none                      | [Names, colours and merging](#subject-names) for lesson titles, over the built-in ones.                                                                            |
+| `expand_abbreviations` | all              | `true`                    | `false` shows the subjects' abbreviations as Aula has them, in place of the [built-in names](#subject-names).                                                      |
+| `info_lines`           | all              | `6`                       | The lines of a note shown before "Vis mere", 0 to 50; `0` shows every note whole.                                                                                  |
+| `notes`                | week plan        | `tasks`                   | `tasks`, `comments` or `all`: what the card shows of the week plan.                                                                                                |
+| `order`                | school day, week | none; week: `[timetable]` | The blocks to put first, in this order: `task`, `timetable`, `comment`. The rest follow the standard order: Vigtigt with Husk in it, Skema, Noter.                 |
+| `show`                 | school day, week | everything shown          | Hide a block with `false`: `task`, `timetable`, `comment`; `pack: false` leaves Husk out of Vigtigt, `events: false` the events, `birthdays: false` the birthdays. |
+| `timetable`            | school day, week | `compact`                 | `compact` shows the timetable as a bar; `full` opens it whole, still to be folded.                                                                                 |
+| `packing`              | school day, week | none                      | [Things to bring](#things-to-bring) when a subject is on the timetable.                                                                                            |
+| `weeks`                | week             | `2`                       | `1` shows the week of the day that matters now, `2` this week and next.                                                                                            |
 
 A school day card in YAML, every option at its default but the children:
 

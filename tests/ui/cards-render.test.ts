@@ -1055,6 +1055,44 @@ describe("rarer days", () => {
     location: null,
   });
 
+  it("names the open day's distance on its title's line, not that it is the next school day, and keeps its hours", async () => {
+    const { card } = await mount(WEEK, "fri-1400", { config: { children: [1001] } });
+    expect(text(card, ".focus-day .ahead")).toBe("om 3 dage");
+    expect(all(card, ".focus-day .date-line")).toEqual([]);
+    expect(text(card, ".focus-day .hero-text > .hours")).toBe("08.00–13.40");
+  });
+
+  it("shows an open day's timetable first, its toggle a chevron with its words for a screen reader", async () => {
+    const { card } = await mount(WEEK, "fri-1400", { config: { children: [1001] } });
+    const first = card.shadowRoot?.querySelector(".focus-day .day-body .block");
+    expect(first?.getAttribute("data-block")).toBe("timetable");
+    expect(text(card, '.focus-day [data-block="timetable"] .more-text')).toBe("Vis hele skemaet");
+  });
+
+  it("says nothing of a day the week plan has nothing for", async () => {
+    const { card } = await mount(WEEK, "fri-1400", {
+      config: { children: [1001] },
+      ...changed("fri-1400", (data) => ({
+        ...data,
+        tasks: data.tasks.filter((task) => task.date !== "2026-11-02"),
+      })),
+    });
+    expect(texts(card, ".focus-day .empty")).toEqual([]);
+  });
+
+  it("says first, and plainly, that a day's week plan is not in Aula yet, and asks it where the flags are", async () => {
+    const { card } = await mount(WEEK, "fri-1400-noplan", { config: { children: [1001] } });
+    const first = card.shadowRoot?.querySelector(".focus-day .day-body .block");
+    expect(first?.getAttribute("data-block")).toBe("task");
+    expect(text(card, ".focus-day .empty.missing")).toBe(
+      "Ugeplanen for uge 45 er ikke i Aula endnu.",
+    );
+    const asked = all(card, ".day-row:not(.focus-day) .count.missing");
+    expect(asked.length).toBeGreaterThan(0);
+    expect(asked.map((item) => item.textContent.trim())).toContain("?");
+    expect(asked[0]?.getAttribute("aria-label")).toBe("Ugeplanen for uge 45 er ikke i Aula endnu.");
+  });
+
   it("unfolds the week card's timetable with the teachers' initials and the lesson going on", async () => {
     const { card } = await mount(WEEK, "thu-1010", { config: { children: [1001] } });
     present(

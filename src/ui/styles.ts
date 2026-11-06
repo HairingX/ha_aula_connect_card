@@ -122,6 +122,18 @@ export const base = css`
   .not-yet {
     color: var(--aula-text-2);
   }
+  /* A week plan not yet in Aula: its homework is unknown, so it is said as plainly as homework. */
+  .empty.missing {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-2);
+    color: var(--aula-text);
+    font-weight: var(--aula-medium);
+  }
+  .missing ha-icon {
+    flex: none;
+    color: var(--warning-color, #f57c00);
+  }
 
   .status {
     display: flex;
@@ -1390,6 +1402,48 @@ export const weekStyles = css`
   .weekend-title {
     font-size: var(--aula-font-xl);
     font-weight: var(--aula-medium);
+  }
+  /* The focus day's title is a line with how far ahead it is, a step below the week's weight. */
+  .focus-day .heading {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--aula-space-3);
+  }
+  .focus-day .open-title {
+    font-size: var(--aula-font-l);
+  }
+  .ahead {
+    flex: none;
+    color: var(--aula-text-2);
+  }
+  /*
+   * An open day's timetable stands between lines, first, its bar the width it can have: its
+   * toggle is the chevron at its end, its words left to a screen reader.
+   */
+  .day-body [data-block="timetable"] {
+    position: relative;
+    padding-block: var(--aula-space-3);
+    padding-inline-end: calc(40px * var(--aula-scale));
+    border-block: 1px solid var(--aula-line);
+  }
+  .day-body [data-block="timetable"] > .more {
+    position: absolute;
+    inset-inline-end: calc(-1 * var(--aula-space-3));
+    top: 50%;
+    transform: translateY(-50%);
+    justify-content: center;
+    width: var(--aula-target);
+    margin: 0;
+    padding: 0;
+  }
+  .day-body [data-block="timetable"] .more-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .focus-day .hero-text {
     gap: var(--aula-space-1);

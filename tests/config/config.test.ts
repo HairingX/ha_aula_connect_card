@@ -18,6 +18,7 @@ afterEach(() => {
 });
 
 const ALL = ["task", "pack", "timetable", "comment", "events", "birthdays"];
+const WEEK = ["timetable", "task", "pack", "comment", "events", "birthdays"];
 
 describe("the week card's configuration", () => {
   it("fills in the defaults", () => {
@@ -30,9 +31,9 @@ describe("the week card's configuration", () => {
       packing: [],
       timetable: "compact",
       infoLines: 6,
-      order: [],
+      order: ["timetable"],
       show: {},
-      blocks: ALL,
+      blocks: WEEK,
       weeks: 2,
     });
   });
@@ -72,7 +73,12 @@ describe("the week card's configuration", () => {
   it("accepts and ignores any key Home Assistant adds", () => {
     const config = resolveWeekConfig({ grid_options: { columns: 12 }, visibility: [] });
     expect(config).not.toHaveProperty("grid_options");
-    expect(config.blocks).toEqual(ALL);
+    expect(config.blocks).toEqual(WEEK);
+  });
+
+  it("shows a day's timetable first, unless order says otherwise", () => {
+    expect(resolveWeekConfig({ order: ["task"] }).blocks).toEqual(ALL);
+    expect(resolveWeekConfig({ order: [] }).blocks).toEqual(ALL);
   });
 });
 
@@ -212,7 +218,10 @@ describe("checking a configuration", () => {
 
   it("puts Vigtigt, with Husk in it, first on a wall screen as anywhere, unless order says otherwise", () => {
     expect(resolveDayConfig({ size: "large" }).blocks.slice(0, 2)).toEqual(["task", "pack"]);
-    expect(resolveWeekConfig({ size: "large" }).blocks.slice(0, 2)).toEqual(["task", "pack"]);
+    expect(resolveWeekConfig({ size: "large", order: [] }).blocks.slice(0, 2)).toEqual([
+      "task",
+      "pack",
+    ]);
     expect(resolveDayConfig({ size: "large", order: ["timetable"] }).blocks[0]).toBe("timetable");
   });
 

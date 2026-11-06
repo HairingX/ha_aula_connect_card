@@ -238,7 +238,8 @@ export function more(
       state.toggle(key, fallback);
     }}
   >
-    ${open ? ctx.t("showLess") : text}${icon("mdi:chevron-down", "chevron")}
+    <span class="more-text">${open ? ctx.t("showLess") : text}</span
+    >${icon("mdi:chevron-down", "chevron")}
   </button>`;
 }
 
