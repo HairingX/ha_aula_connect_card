@@ -742,6 +742,32 @@ export const blocks = css`
   .vital .hw:first-child {
     padding-inline-end: calc(var(--aula-space-3) * 2 + 16px * var(--aula-scale));
   }
+  /*
+   * After the timetable, Vigtigt has no box: Husk follows the bar it comes from, with a line
+   * below it, and what the plan marks follows in rows beside one flag.
+   */
+  [data-block="timetable"] + [data-block="task"] .vital {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--aula-space-3);
+  }
+  [data-block="timetable"] + [data-block="task"] .homework {
+    display: contents;
+  }
+  [data-block="timetable"] + [data-block="task"] .vital-flag {
+    position: static;
+  }
+  [data-block="timetable"] + [data-block="task"] .hw {
+    grid-column: 2;
+    padding: 0;
+    border: 0;
+  }
+  [data-block="timetable"] + [data-block="task"] .hw-pack {
+    order: -1;
+    grid-column: 1 / -1;
+    padding-bottom: var(--aula-space-3);
+    border-bottom: 1px solid var(--aula-line);
+  }
   [data-block="comment"] .block-head {
     min-height: 0;
     color: var(--aula-text-2);
@@ -1418,6 +1444,7 @@ export const weekStyles = css`
   .day-body [data-block="timetable"] {
     display: grid;
     grid-template-columns: 1fr auto;
+    align-items: start;
     padding-block: var(--aula-space-3);
     border-block: 1px solid var(--aula-line);
   }
@@ -1430,38 +1457,13 @@ export const weekStyles = css`
   .day-row:not(.focus-day) > .day-body {
     padding-top: var(--aula-space-2);
   }
-  /*
-   * Under the timetable Husk follows its bar, the line moving below it; what the plan marks
-   * follows in rows beside one flag.
-   */
-  .day-body [data-block="timetable"]:has(+ .block .hw-pack) {
+  /* An open day's Husk sits close under its bar, the timetable's line moving below it. */
+  .day-body [data-block="timetable"]:has(+ [data-block="task"] .hw-pack) {
     padding-bottom: 0;
     border-bottom: 0;
   }
-  .day-body [data-block="timetable"] + .block:has(.hw-pack) {
+  .day-body [data-block="timetable"] + [data-block="task"]:has(.hw-pack) {
     margin-top: calc(-1 * var(--aula-space-3));
-  }
-  .day-body .vital {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--aula-space-3);
-  }
-  .day-body .homework {
-    display: contents;
-  }
-  .day-body .vital-flag {
-    position: static;
-  }
-  .day-body .vital .hw {
-    grid-column: 2;
-    border: 0;
-    padding: 0;
-  }
-  .day-body .vital .hw-pack {
-    order: -1;
-    grid-column: 1 / -1;
-    padding-bottom: var(--aula-space-3);
-    border-bottom: 1px solid var(--aula-line);
   }
   .weekend-day + .weekend-day {
     margin-top: var(--aula-space-6);

@@ -93,7 +93,9 @@ always as it should be.
   - **Noter** (notes): the week plan's other notes for the day, in a quieter column; each folds
     after six lines with its own "Vis mere", as a teacher may write fifty.
 
-A block with nothing in it for any child is left out, or says so once.
+A block with nothing in it for any child is left out, or says so once. Where `order` puts the
+timetable before Vigtigt, as the week card does, Vigtigt has no box: Husk follows the timetable,
+with a line below it, and what the plan marks follows in rows beside a flag.
 
 ## Week plan card
 
