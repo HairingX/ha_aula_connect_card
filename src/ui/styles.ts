@@ -1026,17 +1026,22 @@ export const blocks = css`
     -webkit-tap-highlight-color: transparent;
   }
   /*
-   * The timetable folds at a tap anywhere on it; its button is a small mark centred below it,
+   * The timetable folds at a tap anywhere on it, so its button is only a small mark at its end,
    * unlike the chevrons that open rows, its words left to a screen reader.
    */
+  [data-block="timetable"]:has(> .cols + .more) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: var(--aula-space-2);
+  }
   .unfolds {
     cursor: pointer;
   }
   .cols + .more {
-    align-self: center;
     justify-content: center;
-    width: var(--aula-target);
-    min-height: calc(28px * var(--aula-scale));
+    width: calc(24px * var(--aula-scale));
+    min-height: calc(24px * var(--aula-scale));
     margin: 0;
     padding: 0;
   }

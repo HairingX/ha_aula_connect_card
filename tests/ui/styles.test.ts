@@ -97,8 +97,11 @@ describe("the week card's rows", () => {
 });
 
 describe("the timetable's button", () => {
-  it("marks the timetable's toggle small and centred below it, the timetable a target itself", () => {
-    expect(declared(blocks, ".cols + .more")).toContain("align-self: center");
+  it("marks the timetable's toggle small at its end, the timetable a target itself", () => {
+    expect(declared(blocks, ".cols + .more")).toContain("width: calc(24px * var(--aula-scale))");
+    expect(declared(blocks, '[data-block="timetable"]:has(> .cols + .more)')).toContain(
+      "grid-template-columns: minmax(0, 1fr) auto",
+    );
     expect(declared(blocks, ".unfolds")).toContain("cursor: pointer");
   });
 });

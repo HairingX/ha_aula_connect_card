@@ -87,7 +87,7 @@ always as it should be.
     outlined lane under the lessons, and each event lasting the whole day a hatched one. A
     substitute's part has a mark; a cancelled lesson's is an outline, struck through. A tap
     anywhere on the timetable opens it as a calendar shows a day, and another folds it again; the
-    small ⇕ mark centred under it says it can, with no words to read past. Opened, it shows the events lasting the whole day
+    small ⇕ mark at its right end says it can, with no words to read past. Opened, it shows the events lasting the whole day
     first, marked "Hele dagen", then the lessons and the events with a time in the order they
     begin, each lesson with its time first and a line in its subject's colour, its room and
     teachers, the breaks and the lesson going on now.
