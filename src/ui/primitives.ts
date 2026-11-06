@@ -221,7 +221,10 @@ export function summed<T>(
   ];
 }
 
-/** Shows the button that unfolds or folds what is kept by `key`. */
+/**
+ * Shows the button that unfolds or folds what is kept by `key`: its words and a chevron, or with
+ * `unfold` an unfold mark alone, its words left to a screen reader.
+ */
 export function more(
   key: string,
   open: boolean,
@@ -229,6 +232,7 @@ export function more(
   text: string,
   state: CardState,
   ctx: ViewContext,
+  unfold = false,
 ): TemplateResult {
   return html`<button
     class="more"
@@ -238,7 +242,11 @@ export function more(
       state.toggle(key, fallback);
     }}
   >
-    ${open ? ctx.t("showLess") : text}${icon("mdi:chevron-down", "chevron")}
+    <span class=${unfold ? "sr" : "more-text"}>${open ? ctx.t("showLess") : text}</span>${
+      unfold
+        ? icon(open ? "mdi:unfold-less-horizontal" : "mdi:unfold-more-horizontal")
+        : icon("mdi:chevron-down", "chevron")
+    }
   </button>`;
 }
 

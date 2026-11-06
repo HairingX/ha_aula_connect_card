@@ -451,7 +451,7 @@ describe("Home Assistant's state", () => {
     card.setConfig({ type: "custom:aula-connect-day-card", children: [1001, 1002] });
     await settle();
     await card.updateComplete;
-    expect(text(card, ".strip")).toContain("Oskar");
+    expect(text(card, ".by-child")).toContain("Oskar");
   });
 
   it("measures what is folded where the browser cannot watch sizes", async () => {

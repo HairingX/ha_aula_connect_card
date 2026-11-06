@@ -122,6 +122,16 @@ export const base = css`
   .not-yet {
     color: var(--aula-text-2);
   }
+  /* A week plan not yet in Aula: its homework is unknown, so it is said as plainly as homework. */
+  .empty.missing {
+    display: flex;
+    gap: var(--aula-space-2);
+    color: var(--aula-text);
+    font-weight: var(--aula-medium);
+  }
+  .missing ha-icon {
+    color: var(--aula-warning);
+  }
 
   .status {
     display: flex;
@@ -661,6 +671,21 @@ export const blocks = css`
   .tworow .cols > * {
     grid-column: auto;
   }
+  /* Grouped by child, each child's column flows on its own: a short one leaves no gap. */
+  .by-child {
+    align-items: start;
+    row-gap: var(--aula-space-8);
+  }
+  .kid-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-4);
+    min-width: 0;
+  }
+  /* A child's own parts fill its column; the card's columns are the children's. */
+  .by-child > .kid-col .cols {
+    --aula-n: 1;
+  }
 
   /* Never clamped: homework is what the family acts on. */
   .homework {
@@ -730,6 +755,32 @@ export const blocks = css`
   }
   .vital .hw:first-child {
     padding-inline-end: calc(var(--aula-space-3) * 2 + 16px * var(--aula-scale));
+  }
+  /*
+   * After the timetable, Vigtigt has no box: Husk follows the bar it comes from, with a line
+   * below it, and what the plan marks follows in rows beside one flag.
+   */
+  [data-block="timetable"] + [data-block="task"] .vital {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--aula-space-3);
+  }
+  [data-block="timetable"] + [data-block="task"] .homework {
+    display: contents;
+  }
+  [data-block="timetable"] + [data-block="task"] .vital-flag {
+    position: static;
+  }
+  [data-block="timetable"] + [data-block="task"] .hw {
+    grid-column: 2;
+    padding: 0;
+    border: 0;
+  }
+  [data-block="timetable"] + [data-block="task"] .hw-pack {
+    order: -1;
+    grid-column: 1 / -1;
+    padding-bottom: var(--aula-space-3);
+    border-bottom: 1px solid var(--aula-line);
   }
   [data-block="comment"] .block-head {
     min-height: 0;
@@ -974,9 +1025,25 @@ export const blocks = css`
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
-  /* Under the timetable its words sit as close as a line of it; the target reaches up behind it. */
+  /*
+   * The timetable folds at a tap anywhere on it, so its button is only a small mark at its end,
+   * unlike the chevrons that open rows, its words left to a screen reader.
+   */
+  [data-block="timetable"]:has(> .cols + .more) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: var(--aula-space-2);
+  }
+  .unfolds {
+    cursor: pointer;
+  }
   .cols + .more {
-    margin-top: calc(-1 * var(--aula-space-3));
+    justify-content: center;
+    width: calc(24px * var(--aula-scale));
+    min-height: calc(24px * var(--aula-scale));
+    margin: 0;
+    padding: 0;
   }
 
   /* An event in the timetable: its icon before its title, its time where a lesson's is. */
@@ -1391,6 +1458,20 @@ export const weekStyles = css`
     font-size: var(--aula-font-xl);
     font-weight: var(--aula-medium);
   }
+  /* The focus day's title is a line with how far ahead it is, a step below the week's weight. */
+  .focus-day .heading {
+    flex-direction: row;
+    align-items: baseline;
+  }
+  .open-title {
+    flex: 1;
+    font-size: var(--aula-font-l);
+  }
+  /* An open day's timetable stands first, between lines. */
+  .day-body [data-block="timetable"] {
+    padding-block: var(--aula-space-3);
+    border-block: 1px solid var(--aula-line);
+  }
   .focus-day .hero-text {
     gap: var(--aula-space-1);
   }
@@ -1400,8 +1481,13 @@ export const weekStyles = css`
   .day-row:not(.focus-day) > .day-body {
     padding-top: var(--aula-space-2);
   }
-  .day-row[open] .homework {
-    background: var(--aula-surface);
+  /* An open day's Husk sits close under its bar, the timetable's line moving below it. */
+  .day-body [data-block="timetable"]:has(+ [data-block="task"] .hw-pack) {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+  .day-body [data-block="timetable"] + [data-block="task"]:has(.hw-pack) {
+    margin-top: calc(-1 * var(--aula-space-3));
   }
   .weekend-day + .weekend-day {
     margin-top: var(--aula-space-6);

@@ -69,9 +69,20 @@ function dayColumn(day: string, ctx: ViewContext): TemplateResult {
   </span>`;
 }
 
-/** A day opened: its whole-day events and birthdays, a line each, then its blocks. */
+/**
+ * A day opened: its whole-day events and birthdays, a line each, then its blocks. A week plan
+ * with nothing for the day is not said: the row shows what there is.
+ */
 function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardState): unknown {
-  const { content, plan } = row;
+  const { content } = row;
+  // A week plan not yet in Aula is said first, where its homework would be, whatever the order.
+  const plan = {
+    ...row.plan,
+    blocks: row.plan.blocks
+      .filter((block) => block.empty !== "noHomework")
+      .sort((a, b) => Number(b.empty === "planMissing") - Number(a.empty === "planMissing")),
+    noHomework: row.plan.noHomework === "noHomework" ? undefined : row.plan.noHomework,
+  };
   const header = row.facts.filter((fact) => fact.kind === "birthday" || isHolidayEvent(fact.event));
   const shown = factStack(header, ctx);
   if (plan.nothing) {
@@ -148,6 +159,15 @@ function summary(
           >${icon(BLOCK_ICONS.task)}${row.plan.homework.length}</span
         >`,
       );
+    // Where the flags are counted, a week plan not yet in Aula is a question, not none.
+    else if (row.plan.noHomework === "planMissing")
+      facts.push(
+        html`<span
+          class="count missing"
+          aria-label=${ctx.t("weekPlanNotYet", { n: String(content.planMissing) })}
+          >${icon(BLOCK_ICONS.task)}?</span
+        >`,
+      );
     if (facts.length === 0 && content.view.lessons.length === 0)
       facts.push(ctx.t("noTimetableInAula"));
   }
@@ -188,16 +208,18 @@ function closedRow(
 }
 
 function openHeading(row: DayRowView, focus: Focus, ctx: ViewContext): TemplateResult {
-  // The day column and the week's header give the date; the line says only how far ahead.
-  const ahead =
-    focus.reason === "next_school_day"
-      ? [formatDaysAhead(daysBetween(ctx.today, row.day), ctx.language), ctx.t("nextSchoolDay")]
-      : [];
+  // The day column and the week's header give the date; the title's line says only how far
+  // ahead, where its title does not.
+  const ahead = daysBetween(ctx.today, row.day);
   return html`<span class="heading">
     <span class="open-title"
       >${dayTitle(row.day, ctx)}<span class="sr">, ${formatDay(row.day, ctx.language)}</span></span
     >
-    ${ahead.length > 0 ? segments(ahead, "date-line") : nothing}
+    ${
+      focus.reason === "next_school_day" && ahead > 1
+        ? html`<span class="date-line">${formatDaysAhead(ahead, ctx.language)}</span>`
+        : nothing
+    }
   </span>`;
 }
 

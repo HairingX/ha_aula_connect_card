@@ -97,10 +97,12 @@ describe("the week card's rows", () => {
 });
 
 describe("the timetable's button", () => {
-  it("sits as close under the timetable as a line of it, its target reaching up behind", () => {
-    expect(declared(blocks, ".cols + .more")).toContain(
-      "margin-top: calc(-1 * var(--aula-space-3))",
+  it("marks the timetable's toggle small at its end, the timetable a target itself", () => {
+    expect(declared(blocks, ".cols + .more")).toContain("width: calc(24px * var(--aula-scale))");
+    expect(declared(blocks, '[data-block="timetable"]:has(> .cols + .more)')).toContain(
+      "grid-template-columns: minmax(0, 1fr) auto",
     );
+    expect(declared(blocks, ".unfolds")).toContain("cursor: pointer");
   });
 });
 

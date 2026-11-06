@@ -221,37 +221,56 @@ function hero(
   </div>`;
 }
 
+type DayChild = DayGroup["children"][number];
+
+/** A child's name, hours and own facts, as its column or the strip begins. */
+function kid(child: DayChild, view: DayCardView, ctx: ViewContext): TemplateResult {
+  return html`<span class="kid-who"
+      >${avatar(child.child)}${segments([
+        html`<span class="kid-name">${child.child.first_name}</span>`,
+        ...(view.differentSchools ? [child.child.institution_name] : []),
+      ])}</span
+    >
+    ${
+      child.content?.hours
+        ? hours(child.content.hours, ctx)
+        : child.content
+          ? html`<span class="quiet"
+              >${ctx.t(child.content.view.lessons.length > 0 ? "allCancelled" : "noTimetable")}</span
+            >`
+          : nothing
+    }
+    ${factStack(child.facts, ctx)} ${childState(child.state, ctx.t)}`;
+}
+
 function strip(group: DayGroup, view: DayCardView, ctx: ViewContext): TemplateResult {
   return html`<ul class="strip cols">
     ${group.children.map(
       (child, index) =>
-        html`<li class="kid" style="--col: ${index + 1}">
-          <span class="kid-who"
-            >${avatar(child.child)}${segments([
-              html`<span class="kid-name">${child.child.first_name}</span>`,
-              ...(view.differentSchools ? [child.child.institution_name] : []),
-            ])}</span
-          >
-          ${
-            child.content?.hours
-              ? hours(child.content.hours, ctx)
-              : child.content
-                ? html`<span class="quiet"
-                    >${ctx.t(child.content.view.lessons.length > 0 ? "allCancelled" : "noTimetable")}</span
-                  >`
-                : nothing
-          }
-          ${factStack(child.facts, ctx)} ${childState(child.state, ctx.t)}
-        </li>`,
+        html`<li class="kid" style="--col: ${index + 1}">${kid(child, view, ctx)}</li>`,
     )}
   </ul>`;
 }
 
-function blocks(group: DayGroup, day: Day, ctx: ViewContext, state: CardState): TemplateResult {
-  if (group.blocks.length === 0) return html`<p class="empty">${ctx.t("nothingThisDay")}</p>`;
-  const several = group.children.length > 1;
+function blocks(
+  group: DayGroup,
+  day: Day,
+  ctx: ViewContext,
+  state: CardState,
+  only?: DayChild,
+): TemplateResult {
+  const shown = only
+    ? group.blocks
+        .map((block) => ({
+          ...block,
+          parts: block.parts.filter((part) => part.child === only),
+        }))
+        .filter((block) => block.parts.some((part) => part.empty !== "none"))
+    : group.blocks;
+  if (shown.length === 0) return html`<p class="empty">${ctx.t("nothingThisDay")}</p>`;
+  const several = !only && group.children.length > 1;
   return html`<div class="day-blocks">
-    ${group.blocks.map((block) =>
+    ${shown.map((block) =>
       renderBlock(
         block.id,
         block.parts.map((part, index) => ({
@@ -265,6 +284,25 @@ function blocks(group: DayGroup, day: Day, ctx: ViewContext, state: CardState): 
         ctx,
         { day, detailed: false, level: 3, state },
       ),
+    )}
+  </div>`;
+}
+
+/** Each child's name, hours and blocks in a column of its own, under the shared header. */
+function byChild(
+  group: DayGroup,
+  day: Day,
+  view: DayCardView,
+  ctx: ViewContext,
+  state: CardState,
+): TemplateResult {
+  return html`<div class="cols by-child">
+    ${group.children.map(
+      (child, index) =>
+        html`<section class="kid-col" style="--col: ${index + 1}">
+          <div class="kid">${kid(child, view, ctx)}</div>
+          ${blocks(group, day, ctx, state, child)}
+        </section>`,
     )}
   </div>`;
 }
@@ -288,8 +326,12 @@ function group(
       item.hero
         ? html`${aboveRows(item.above, ctx, count > 1)}
           ${hero(item.hero, item.facts, one?.content?.hours, ctx, several ? one?.child : undefined)}
-          ${count > 1 ? strip(item, view, ctx) : nothing}
-          ${item.hero.kind === "day" ? blocks(item, item.hero.day, ctx, state) : nothing}`
+          ${
+            count > 1 && view.groupBy === "child" && item.hero.kind === "day"
+              ? byChild(item, item.hero.day, view, ctx, state)
+              : html`${count > 1 ? strip(item, view, ctx) : nothing}
+                ${item.hero.kind === "day" ? blocks(item, item.hero.day, ctx, state) : nothing}`
+          }`
         : nothing
     }
   </div>`;

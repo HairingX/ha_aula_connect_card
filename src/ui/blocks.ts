@@ -114,6 +114,17 @@ export function homeworkList(notes: readonly NoteView[], ctx: ViewContext): Temp
   </ul>`;
 }
 
+/**
+ * Says why a part has nothing. A week plan not yet in Aula stands out, with its icon: its
+ * homework is unknown, not none.
+ */
+export function emptyNote(text: string, empty: EmptyKind | "none" | undefined): TemplateResult {
+  const missing = empty === "planMissing";
+  return html`<p class="empty ${missing ? "missing" : ""}">
+    ${missing ? icon("mdi:clock-alert-outline") : nothing}${text}
+  </p>`;
+}
+
 /** Returns the sentence a part says when it has nothing. */
 export function emptyText(
   id: BlockId,
@@ -142,13 +153,17 @@ export function emptyText(
 function important(part: Part, ctx: ViewContext): TemplateResult {
   const { homework, noHomework, pack, subjects } = part.plan;
   return html`<div class="vital">
-    <span class="vital-flag" aria-hidden="true">${icon(BLOCK_ICONS.task)}</span>
+    ${
+      homework.length > 0 || noHomework
+        ? html`<span class="vital-flag" aria-hidden="true">${icon(BLOCK_ICONS.task)}</span>`
+        : nothing
+    }
     <ul class="homework">
       ${homeworkItems(homework, ctx)}
       ${
         homework.length === 0 && noHomework
           ? html`<li class="hw">
-              <p class="empty">${emptyText("task", noHomework, part.content, ctx)}</p>
+              ${emptyNote(emptyText("task", noHomework, part.content, ctx), noHomework)}
             </li>`
           : nothing
       }
@@ -501,7 +516,16 @@ export function renderBlock(
     )}
     ${
       once === undefined
-        ? html`<div class="cols">
+        ? html`<div
+              class="cols ${id === "timetable" ? "unfolds" : ""}"
+              @click=${
+                id === "timetable"
+                  ? () => {
+                      options.state.toggle(key, full);
+                    }
+                  : nothing
+              }
+            >
               ${parts.map(
                 (part, index) =>
                   html`<div
@@ -520,17 +544,17 @@ export function renderBlock(
                     ${
                       texts[index] === undefined
                         ? body(id, part, ctx, options, unfolded)
-                        : html`<p class="empty">${texts[index]}</p>`
+                        : emptyNote(texts[index], part.empty)
                     }
                   </div>`,
               )}
             </div>
             ${
               id === "timetable"
-                ? more(key, unfolded, full, ctx.t("showTimetable"), options.state, ctx)
+                ? more(key, unfolded, full, ctx.t("showTimetable"), options.state, ctx, true)
                 : nothing
             }`
-        : html`<p class="empty">${once}</p>`
+        : emptyNote(once, parts[0]?.empty)
     }
   </section>`;
 }

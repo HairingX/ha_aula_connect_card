@@ -17,7 +17,8 @@ how it is set up: the README.
 - The layers stay apart: `src/model/` builds plain views from the store's data and imports no
   lit; `src/ui/` renders them with lit's templates (`lit/html.js`) from a small custom element of
   its own (`src/ui/card.ts`), as LitElement would cost the bundle more than it gives.
-- The bundle has a budget the build enforces (`vite.config.ts`); never raise it to fit a change.
+- The bundle has a budget the build enforces (`vite.config.ts`), with room for ordinary changes.
+  When a change needs more, the owner raises it; code is never contorted to stay under it.
 - Its data is the integration's websocket API, and nothing else:
   - `aula_connect/children` lists the children: `entry_id`, `child_id`, `first_name`, `name`,
     `institution_name`.
