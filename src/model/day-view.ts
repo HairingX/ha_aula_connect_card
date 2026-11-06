@@ -45,7 +45,7 @@ export interface DayViewOptions extends ViewOptions {
 
 /** What the school day card's own view takes besides. */
 export interface DayCardOptions extends DayViewOptions {
-  /** Whether children with the same day share the blocks, or each has its whole day apart. */
+  /** Whether each block holds every child with the same day, or each child's blocks stand apart. */
   readonly groupBy: "block" | "child";
 }
 
@@ -190,6 +190,8 @@ export interface DayCardView {
   readonly differentSchools: boolean;
   /** The card's height in units of 50 pixels, roughly, for the masonry view. */
   readonly size: number;
+  /** Whether a group's blocks hold every child, or each child's follow in a column of its own. */
+  readonly groupBy: "block" | "child";
 }
 
 function factKey(fact: Fact): string {
@@ -418,8 +420,8 @@ function size(groups: readonly DayGroup[]): number {
 
 /**
  * Builds the school day card's view. Once every child can be shown, children with the same focus
- * day share a header, unless grouped by child; until then each child stands alone, so that a
- * header never forms from some of the children only.
+ * day share a header; until then each child stands alone, so that a header never forms from some
+ * of the children only.
  */
 export function dayCardView(
   snapshot: StoreSnapshot,
@@ -432,8 +434,7 @@ export function dayCardView(
   const together = new Map<string, ChildBasis[]>();
   for (const basis of bases) {
     // Children without a school day ahead share a header only when it says the same for each.
-    const key =
-      ready && options.groupBy === "block" ? heroKey(heroOf(basis)) : String(together.size);
+    const key = ready ? heroKey(heroOf(basis)) : String(together.size);
     together.set(key, [...(together.get(key) ?? []), basis]);
   }
   const groups = [...together.values()].map((items) => group(items, options, ctx));
@@ -442,5 +443,6 @@ export function dayCardView(
     missing,
     differentSchools: new Set(bases.map((basis) => basis.child.institution_name)).size > 1,
     size: bases.some((basis) => basis.state.kind === "ready") ? size(groups) : 9,
+    groupBy: options.groupBy,
   };
 }

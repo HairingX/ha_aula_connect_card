@@ -64,8 +64,9 @@ function day(
   ctx: ViewContext,
   state: CardState,
   level: 3 | 4,
+  own = false,
 ): TemplateResult {
-  const several = view.children.length > 1;
+  const several = !own && view.children.length > 1;
   const relative = item.relation !== "weekday";
   const date = relative
     ? formatWeekdayShortDate(item.day, ctx.language)
@@ -92,7 +93,7 @@ function day(
               (part, at) =>
                 html`<div
                   class="part ${texts[at] === undefined ? "" : "is-empty"}"
-                  style="--col: ${index(part.child)}"
+                  style="--col: ${own ? 1 : index(part.child)}"
                 >
                   ${
                     several
@@ -142,6 +143,34 @@ function heroLine(item: HomeworkHero, ctx: ViewContext): TemplateResult {
   </section>`;
 }
 
+/**
+ * Each child's days in a column of its own: those with notes for the child, and with `focus`
+ * the focus days even without.
+ */
+function byChild(
+  list: readonly HomeworkDay[],
+  view: HomeworkCardView,
+  ctx: ViewContext,
+  state: CardState,
+  level: 3 | 4,
+): TemplateResult {
+  return html`<div class="cols by-child">
+    ${view.children.map(({ child }, index) => {
+      const key = childKey(child);
+      const days = list.flatMap((item) => {
+        const part = item.parts.find((entry) => childKey(entry.child) === key);
+        return part && (part.items.length + part.comments.length > 0 || item.focus)
+          ? [{ ...item, parts: [part] }]
+          : [];
+      });
+      return html`<section class="kid-col" style="--col: ${index + 1}">
+        <div class="kid">${who(child, view.differentSchools ? [child.institution_name] : [])}</div>
+        <div class="hw-days">${days.map((item) => day(item, view, ctx, state, level, true))}</div>
+      </section>`;
+    })}
+  </div>`;
+}
+
 /** Renders the week plan card. */
 export function renderHomework(
   view: HomeworkCardView,
@@ -158,13 +187,14 @@ export function renderHomework(
   const children = view.children.map((child) => child.child);
   const count = children.length;
   const several = count > 1;
+  const apart = several && view.groupBy === "child";
   // Kept by the children, the first one first, so that it closes when its focus day moves on.
   const key = `${children.map(childKey).join("|")}|earlier`;
   return html`<section class="homework-card stack ${columns(count)}" aria-label=${label}>
     ${
       // Side by side, the children are named once above their columns; stacked, each part
       // names its child, and this strip is hidden.
-      several
+      several && !apart
         ? html`<div class="strip cols" aria-hidden="true">
             ${children.map(
               (child, index) =>
@@ -194,16 +224,26 @@ export function renderHomework(
             </summary>
             ${
               state.isOpen(key, false)
-                ? html`<div class="hw-days earlier-days">
-                    ${view.earlier.map((item) => day(item, view, ctx, state, 4))}
-                  </div>`
+                ? apart
+                  ? byChild(view.earlier, view, ctx, state, 4)
+                  : html`<div class="hw-days earlier-days">
+                      ${view.earlier.map((item) => day(item, view, ctx, state, 4))}
+                    </div>`
                 : nothing
             }
           </details>`
         : nothing
     }
     ${view.heroes.map((item) => heroLine(item, ctx))}
-    ${view.days.length > 0 ? html`<div class="hw-days">${view.days.map((item) => day(item, view, ctx, state, 3))}</div>` : nothing}
+    ${
+      view.days.length === 0
+        ? nothing
+        : apart
+          ? byChild(view.days, view, ctx, state, 3)
+          : html`<div class="hw-days">
+              ${view.days.map((item) => day(item, view, ctx, state, 3))}
+            </div>`
+    }
     ${view.notYet.map(
       (item) =>
         html`<p class="not-yet">

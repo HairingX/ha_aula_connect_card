@@ -244,9 +244,9 @@ describe("checking a configuration", () => {
 
 describe("the school day card's grouping", () => {
   it.each<[unknown, string]>([
-    [undefined, "block"],
-    ["", "block"],
-    ["child", "child"],
+    [undefined, "child"],
+    ["", "child"],
+    ["block", "block"],
   ])("is %j: %s", (groupBy, shown) => {
     expect(resolveDayConfig({ group_by: groupBy }).groupBy).toBe(shown);
   });
@@ -254,6 +254,22 @@ describe("the school day card's grouping", () => {
   it("refuses anything but block or child", () => {
     expect(() => resolveDayConfig({ group_by: "type" })).toThrow(
       "group_by: must be block or child",
+    );
+  });
+});
+
+describe("the week plan card's grouping", () => {
+  it.each<[unknown, string]>([
+    [undefined, "child"],
+    ["", "child"],
+    ["day", "day"],
+  ])("is %j: %s", (groupBy, shown) => {
+    expect(resolveWeekplanConfig({ group_by: groupBy }).groupBy).toBe(shown);
+  });
+
+  it("refuses anything but day or child", () => {
+    expect(() => resolveWeekplanConfig({ group_by: "block" })).toThrow(
+      "group_by: must be day or child",
     );
   });
 });
@@ -431,6 +447,7 @@ describe("the editor", () => {
     ]);
     expect(names(weekplanConfigForm().schema)).toEqual([
       "children",
+      "group_by",
       "notes",
       "info_lines",
       "switch_time",
@@ -502,6 +519,7 @@ describe("the editor", () => {
       "weeks",
       "timetable",
       "size",
+      "group_by",
       "notes",
       "size",
     ]);

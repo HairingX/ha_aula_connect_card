@@ -7,19 +7,20 @@ import type { NotesShown } from "../../src/model/homework-view.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
 import { contextOf, noHold, snapshotOf } from "../fixtures/snapshot.ts";
 
-const OPTIONS: ViewOptions & { notes: NotesShown } = {
+const OPTIONS: ViewOptions & { notes: NotesShown; groupBy: "day" | "child" } = {
   children: [],
   switchAt: 720,
   packing: [],
   subjectNames: [],
   expandAbbreviations: true,
   notes: "tasks",
+  groupBy: "child",
 };
 const IDA = { ...OPTIONS, children: [1001] };
 
 function view(
   id: string,
-  options: ViewOptions & { notes: NotesShown } = OPTIONS,
+  options: ViewOptions & { notes: NotesShown; groupBy: "day" | "child" } = OPTIONS,
   snapshot?: StoreSnapshot,
 ) {
   const item = scenarioNamed(id);

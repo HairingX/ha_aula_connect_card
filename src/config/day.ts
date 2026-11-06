@@ -18,13 +18,13 @@ export const DAY_CARD = "aula-connect-day-card";
 
 /** The school day card's configuration, with its defaults filled in. */
 export interface DayCardConfig extends CommonConfig, BlocksConfig {
-  /** Whether the blocks hold every child, or each child has its whole day apart. */
+  /** Whether each child's blocks follow in a column of its own, or each block holds every child. */
   readonly groupBy: "block" | "child";
 }
 
-/** Reads `group_by`: block or child. */
+/** Reads `group_by`: block or child, child by default. */
 export function parseGroupBy(value: unknown): "block" | "child" {
-  if (value === undefined || value === null || value === "") return "block";
+  if (value === undefined || value === null || value === "") return "child";
   if (value !== "block" && value !== "child") throw new Error("group_by: must be block or child");
   return value;
 }

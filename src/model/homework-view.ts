@@ -94,6 +94,8 @@ export interface HomeworkCardView {
   readonly differentSchools: boolean;
   /** The card's height in units of 50 pixels, roughly, for the masonry view. */
   readonly size: number;
+  /** Whether each day holds every child, or each child's days follow in a column of its own. */
+  readonly groupBy: "day" | "child";
 }
 
 type Parts = Map<Day, Map<ChildKey, HomeworkPart>>;
@@ -111,7 +113,7 @@ function only(children: readonly Child[], all: number): readonly Child[] {
 /** Builds the week plan card's view, of the notes `options.notes` chooses. */
 export function homeworkCardView(
   snapshot: StoreSnapshot,
-  options: ViewOptions & { readonly notes: NotesShown },
+  options: ViewOptions & { readonly notes: NotesShown; readonly groupBy: "day" | "child" },
   ctx: ViewContext,
   hold: Hold,
 ): HomeworkCardView {
@@ -215,5 +217,6 @@ export function homeworkCardView(
       ready.length > 0
         ? Math.min(30, 2 + shown.reduce((sum, day) => sum + day.parts.length, 0) + 2 * count(shown))
         : 6,
+    groupBy: options.groupBy,
   };
 }

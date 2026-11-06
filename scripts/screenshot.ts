@@ -136,7 +136,7 @@ const SETS: Record<string, () => Shot[]> = {
     shot("day", "fri-1240", 380, { primary: "orange", locale: "en-US" }),
     shot("day", "thu-0715", 800, { ...WALL, children: 2 }),
     shot("day", "thu-1930", 800, { ...WALL, children: 2 }),
-    shot("day", "thu-1930", 800, { children: 2, config: { group_by: "child" }, tag: "by-child" }),
+    shot("day", "thu-1930", 800, { children: 2, config: { group_by: "block" }, tag: "lined-up" }),
     shot("weekplan", "thu-1930", 380),
     shot("weekplan", "thu-1930", 800, { children: 2 }),
     shot("weekplan", "thu-1930", 380, { config: { notes: "all" }, tag: "notes-all" }),
@@ -195,17 +195,22 @@ const SETS: Record<string, () => Shot[]> = {
   // and with three children, an unpublished week plan, a camp, cancelled lessons, holidays,
   // long names and reminders at the narrowest width, an opened weekend and an opened day.
   extra: () => [
-    shot("day", "thu-1930", 380, { children: 2, config: { group_by: "child" }, tag: "by-child" }),
+    shot("day", "thu-1930", 380, { children: 2, config: { group_by: "block" }, tag: "lined-up" }),
     shot("day", "thu-0715-3child", 1216, {
       ...WALL,
       children: 3,
-      config: { group_by: "child" },
-      tag: "by-child",
+      config: { group_by: "block" },
+      tag: "lined-up",
     }),
     shot("day", "thu-0715-3child", 900, {
       children: 3,
-      config: { group_by: "child" },
-      tag: "by-child",
+      config: { group_by: "block" },
+      tag: "lined-up",
+    }),
+    shot("weekplan", "thu-1930", 800, {
+      children: 2,
+      config: { group_by: "day" },
+      tag: "lined-up",
     }),
     shot("week", "thu-1010", 380, { browse: 2, tag: "browsed-ahead" }),
     shot("day", "thu-1010", 380, { config: { expand_abbreviations: false }, tag: "abbreviations" }),
@@ -447,7 +452,7 @@ function glance(arg: { tag: string; screen: number; packing: boolean }): string[
     );
   const hero = root.querySelector(".hero");
   if (!hero || below(hero) > arg.screen) problems.push("the header is not on the first screen");
-  const hours = [...root.querySelectorAll(".hero .hours, .strip .hours")];
+  const hours = [...root.querySelectorAll(".hero .hours, .strip .hours, .kid-col > .kid .hours")];
   if (hours.length === 0) problems.push("no school hours are shown");
   for (const item of hours) {
     if (size(item) < 30 || below(item) > arg.screen)
@@ -464,7 +469,7 @@ function glance(arg: { tag: string; screen: number; packing: boolean }): string[
     }
     if (line.scrollHeight > line.clientHeight + 1) problems.push("a thing to bring is cut");
   }
-  const kids = [...root.querySelectorAll(".strip .kid")];
+  const kids = [...root.querySelectorAll(".strip .kid, .kid-col > .kid")];
   const tops = new Set(kids.map((kid) => Math.round(kid.getBoundingClientRect().top)));
   if (tops.size > 1) problems.push("the children are not side by side");
   return problems;

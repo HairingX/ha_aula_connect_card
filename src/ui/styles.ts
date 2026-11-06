@@ -671,6 +671,21 @@ export const blocks = css`
   .tworow .cols > * {
     grid-column: auto;
   }
+  /* Grouped by child, each child's column flows on its own: a short one leaves no gap. */
+  .by-child {
+    align-items: start;
+    row-gap: var(--aula-space-8);
+  }
+  .kid-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-4);
+    min-width: 0;
+  }
+  /* A child's own parts fill its column; the card's columns are the children's. */
+  .by-child > .kid-col .cols {
+    --aula-n: 1;
+  }
 
   /* Never clamped: homework is what the family acts on. */
   .homework {

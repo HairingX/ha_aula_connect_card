@@ -16,6 +16,8 @@ export const WEEKPLAN_CARD = "aula-connect-weekplan-card";
 export interface WeekplanCardConfig extends CommonConfig {
   /** Which of the week plan's notes the card shows. */
   readonly notes: NotesShown;
+  /** Whether each child's days follow in a column of its own, or each day holds every child. */
+  readonly groupBy: "day" | "child";
 }
 
 /** Reads `notes`: tasks, comments or all. */
@@ -27,6 +29,13 @@ export function parseNotes(value: unknown): NotesShown {
   return value;
 }
 
+/** Reads `group_by`: day or child, child by default. */
+export function parseDayGroupBy(value: unknown): "day" | "child" {
+  if (value === undefined || value === null || value === "") return "child";
+  if (value !== "day" && value !== "child") throw new Error("group_by: must be day or child");
+  return value;
+}
+
 /**
  * Checks a week plan card's configuration and fills in its defaults; `lenient` leaves out the
  * rows the editor is still filling in.
@@ -35,13 +44,25 @@ export function parseNotes(value: unknown): NotesShown {
  */
 export function resolveWeekplanConfig(config: unknown, lenient = false): WeekplanCardConfig {
   const raw = configRecord(config);
-  return { ...resolveCommon(raw, lenient), notes: parseNotes(raw.notes) };
+  return {
+    ...resolveCommon(raw, lenient),
+    notes: parseNotes(raw.notes),
+    groupBy: parseDayGroupBy(raw.group_by),
+  };
 }
 
 /** Returns the week plan card's form. */
 export function weekplanConfigForm(): ConfigForm {
   return configForm(
-    ["children", "notes", "info_lines", "switch_time", "size", "subject_names_group"],
+    [
+      "children",
+      "group_by_day",
+      "notes",
+      "info_lines",
+      "switch_time",
+      "size",
+      "subject_names_group",
+    ],
     resolveWeekplanConfig,
   );
 }

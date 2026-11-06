@@ -121,6 +121,7 @@ export type FieldName =
   | "size"
   | "notes"
   | "group_by"
+  | "group_by_day"
   | "packing_group"
   | "subject_names_group";
 
@@ -227,8 +228,20 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
         select: {
           mode: "list",
           options: [
-            { value: "block", label: t("groupByBlock") },
             { value: "child", label: t("groupByChild") },
+            { value: "block", label: t("groupByBlock") },
+          ],
+        },
+      },
+    },
+    group_by_day: {
+      name: "group_by",
+      selector: {
+        select: {
+          mode: "list",
+          options: [
+            { value: "child", label: t("groupByChild") },
+            { value: "day", label: t("groupByDay") },
           ],
         },
       },
