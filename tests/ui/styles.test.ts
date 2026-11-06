@@ -97,10 +97,9 @@ describe("the week card's rows", () => {
 });
 
 describe("the timetable's button", () => {
-  it("sits as close under the timetable as a line of it, its target reaching up behind", () => {
-    expect(declared(blocks, ".cols + .more")).toContain(
-      "margin-top: calc(-1 * var(--aula-space-3))",
-    );
+  it("marks the timetable's toggle small and centred below it, the timetable a target itself", () => {
+    expect(declared(blocks, ".cols + .more")).toContain("align-self: center");
+    expect(declared(blocks, ".unfolds")).toContain("cursor: pointer");
   });
 });
 

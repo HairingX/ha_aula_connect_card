@@ -1062,11 +1062,30 @@ describe("rarer days", () => {
     expect(text(card, ".focus-day .hero-text > .hours")).toBe("08.00–13.40");
   });
 
-  it("shows an open day's timetable first, its toggle a chevron with its words for a screen reader", async () => {
+  it("shows an open day's timetable first", async () => {
     const { card } = await mount(WEEK, "fri-1400", { config: { children: [1001] } });
     const first = card.shadowRoot?.querySelector(".focus-day .day-body .block");
     expect(first?.getAttribute("data-block")).toBe("timetable");
-    expect(text(card, '.focus-day [data-block="timetable"] .more-text')).toBe("Vis hele skemaet");
+  });
+
+  it("folds the timetable at a tap on it, its button an unfold mark with its words for a screen reader", async () => {
+    const { card } = await mount(DAY, "thu-1010", { config: { children: [1001] } });
+    const button = (): HTMLElement | null | undefined =>
+      card.shadowRoot?.querySelector('[data-block="timetable"] > .more');
+    expect(button()?.querySelector(".sr")?.textContent).toBe("Vis hele skemaet");
+    expect(button()?.querySelector("ha-icon")?.getAttribute("icon")).toBe(
+      "mdi:unfold-more-horizontal",
+    );
+    card.shadowRoot?.querySelector<HTMLElement>('[data-block="timetable"] .bar-item')?.click();
+    await card.updateComplete;
+    expect(all(card, '[data-block="timetable"] .lessons')).toHaveLength(1);
+    expect(button()?.getAttribute("aria-expanded")).toBe("true");
+    expect(button()?.querySelector("ha-icon")?.getAttribute("icon")).toBe(
+      "mdi:unfold-less-horizontal",
+    );
+    card.shadowRoot?.querySelector<HTMLElement>('[data-block="timetable"] .lessons')?.click();
+    await card.updateComplete;
+    expect(all(card, '[data-block="timetable"] .lessons')).toHaveLength(0);
   });
 
   it("leaves Vigtigt's flag out where a part has only things to bring", async () => {

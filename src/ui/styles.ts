@@ -104,8 +104,7 @@ export const base = css`
   .period {
     font-size: 0.8em;
   }
-  .sr,
-  .day-body [data-block="timetable"] .more-text {
+  .sr {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -1011,9 +1010,20 @@ export const blocks = css`
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
-  /* Under the timetable its words sit as close as a line of it; the target reaches up behind it. */
+  /*
+   * The timetable folds at a tap anywhere on it; its button is a small mark centred below it,
+   * unlike the chevrons that open rows, its words left to a screen reader.
+   */
+  .unfolds {
+    cursor: pointer;
+  }
   .cols + .more {
-    margin-top: calc(-1 * var(--aula-space-3));
+    align-self: center;
+    justify-content: center;
+    width: var(--aula-target);
+    min-height: calc(28px * var(--aula-scale));
+    margin: 0;
+    padding: 0;
   }
 
   /* An event in the timetable: its icon before its title, its time where a lesson's is. */
@@ -1437,14 +1447,8 @@ export const weekStyles = css`
     flex: 1;
     font-size: var(--aula-font-l);
   }
-  /*
-   * An open day's timetable stands between lines, first, its bar the width it can have: its
-   * toggle is the chevron beside it, its words left to a screen reader.
-   */
+  /* An open day's timetable stands first, between lines. */
   .day-body [data-block="timetable"] {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: start;
     padding-block: var(--aula-space-3);
     border-block: 1px solid var(--aula-line);
   }

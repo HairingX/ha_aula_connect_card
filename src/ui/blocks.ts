@@ -516,7 +516,16 @@ export function renderBlock(
     )}
     ${
       once === undefined
-        ? html`<div class="cols">
+        ? html`<div
+              class="cols ${id === "timetable" ? "unfolds" : ""}"
+              @click=${
+                id === "timetable"
+                  ? () => {
+                      options.state.toggle(key, full);
+                    }
+                  : nothing
+              }
+            >
               ${parts.map(
                 (part, index) =>
                   html`<div
@@ -542,7 +551,7 @@ export function renderBlock(
             </div>
             ${
               id === "timetable"
-                ? more(key, unfolded, full, ctx.t("showTimetable"), options.state, ctx)
+                ? more(key, unfolded, full, ctx.t("showTimetable"), options.state, ctx, true)
                 : nothing
             }`
         : emptyNote(once, parts[0]?.empty)
