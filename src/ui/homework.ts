@@ -24,7 +24,7 @@ import type {
   HomeworkHero,
   HomeworkPart,
 } from "../model/homework-view.ts";
-import { emptyNote, homeworkList, partOrNote, planNotes, sameEmpty } from "./blocks.ts";
+import { emptyNote, homeworkList, planNotes, sameEmpty } from "./blocks.ts";
 import type { CardState } from "./card.ts";
 import {
   aula,
@@ -103,7 +103,11 @@ function day(
                         )
                       : nothing
                   }
-                  ${partOrNote(texts[at], part.empty, () => notes(part, item.day, ctx, state))}
+                  ${
+                    texts[at] === undefined
+                      ? notes(part, item.day, ctx, state)
+                      : emptyNote(texts[at], part.empty)
+                  }
                 </div>`,
             )}
           </div>`

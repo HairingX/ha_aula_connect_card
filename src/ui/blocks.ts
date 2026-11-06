@@ -119,18 +119,10 @@ export function homeworkList(notes: readonly NoteView[], ctx: ViewContext): Temp
  * homework is unknown, not none.
  */
 export function emptyNote(text: string, empty: EmptyKind | "none" | undefined): TemplateResult {
-  return empty === "planMissing"
-    ? html`<p class="empty missing">${icon("mdi:clock-alert-outline")}<span>${text}</span></p>`
-    : html`<p class="empty">${text}</p>`;
-}
-
-/** Shows a part's content, or why it has none where `text` says so. */
-export function partOrNote(
-  text: string | undefined,
-  empty: EmptyKind | "none" | undefined,
-  content: () => unknown,
-): unknown {
-  return text === undefined ? content() : emptyNote(text, empty);
+  const missing = empty === "planMissing";
+  return html`<p class="empty ${missing ? "missing" : ""}">
+    ${missing ? icon("mdi:clock-alert-outline") : nothing}${text}
+  </p>`;
 }
 
 /** Returns the sentence a part says when it has nothing. */
@@ -161,7 +153,11 @@ export function emptyText(
 function important(part: Part, ctx: ViewContext): TemplateResult {
   const { homework, noHomework, pack, subjects } = part.plan;
   return html`<div class="vital">
-    <span class="vital-flag" aria-hidden="true">${icon(BLOCK_ICONS.task)}</span>
+    ${
+      homework.length > 0 || noHomework
+        ? html`<span class="vital-flag" aria-hidden="true">${icon(BLOCK_ICONS.task)}</span>`
+        : nothing
+    }
     <ul class="homework">
       ${homeworkItems(homework, ctx)}
       ${
@@ -536,9 +532,11 @@ export function renderBlock(
                           )
                         : nothing
                     }
-                    ${partOrNote(texts[index], part.empty, () =>
-                      body(id, part, ctx, options, unfolded),
-                    )}
+                    ${
+                      texts[index] === undefined
+                        ? body(id, part, ctx, options, unfolded)
+                        : emptyNote(texts[index], part.empty)
+                    }
                   </div>`,
               )}
             </div>

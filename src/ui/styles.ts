@@ -104,7 +104,8 @@ export const base = css`
   .period {
     font-size: 0.8em;
   }
-  .sr {
+  .sr,
+  .day-body [data-block="timetable"] .more-text {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -125,14 +126,12 @@ export const base = css`
   /* A week plan not yet in Aula: its homework is unknown, so it is said as plainly as homework. */
   .empty.missing {
     display: flex;
-    align-items: center;
     gap: var(--aula-space-2);
     color: var(--aula-text);
     font-weight: var(--aula-medium);
   }
   .missing ha-icon {
-    flex: none;
-    color: var(--warning-color, #f57c00);
+    color: var(--aula-warning);
   }
 
   .status {
@@ -1407,43 +1406,20 @@ export const weekStyles = css`
   .focus-day .heading {
     flex-direction: row;
     align-items: baseline;
-    justify-content: space-between;
-    gap: var(--aula-space-3);
   }
-  .focus-day .open-title {
+  .open-title {
+    flex: 1;
     font-size: var(--aula-font-l);
-  }
-  .ahead {
-    flex: none;
-    color: var(--aula-text-2);
   }
   /*
    * An open day's timetable stands between lines, first, its bar the width it can have: its
-   * toggle is the chevron at its end, its words left to a screen reader.
+   * toggle is the chevron beside it, its words left to a screen reader.
    */
   .day-body [data-block="timetable"] {
-    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto;
     padding-block: var(--aula-space-3);
-    padding-inline-end: calc(40px * var(--aula-scale));
     border-block: 1px solid var(--aula-line);
-  }
-  .day-body [data-block="timetable"] > .more {
-    position: absolute;
-    inset-inline-end: calc(-1 * var(--aula-space-3));
-    top: 50%;
-    transform: translateY(-50%);
-    justify-content: center;
-    width: var(--aula-target);
-    margin: 0;
-    padding: 0;
-  }
-  .day-body [data-block="timetable"] .more-text {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
   }
   .focus-day .hero-text {
     gap: var(--aula-space-1);
@@ -1454,8 +1430,38 @@ export const weekStyles = css`
   .day-row:not(.focus-day) > .day-body {
     padding-top: var(--aula-space-2);
   }
-  .day-row[open] .homework {
-    background: var(--aula-surface);
+  /*
+   * Under the timetable Husk follows its bar, the line moving below it; what the plan marks
+   * follows in rows beside one flag.
+   */
+  .day-body [data-block="timetable"]:has(+ .block .hw-pack) {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+  .day-body [data-block="timetable"] + .block:has(.hw-pack) {
+    margin-top: calc(-1 * var(--aula-space-3));
+  }
+  .day-body .vital {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--aula-space-3);
+  }
+  .day-body .homework {
+    display: contents;
+  }
+  .day-body .vital-flag {
+    position: static;
+  }
+  .day-body .vital .hw {
+    grid-column: 2;
+    border: 0;
+    padding: 0;
+  }
+  .day-body .vital .hw-pack {
+    order: -1;
+    grid-column: 1 / -1;
+    padding-bottom: var(--aula-space-3);
+    border-bottom: 1px solid var(--aula-line);
   }
   .weekend-day + .weekend-day {
     margin-top: var(--aula-space-6);

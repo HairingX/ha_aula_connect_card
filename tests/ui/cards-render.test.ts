@@ -1057,8 +1057,8 @@ describe("rarer days", () => {
 
   it("names the open day's distance on its title's line, not that it is the next school day, and keeps its hours", async () => {
     const { card } = await mount(WEEK, "fri-1400", { config: { children: [1001] } });
-    expect(text(card, ".focus-day .ahead")).toBe("om 3 dage");
-    expect(all(card, ".focus-day .date-line")).toEqual([]);
+    expect(texts(card, ".focus-day .heading > .date-line")).toEqual(["om 3 dage"]);
+    expect(text(card, ".focus-day .heading")).not.toContain("næste skoledag");
     expect(text(card, ".focus-day .hero-text > .hours")).toBe("08.00–13.40");
   });
 
@@ -1067,6 +1067,25 @@ describe("rarer days", () => {
     const first = card.shadowRoot?.querySelector(".focus-day .day-body .block");
     expect(first?.getAttribute("data-block")).toBe("timetable");
     expect(text(card, '.focus-day [data-block="timetable"] .more-text')).toBe("Vis hele skemaet");
+  });
+
+  it("leaves Vigtigt's flag out where a part has only things to bring", async () => {
+    const { card } = await mount(WEEK, "thu-1930", {
+      config: {
+        children: [1001, 1002],
+        packing: [{ subject: "Svømning", items: ["Badetøj"] }],
+      },
+    });
+    const parts = all(card, '.focus-day [data-block="task"] .vital');
+    expect(
+      parts.map((part) => [
+        part.querySelector(".hw-pack") !== null,
+        part.querySelector(".vital-flag") !== null,
+      ]),
+    ).toEqual([
+      [false, true],
+      [true, false],
+    ]);
   });
 
   it("says nothing of a day the week plan has nothing for", async () => {

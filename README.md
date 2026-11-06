@@ -126,7 +126,8 @@ row; the rest closed, each summed up in a line: the hours, a flag with how many 
 plan marks as important ("08.00–13.40 · ⚑ 2"), and an event and a birthday, or "2 begivenheder"
 and "3 fødselsdage" when there are more. The opened day names itself on one line, with how far
 away it is on the other side ("Mandag", "om 3 dage") and its hours under it, and shows its
-timetable first, between thin lines, with only a chevron to open it whole. A day the week plan
+timetable first, between thin lines, with only a chevron to open it whole. Husk follows the bar
+it comes from, above the line; what the plan marks follows in rows beside a flag. A day the week plan
 marks nothing for says nothing of it. Where the week's plan is not in Aula yet, the opened day
 says so first, with a mark, and each closed row has "⚑ ?" in place of its count, so that a day
 without homework is never taken for one whose plan is still to come. A weekend with something on is one

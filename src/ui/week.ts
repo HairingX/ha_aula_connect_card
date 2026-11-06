@@ -76,11 +76,11 @@ function dayColumn(day: string, ctx: ViewContext): TemplateResult {
 function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardState): unknown {
   const { content } = row;
   // A week plan not yet in Aula is said first, where its homework would be, whatever the order.
-  const said = row.plan.blocks.filter((block) => block.empty !== "noHomework");
-  const missing = said.filter((block) => block.empty === "planMissing");
   const plan = {
     ...row.plan,
-    blocks: [...missing, ...said.filter((block) => block.empty !== "planMissing")],
+    blocks: row.plan.blocks
+      .filter((block) => block.empty !== "noHomework")
+      .sort((a, b) => Number(b.empty === "planMissing") - Number(a.empty === "planMissing")),
     noHomework: row.plan.noHomework === "noHomework" ? undefined : row.plan.noHomework,
   };
   const header = row.facts.filter((fact) => fact.kind === "birthday" || isHolidayEvent(fact.event));
@@ -217,7 +217,7 @@ function openHeading(row: DayRowView, focus: Focus, ctx: ViewContext): TemplateR
     >
     ${
       focus.reason === "next_school_day" && ahead > 1
-        ? html`<span class="ahead">${formatDaysAhead(ahead, ctx.language)}</span>`
+        ? html`<span class="date-line">${formatDaysAhead(ahead, ctx.language)}</span>`
         : nothing
     }
   </span>`;
