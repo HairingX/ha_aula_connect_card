@@ -1153,45 +1153,27 @@ export const details = css`
     flex-direction: column;
     gap: var(--aula-space-4);
   }
-  /* On the wall the window is wider, the event's people and answer in a column of their own, so
+  /* On the wall an event's window is wider, its people and answer in a column of their own, so
      that it is read without scrolling. */
   @media (min-width: 1000px) {
-    .large .detail:has(.detail-cols) {
+    .large .detail:has(.detail-col + .detail-col) {
       width: min(calc(100vw - 2 * var(--aula-space-4)), 1120px);
     }
-    .large .detail-cols {
+    .large .detail-cols:has(.detail-col + .detail-col) {
       display: grid;
       grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
       align-items: start;
       gap: var(--aula-space-8);
+    }
+    .large .detail-col + .detail-col > .detail-section:first-child {
+      padding-top: 0;
+      border-top: 0;
     }
   }
   .detail-head {
     display: flex;
     align-items: flex-start;
     gap: var(--aula-space-3);
-  }
-  .detail-mark {
-    flex: none;
-    display: grid;
-    place-items: center;
-    width: calc(40px * var(--aula-scale));
-    height: calc(40px * var(--aula-scale));
-    margin-top: var(--aula-space-1);
-    border-radius: 50%;
-    background: var(--aula-fill-muted);
-    --mdc-icon-size: calc(22px * var(--aula-scale));
-  }
-  .detail-mark ha-icon {
-    color: var(--aula-text);
-  }
-  /* A lesson's mark is its part of the day's bar: its subject's colour, its icon black or white. */
-  .subject-mark {
-    border-radius: calc(10px * var(--aula-scale));
-    background: var(--subject, var(--aula-fill-strong));
-  }
-  .subject-mark ha-icon {
-    color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0);
   }
   .detail-titles {
     flex: 1;
@@ -1202,15 +1184,30 @@ export const details = css`
     padding-top: var(--aula-space-2);
   }
   .detail-title {
+    display: flex;
+    align-items: baseline;
+    gap: var(--aula-space-2);
     font-size: var(--aula-font-xl);
     font-weight: var(--aula-medium);
     overflow-wrap: anywhere;
   }
+  /* A lesson's subject has its colour, as in the timetable; nothing else in the window has one. */
+  .detail-dot {
+    flex: none;
+    width: calc(12px * var(--aula-scale));
+    height: calc(12px * var(--aula-scale));
+    border-radius: 50%;
+    background: var(--subject);
+  }
   .detail-meta,
   .detail-quiet,
-  .detail-booked-label,
+  .detail-under,
+  .detail-whole,
   .detail-row dt {
     color: var(--aula-text-2);
+  }
+  .detail-meta,
+  .detail-quiet {
     font-size: var(--aula-font-s);
   }
   /* Its target is 48 px; its mark lines up with the window's edge and the title's first line. */
@@ -1246,61 +1243,100 @@ export const details = css`
     flex-wrap: wrap;
     gap: var(--aula-space-2);
   }
-  /* The time booked for the child is what the window is opened for: first, and largest. */
-  .detail-booked {
+  /*
+   * The time is what the window is opened for: a ticket on a plain surface, the day's tile beside
+   * a dashed line, the time the largest text. Colours mean subjects on the card, so it has none.
+   */
+  .detail-ticket {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-4);
+    padding: var(--aula-space-3) var(--aula-space-4) var(--aula-space-3) var(--aula-space-3);
+    border: 1px solid var(--aula-line);
+    border-radius: calc(var(--aula-radius) * 1.5);
+    background: var(--aula-fill-faint);
+  }
+  .detail-ticket .tile {
+    background: var(--aula-fill-strong);
+  }
+  .detail-stub {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: var(--aula-space-3) var(--aula-space-4);
-    border: 1px solid var(--aula-line);
-    border-inline-start: 4px solid var(--aula-accent);
-    border-radius: var(--aula-radius);
-    background: var(--aula-fill-faint);
+    min-width: 0;
+    padding-inline-start: var(--aula-space-4);
+    border-inline-start: 2px dashed var(--aula-line);
+  }
+  .detail-what,
+  .detail-heading {
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+    font-weight: var(--aula-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .detail-when {
+    font-size: var(--aula-font-2xl);
+    font-weight: var(--aula-bold);
     overflow-wrap: anywhere;
   }
-  .detail-booked-label {
+  .detail-whole {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: var(--aula-space-2);
+    margin-top: calc(-1 * var(--aula-space-2));
+    padding-inline: var(--aula-space-3);
+    font-size: var(--aula-font-s);
+  }
+  .detail-whole-label {
     font-weight: var(--aula-medium);
   }
-  .detail-booked-time {
-    font-size: var(--aula-font-2xl);
-    font-weight: var(--aula-medium);
-  }
-  .detail-facts {
+  /* The rest in sections under quiet headings, each a list of what it is beside what it says. */
+  .detail-section {
     display: flex;
     flex-direction: column;
-    gap: var(--aula-space-3);
+    gap: var(--aula-space-2);
+    padding-top: var(--aula-space-4);
+    border-top: 1px solid var(--aula-line);
+  }
+  .detail-list {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: var(--aula-space-2) var(--aula-space-4);
     margin: 0;
   }
-  /* Each line's icon stands in a column of its own, beside what it is and what it says. */
   .detail-row {
-    position: relative;
-    padding-inline-start: calc(var(--aula-icon) + var(--aula-space-3));
-  }
-  .detail-row dt ha-icon {
-    position: absolute;
-    top: 0;
-    inset-inline-start: 0;
+    display: contents;
   }
   .detail-row dd {
     margin: 0;
-    line-height: var(--aula-paragraph);
     overflow-wrap: anywhere;
   }
   .detail-line {
     display: block;
   }
-  .detail-answer {
-    font-weight: var(--aula-medium);
+  .detail-moment {
+    white-space: nowrap;
   }
-  .detail-row .label {
+  .label.detail-answer {
+    background: var(--aula-fill-muted);
+    font-size: var(--aula-font-m);
+  }
+  .detail-row .label.warning {
     margin-inline-start: var(--aula-space-1);
   }
+  .detail-row dd > .label.warning:first-child {
+    margin-inline-start: 0;
+  }
   .detail-text {
-    padding-block: var(--aula-space-3);
-    border-block: 1px solid var(--aula-line);
+    margin-top: var(--aula-space-1);
     line-height: var(--aula-paragraph);
     white-space: pre-line;
     overflow-wrap: anywhere;
+  }
+  /* A wait is shown in the text's colours too. */
+  .detail .pulse {
+    background: var(--aula-text-2);
   }
 `;
 

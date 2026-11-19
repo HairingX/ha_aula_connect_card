@@ -106,7 +106,11 @@ describe("the whole timetable", () => {
       "Engelsk",
       "Historie",
     ]);
-    expect(texts(card, ".event-row .opens")).toEqual(["Skolefoto", "Skole-hjem-samtaler 3.BB12"]);
+    expect(texts(card, ".event-row .opens")).toEqual([
+      "Skolefoto",
+      "Skole-hjem-samtaler 3.BB12",
+      "Halloween-fest i SFOSFO'en",
+    ]);
   });
 });
 
@@ -126,22 +130,28 @@ describe("an event's window", () => {
     expect(window.open).toBe(true);
     expect(window.getAttribute("aria-labelledby")).toBe("detail-title");
     expect(text(card, "#detail-title")).toBe("Skole-hjem-samtaler 3.B");
-    expect(shown(card)).toContain("Fredag 30. oktober, 14.00–17.00");
+    expect(text(card, ".detail-ticket")).toBe("fre 30 14.00–17.00 Fredag 30. oktober, B12");
     expect(shown(card)).toContain("Henter fra Aula…");
     expect(all(card, '[data-block="timetable"] .lessons')).toHaveLength(1);
     answer.resolve(EVENT_DETAILS[4711]);
     await settle();
     await card.updateComplete;
-    expect(text(card, ".detail-booked")).toBe("Jeres tid 14.15–14.30 Fredag 30. oktober, B12");
+    expect(text(card, ".detail-ticket")).toBe(
+      "fre 30 Jeres tid 14.15–14.30 Fredag 30. oktober, B12",
+    );
+    expect(text(card, ".detail-whole")).toBe("Hele begivenheden 14.00–17.00");
+    expect(texts(card, ".detail-heading")).toEqual(["Om samtalen", "Deltagere", "Svar"]);
     expect(texts(card, ".detail-row")).toEqual([
-      "Hele begivenheden Fredag 30. oktober, 14.00–17.00",
       "Oprettet af Karen Lund, lærer",
       "Medarrangører Mette Juhl",
-      "Inviterede 3.B24 inviterede, 21 har svaret",
-      "Dit svar Deltager, 19. okt. 20.14",
+      "Inviterede 3.B21 af 24 har svaret",
+      "Dit svar Deltager 19. okt. 20.14",
       "Svarfrist Fredag 23. okt. 23.00 Overskredet",
       "Vedhæftede filer 2 filer – se dem i Aula",
     ]);
+    expect(present(root(card).querySelector(".detail-answer ha-icon")).getAttribute("icon")).toBe(
+      "mdi:check",
+    );
     expect(text(card, ".detail-meta")).toBe("Skole-hjem-samtale, Bakkedal Skole");
     expect(
       present(root(card).querySelector(".detail-text"))
@@ -163,7 +173,8 @@ describe("an event's window", () => {
     await tap(card, "|4711");
     await settle();
     await card.updateComplete;
-    expect(text(card, ".detail-booked-label")).toBe("Your time");
+    expect(text(card, ".detail-what")).toBe("Your time");
+    expect(texts(card, ".detail-heading")).toEqual(["About the meeting", "People", "Reply"]);
     expect(text(card, ".detail-meta")).toBe("Parent–teacher meeting, Bakkedal Skole");
     expect(present(root(card).querySelector(".detail-close")).getAttribute("aria-label")).toBe(
       "Close",
@@ -193,7 +204,8 @@ describe("an event's window", () => {
     hass.callWS.mockClear();
     await tap(card, "|e1");
     expect(hass.callWS).not.toHaveBeenCalled();
-    expect(shown(card)).toContain("Fredag 30. oktober, Hele dagen");
+    expect(text(card, ".detail-ticket")).toBe("fre 30 Hele dagen Fredag 30. oktober");
+    expect(all(card, ".detail-col")).toHaveLength(1);
     expect(shown(card)).not.toContain("Henter fra Aula…");
   });
 
@@ -228,13 +240,16 @@ describe("a lesson's window", () => {
     await tap(card, SUBSTITUTE);
     expect(hass.callWS).not.toHaveBeenCalled();
     expect(text(card, "#detail-title")).toBe("Engelsk");
+    expect(all(card, "#detail-title .detail-dot")).toHaveLength(1);
     expect(text(card, ".detail-meta")).toBe("Lektion, ENG");
-    expect(text(card, ".detail-labels")).toBe("Vikar");
+    expect(text(card, ".detail-ticket")).toBe("tors 29 12.10–12.55 Torsdag 29. oktober");
+    expect(texts(card, ".detail-heading")).toEqual(["Om lektionen"]);
     expect(texts(card, ".detail-row")).toEqual([
-      "Tidspunkt Torsdag 29. oktober, 12.10–12.55",
       "Lokale B14",
       "Lærere Tina Rask og Bo Vang",
+      "Ændring Vikar",
     ]);
+    expect(all(card, ".detail-row .label.warning")).toHaveLength(1);
     expect(present(dialog(card)).getAttribute("style")).toMatch(/^--subject: /);
   });
 
@@ -350,12 +365,13 @@ describe("the window's content", () => {
 
   const close = (): void => undefined;
 
-  it("leaves out every line Aula has nothing for", () => {
+  it("leaves out every line and section Aula has nothing for", () => {
     const container = shownOf(detailDialog(view({ location: null }), ctx, close));
-    expect(said(container, ".detail-row")).toEqual(["Tidspunkt Fredag 30. oktober, 14.00–17.00"]);
-    expect(container.querySelectorAll("dl")).toHaveLength(1);
+    expect(said(container, ".detail-ticket")).toEqual(["fre 30 14.00–17.00 Fredag 30. oktober"]);
+    expect(
+      container.querySelectorAll(".detail-section, .detail-labels, .detail-whole"),
+    ).toHaveLength(0);
     expect(container.querySelectorAll(".detail-col")).toHaveLength(1);
-    expect(container.querySelector(".detail-text, .detail-booked, .detail-labels")).toBeNull();
   });
 
   it("has no line under the title for a type it does not know at no named institution", () => {
@@ -371,18 +387,31 @@ describe("the window's content", () => {
           institution_name: "Bakkedal Skole",
           creator: { name: "Lone Bech", role: "other" },
           answer: "forsinket",
+          description: "Velkommen.",
         }),
         ctx,
         close,
       ),
     );
     expect(said(container, ".detail-meta")).toEqual(["Bakkedal Skole"]);
-    expect(said(container, ".detail-row")).toEqual([
-      "Tidspunkt Fredag 30. oktober, 14.00–17.00",
-      "Sted B12",
-      "Oprettet af Lone Bech",
-      "Dit svar forsinket",
-    ]);
+    expect(said(container, ".detail-heading")).toEqual(["Om begivenheden", "Deltagere", "Svar"]);
+    expect(said(container, ".detail-text")).toEqual(["Velkommen."]);
+    expect(said(container, ".detail-row")).toEqual(["Oprettet af Lone Bech", "Dit svar forsinket"]);
+    expect(container.querySelector(".detail-answer ha-icon")?.getAttribute("icon")).toBe(
+      "mdi:reply-outline",
+    );
+  });
+
+  it("calls a parents' meeting a meeting", () => {
+    const meeting = { ...MEETING, type: "parental_meeting" };
+    const container = shownOf(
+      detailDialog(
+        view({ type: "parental_meeting", description: "Dagsorden." }, meeting),
+        ctx,
+        close,
+      ),
+    );
+    expect(said(container, ".detail-heading")).toEqual(["Om mødet"]);
   });
 
   it.each([
@@ -397,12 +426,14 @@ describe("the window's content", () => {
   });
 
   it.each([
-    ["declined", "Deltager ikke"],
-    ["waiting", "Ikke besvaret endnu"],
-    ["tentative", "Måske"],
-  ])("names the answer %s in the card's words", (answer, word) => {
+    ["accepted", "Deltager", "mdi:check"],
+    ["declined", "Deltager ikke", "mdi:close-circle-outline"],
+    ["waiting", "Ikke besvaret endnu", "mdi:help-circle-outline"],
+    ["tentative", "Måske", "mdi:help-circle-outline"],
+  ])("names the answer %s in the card's words, with its mark", (answer, word, mark) => {
     const container = shownOf(detailDialog(view({ answer }), ctx, close));
     expect(said(container, ".detail-answer")).toEqual([word]);
+    expect(container.querySelector(".detail-answer ha-icon")?.getAttribute("icon")).toBe(mark);
   });
 
   it("marks a deleted and a private event, and a deadline still to come without a mark", () => {
@@ -419,8 +450,10 @@ describe("the window's content", () => {
       ),
     );
     expect(said(container, ".detail-labels .label")).toEqual(["Slettet i Aula", "Privat"]);
-    expect(said(container, ".detail-row")).toContain("Svarfrist Torsdag 5. nov. 12.00");
-    expect(said(container, ".detail-row")).toContain("Vedhæftede filer 1 fil – se den i Aula");
+    expect(said(container, ".detail-row")).toEqual([
+      "Svarfrist Torsdag 5. nov. 12.00",
+      "Vedhæftede filer 1 fil – se den i Aula",
+    ]);
     const one = shownOf(detailDialog(view({ private: true }), en, close));
     expect(said(one, ".detail-labels .label")).toEqual(["Private"]);
     const gone = shownOf(detailDialog(view({ deleted: true }), en, close));
@@ -429,12 +462,12 @@ describe("the window's content", () => {
 
   it("names the groups invited without counts, and counts without groups", () => {
     const groups = shownOf(detailDialog(view({ invited_groups: ["3.A", "3.B"] }), ctx, close));
-    expect(said(groups, ".detail-row")).toContain("Inviterede 3.A og 3.B");
+    expect(said(groups, ".detail-row")).toEqual(["Inviterede 3.A og 3.B"]);
     const counted = shownOf(detailDialog(view({ invited: 1, answered: 1 }), en, close));
-    expect(said(counted, ".detail-row")).toContain("Invited 1 invited, 1 has answered");
+    expect(said(counted, ".detail-row")).toEqual(["Invited 1 of 1 has answered"]);
   });
 
-  it("gives a booked time without a place of its own the day alone", () => {
+  it("names the event's place apart from a booked time without a place of its own", () => {
     const container = shownOf(
       detailDialog(
         view({
@@ -448,8 +481,38 @@ describe("the window's content", () => {
         close,
       ),
     );
-    expect(said(container, ".detail-booked")).toEqual(["Jeres tid 14.15–14.30 Fredag 30. oktober"]);
-    expect(said(container, ".detail-row")).toContain("Sted B12");
+    expect(said(container, ".detail-ticket")).toEqual([
+      "fre 30 Jeres tid 14.15–14.30 Fredag 30. oktober",
+    ]);
+    expect(said(container, ".detail-row")).toEqual(["Sted B12"]);
+  });
+
+  it("gives the whole event its day where the booked time is on another", () => {
+    const booked = {
+      start: local("2026-10-31", "10:00"),
+      end: local("2026-10-31", "10:15"),
+      location: null,
+    };
+    expect(said(shownOf(detailDialog(view({ booked }), ctx, close)), ".detail-whole")).toEqual([
+      "Hele begivenheden Fredag 30. oktober 14.00–17.00",
+    ]);
+    const camp: CalendarEvent = {
+      ...MEETING,
+      start: local("2026-11-03", "08:00"),
+      end: local("2026-11-05", "14:00"),
+    };
+    expect(
+      said(shownOf(detailDialog(view({ booked }, camp), ctx, close)), ".detail-whole"),
+    ).toEqual(["Hele begivenheden Tirsdag 3. nov. 08.00 → Torsdag 5. nov. 14.00"]);
+    const days: CalendarEvent = {
+      ...MEETING,
+      all_day: true,
+      start: "2026-11-03",
+      end: "2026-11-06",
+    };
+    expect(said(shownOf(detailDialog(view({ booked }, days), en, close)), ".detail-whole")).toEqual(
+      ["The whole event Tuesday, Nov 3 → Thursday, Nov 5"],
+    );
   });
 
   it("says when an event over days begins and ends, and an all-day event's days", () => {
@@ -458,21 +521,22 @@ describe("the window's content", () => {
       start: local("2026-11-03", "08:00"),
       end: local("2026-11-05", "14:00"),
     };
-    expect(said(shownOf(detailDialog(view({}, camp), ctx, close)), ".detail-row")[0]).toBe(
-      "Tidspunkt Tirsdag 3. nov. 08.00 → Torsdag 5. nov. 14.00",
-    );
+    expect(said(shownOf(detailDialog(view({}, camp), ctx, close)), ".detail-ticket")).toEqual([
+      "tirs 3 08.00 → 14.00 3.–5. november, B12",
+    ]);
     const days: CalendarEvent = {
       ...MEETING,
       all_day: true,
       start: "2026-11-03",
       end: "2026-11-06",
+      location: null,
     };
-    expect(said(shownOf(detailDialog(view({}, days), ctx, close)), ".detail-row")[0]).toBe(
-      "Tidspunkt 3.–5. november",
-    );
+    expect(said(shownOf(detailDialog(view({}, days), ctx, close)), ".detail-ticket")).toEqual([
+      "tirs 3 3.–5. november Hele dagen",
+    ]);
   });
 
-  it("shows a lesson's other news in Aula's words, without a room or teachers it has not", () => {
+  it("shows a lesson's other news in Aula's words, without a room, teachers or colour it has not", () => {
     const lesson: LessonDetail = {
       kind: "lesson",
       title: "Dansk",
@@ -486,11 +550,11 @@ describe("the window's content", () => {
       status: { kind: "other", text: "Flyttet til lokale 117" },
     };
     const container = shownOf(detailDialog(lesson, ctx, close));
-    expect(said(container, ".detail-labels")).toEqual(["Flyttet til lokale 117"]);
+    expect(said(container, ".detail-row")).toEqual(["Ændring Flyttet til lokale 117"]);
     expect(said(container, ".detail-meta")).toEqual(["Lektion"]);
-    expect(said(container, ".detail-row")).toEqual(["Tidspunkt Fredag 30. oktober, 10.05–11.35"]);
+    expect(container.querySelector(".detail-dot")).toBeNull();
     expect(container.querySelector("dialog")?.getAttribute("style")).toBe("");
     const plain = shownOf(detailDialog({ ...lesson, status: undefined }, ctx, close));
-    expect(plain.querySelector(".detail-labels")).toBeNull();
+    expect(plain.querySelector(".detail-section")).toBeNull();
   });
 });

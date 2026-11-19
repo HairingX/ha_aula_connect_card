@@ -106,15 +106,22 @@ lesson or an event opens a window with everything known of it; the week plan is 
 
 ![The window of a parent–teacher meeting](docs/day-thu-1930-meeting-380-light-blue-da-1child-event.png)
 
-- **A lesson**: its subject, as Aula names it too where the card writes it out, when it is, the
-  room, the teachers by their full names, and a substitute or other news Aula has for it.
+Its time stands first, as a ticket with the day's tile beside it, and the rest follows in quiet
+sections. It has no colour of its own, as colours on the cards mean subjects; only a warning,
+such as a deadline passed, is marked.
+
+- **A lesson**: its subject, in its colour, and as Aula names it too where the card writes it out;
+  its time; then the room, the teachers by their full names, and a substitute or other news Aula
+  has for it.
 - **An event**: its title and type, and at once when and where it is, as the week has it. The rest
-  is asked of Aula Connect and follows: for a parents' meeting the time booked for your child
-  first ("Jeres tid"), then the whole event's time, the place, the description as plain text, who
-  made it and with whom, the groups invited and how many have answered, your own answer and when
-  you gave it, the deadline for answering and whether it has passed, how many files are attached
-  (they are seen in Aula), and whether the event is private or deleted. What Aula has nothing for
-  is left out. Where the rest cannot be had, the window says so and shows what it has.
+  is asked of Aula Connect and follows. For a parents' meeting the ticket shows the time booked
+  for your child ("Jeres tid") and its room, with the whole meeting's time under it. Then
+  **Om samtalen**: another place, and the description as plain text; **Deltagere**: who made it
+  and with whom, the groups invited and how many have answered; and last **Svar**: your own
+  answer, with a tick when you said yes, and when you gave it, the deadline for answering and
+  whether it has passed, and how many files are attached (they are seen in Aula). A private or
+  deleted event is marked under its title. What Aula has nothing for is left out. Where the rest
+  cannot be had, the window says so and shows what it has.
 
 The window only shows: nothing in it answers or changes anything in Aula, and it names no parent
 and no other child. It closes with its button, with Escape and at a tap outside it, and by itself

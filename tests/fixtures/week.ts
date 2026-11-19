@@ -321,6 +321,17 @@ export const MEETING: CalendarEvent = {
   location: "B12",
 };
 
+/** The after-school club's Halloween party on Friday 30 October 2026, as the week gives it. */
+export const PARTY: CalendarEvent = {
+  id: "4712",
+  start: local("2026-10-30", "15:00"),
+  end: local("2026-10-30", "17:00"),
+  all_day: false,
+  title: "Halloween-fest i SFO",
+  type: "event",
+  location: "SFO'en",
+};
+
 /** What `aula_connect/event` gives of the events the fixtures have details of, by their id. */
 export const EVENT_DETAILS: Readonly<Record<number, Readonly<Record<string, unknown>>>> = {
   4711: {
@@ -350,6 +361,32 @@ export const EVENT_DETAILS: Readonly<Record<number, Readonly<Record<string, unkn
       location: "B12",
     },
     attachments: 2,
+    private: false,
+    deleted: false,
+  },
+  4712: {
+    id: "4712",
+    title: PARTY.title,
+    type: PARTY.type,
+    all_day: false,
+    start: PARTY.start,
+    end: PARTY.end,
+    description:
+      "<p>Kom gerne udklædt! Vi laver græskarlygter og spiser suppe sammen.</p><p>Søskende er velkomne.</p>",
+    location: "SFO'en",
+    institution_name: "Bakkedal Skole",
+    creator: { name: "Lone Bech", role: "pedagogue" },
+    co_organizers: [],
+    invited_groups: ["3.A", "3.B"],
+    invited: 48,
+    answered: 30,
+    response_required: true,
+    response_deadline: local("2026-10-29", "23:59"),
+    deadline_passed: false,
+    answer: null,
+    answered_at: null,
+    booked: null,
+    attachments: 0,
     private: false,
     deleted: false,
   },

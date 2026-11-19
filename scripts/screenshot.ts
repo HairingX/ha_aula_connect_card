@@ -113,6 +113,7 @@ const WALL = { large: true, glance: true } as const;
 // The whole timetable, unfolded; the parent–teacher meetings and the lesson with a substitute.
 const UNFOLD = '[data-block="timetable"] .more';
 const MEETING = '.opens[data-detail$="|4711"]';
+const PARTY = '.opens[data-detail$="|4712"]';
 const SUBSTITUTE = '.opens[data-detail$="|2026-10-29T12:10:00+01:00"]';
 
 function shot(
@@ -312,6 +313,7 @@ const SETS: Record<string, () => Shot[]> = {
       dialog: MEETING,
       tag: "event",
     }),
+    shot("day", "thu-1930-meeting", 380, { click: UNFOLD, dialog: PARTY, tag: "party" }),
     shot("day", "thu-0715", 380, { click: UNFOLD, dialog: SUBSTITUTE, tag: "lesson" }),
     shot("day", "thu-0715", 380, {
       theme: "dark",
