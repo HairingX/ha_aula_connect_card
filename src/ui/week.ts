@@ -99,6 +99,7 @@ function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardStat
               plan,
               empty: block.empty,
               child: undefined,
+              owner: child,
               key: childKey(child),
               col: 1,
             },

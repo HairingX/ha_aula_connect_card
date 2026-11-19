@@ -10,7 +10,8 @@
  * range policy fails the script. So does a shot whose layout is broken: text past the card's or
  * its column's edge, children side by side whose names do not share a line, a time broken
  * across lines, a line that ends with a dot or a dash, a word broken where it need not be, or a
- * thing to bring cut short.
+ * thing to bring cut short. A shot of a lesson's or an event's window is of the screen, the
+ * window's text checked as the card's.
  *
  * @packageDocumentation
  */
@@ -25,7 +26,7 @@ import { extraKey, rangeFor } from "../src/core/store.ts";
 import { childKey, type Child, type DayRange, type WeekData } from "../src/core/types.ts";
 import { extraWeeks } from "../src/model/week-view.ts";
 import { scenarioNamed, SCENARIOS, type Scenario } from "../tests/fixtures/scenarios.ts";
-import { weekData } from "../tests/fixtures/week.ts";
+import { EVENT_DETAILS, weekData } from "../tests/fixtures/week.ts";
 
 interface Page {
   clock: { setFixedTime(time: Date): Promise<void> };
@@ -39,7 +40,9 @@ interface Page {
   ): Promise<unknown>;
   locator(selector: string): {
     screenshot(options: { path: string; animations: string }): Promise<void>;
+    click(): Promise<void>;
   };
+  screenshot(options: { path: string; animations: string }): Promise<void>;
 }
 interface Context {
   newPage(): Promise<Page>;
@@ -94,6 +97,8 @@ interface Shot {
   readonly click?: string;
   /** The weeks the week card is browsed to before the shot, with its steps. */
   readonly browse?: number;
+  /** A lesson's or an event's button to open the window of, after `click`: a shot of the screen. */
+  readonly dialog?: string;
 }
 
 // What a family would set up: the things to bring for sports and swimming.
@@ -104,6 +109,11 @@ const PACKING = [
 
 // The README's wall screen: the day card, large, with nothing else to set.
 const WALL = { large: true, glance: true } as const;
+
+// The whole timetable, unfolded; the parent–teacher meetings and the lesson with a substitute.
+const UNFOLD = '[data-block="timetable"] .more';
+const MEETING = '.opens[data-detail$="|4711"]';
+const SUBSTITUTE = '.opens[data-detail$="|2026-10-29T12:10:00+01:00"]';
 
 function shot(
   card: Shot["card"],
@@ -144,6 +154,7 @@ const SETS: Record<string, () => Shot[]> = {
     shot("week", "thu-1930", 800),
     shot("week", "sun-1800", 380),
     shot("week", "thu-1010", 380, { browse: -1, tag: "browsed-back" }),
+    shot("day", "thu-1930-meeting", 380, { click: UNFOLD, dialog: MEETING, tag: "event" }),
   ],
   review: () => [
     ...ALL_CARDS.flatMap((card) => SCENARIOS.map((item) => shot(card, item.id, 380))),
@@ -281,6 +292,44 @@ const SETS: Record<string, () => Shot[]> = {
     shot("week", "before-holiday", 380),
     shot("week", "sun-1800", 800),
     shot("weekplan", "before-holiday", 800, { children: 2 }),
+    shot("day", "thu-1930-meeting", 380, { click: UNFOLD, dialog: MEETING, tag: "event" }),
+    shot("day", "thu-1930-meeting", 1216, {
+      large: true,
+      click: UNFOLD,
+      dialog: MEETING,
+      tag: "event",
+    }),
+    shot("day", "thu-1930-meeting", 380, {
+      theme: "dark",
+      click: UNFOLD,
+      dialog: MEETING,
+      tag: "event",
+    }),
+    shot("day", "thu-1930-meeting", 380, {
+      locale: "en-US",
+      primary: "orange",
+      click: UNFOLD,
+      dialog: MEETING,
+      tag: "event",
+    }),
+    shot("day", "thu-0715", 380, { click: UNFOLD, dialog: SUBSTITUTE, tag: "lesson" }),
+    shot("day", "thu-0715", 380, {
+      theme: "dark",
+      click: UNFOLD,
+      dialog: SUBSTITUTE,
+      tag: "lesson",
+    }),
+    shot("week", "thu-0715", 1216, {
+      large: true,
+      click: UNFOLD,
+      dialog: SUBSTITUTE,
+      tag: "lesson",
+    }),
+    shot("day", "thu-1930", 380, {
+      click: UNFOLD,
+      dialog: '.opens[data-detail$="|e1"]',
+      tag: "event",
+    }),
   ],
 };
 
@@ -358,6 +407,8 @@ interface Mount {
   range: DayRange;
   /** The data of the days beyond the range a browsed card asks for, by `extraKey`. */
   extra: Record<string, WeekData>;
+  /** What `aula_connect/event` answers, by the event's id. */
+  events: Readonly<Record<number, unknown>>;
   width: number;
   language: string;
   locale: string;
@@ -377,10 +428,12 @@ function mount(arg: Mount): void {
       time_zone: "server",
     },
     config: { time_zone: arg.zone },
-    callWS: (message: { type: string }) =>
+    callWS: (message: { type: string; event_id?: number }) =>
       message.type === "aula_connect/children"
         ? Promise.resolve({ children: arg.children })
-        : Promise.reject(new Error(`unexpected ${message.type}`)),
+        : message.type === "aula_connect/event" && arg.events[Number(message.event_id)]
+          ? Promise.resolve(arg.events[Number(message.event_id)])
+          : Promise.reject(new Error(`unexpected ${JSON.stringify(message)}`)),
     connection: {
       subscribeMessage: (
         callback: (message: unknown) => void,
@@ -482,9 +535,9 @@ function glance(arg: { tag: string; screen: number; packing: boolean }): string[
  * dot or a dash; no word is broken where the line had room for it whole; and no thing to bring
  * is cut short.
  */
-function layout(tag: string): string[] {
+function layout({ tag, box }: { tag: string; box: string }): string[] {
   const root = document.querySelector(tag)?.shadowRoot;
-  const body = root?.querySelector(".body");
+  const body = root?.querySelector(box);
   if (!root || !body) return ["no card"];
   const problems: string[] = [];
   const style = getComputedStyle(body);
@@ -607,7 +660,8 @@ for (const item of shots) {
     colorScheme: item.theme,
     locale: item.locale,
     timezoneId: scenario.zone,
-    viewport: { width: item.width + 32, height: 900 },
+    // A window on the wall is shot on a kitchen tablet's screen.
+    viewport: { width: item.width + 32, height: item.dialog && item.large ? 800 : 900 },
   });
   const tab = await context.newPage();
   await tab.clock.setFixedTime(new Date(scenario.clock));
@@ -635,6 +689,7 @@ for (const item of shots) {
           : [];
       }),
     ),
+    events: EVENT_DETAILS,
     width: item.width,
     language: item.locale.slice(0, 2),
     locale: item.locale,
@@ -681,8 +736,23 @@ for (const item of shots) {
       { selector: tag, target: item.click },
     );
   }
+  if (item.dialog !== undefined) {
+    // A tap with the mouse, as a finger's: the browser shows no focus ring for it.
+    await tab.locator(`${tag} ${item.dialog}`).click();
+    await tab.evaluate(async (selector) => {
+      const card = document.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>(
+        selector,
+      );
+      // The event's details come after a task.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      await card?.updateComplete;
+    }, tag);
+  }
   const problems = [
-    ...((await tab.evaluate(layout, tag)) as string[]),
+    ...((await tab.evaluate(layout, { tag, box: ".body" })) as string[]),
+    ...(item.dialog === undefined
+      ? []
+      : ((await tab.evaluate(layout, { tag, box: ".detail-body" })) as string[])),
     ...(item.glance === true
       ? ((await tab.evaluate(glance, {
           tag,
@@ -693,7 +763,10 @@ for (const item of shots) {
   ];
   if (problems.length > 0) failed.push(`${name(item)}: ${problems.join("; ")}`);
   const file = `${name(item)}.png`;
-  await tab.locator(tag).screenshot({ path: join(out, file), animations: "disabled" });
+  await (item.dialog === undefined ? tab.locator(tag) : tab).screenshot({
+    path: join(out, file),
+    animations: "disabled",
+  });
   done.push({ file, item, scenario });
   await context.close();
 }

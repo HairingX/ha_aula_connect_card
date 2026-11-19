@@ -309,3 +309,48 @@ export function holidayFortnight(monday: string): WeekData {
     events: [...data.events, allDay("h42", "Efterårsferie", "holiday", "2026-10-10", "2026-10-18")],
   };
 }
+
+/** Ida's parent–teacher meetings on Friday 30 October 2026, as the week gives them. */
+export const MEETING: CalendarEvent = {
+  id: "4711",
+  start: local("2026-10-30", "14:00"),
+  end: local("2026-10-30", "17:00"),
+  all_day: false,
+  title: "Skole-hjem-samtaler 3.B",
+  type: "school_home_meeting",
+  location: "B12",
+};
+
+/** What `aula_connect/event` gives of the events the fixtures have details of, by their id. */
+export const EVENT_DETAILS: Readonly<Record<number, Readonly<Record<string, unknown>>>> = {
+  4711: {
+    id: "4711",
+    title: MEETING.title,
+    type: MEETING.type,
+    all_day: false,
+    start: MEETING.start,
+    end: MEETING.end,
+    description:
+      "<p>Kære forældre i 3.B</p><p>Vi glæder os til at tale med jer om, hvordan det går &ndash; fagligt og socialt.</p><ul><li>Samtalen varer et kvarter.</li><li>Jeres barn er velkommen til at komme med.</li></ul>",
+    location: "B12",
+    institution_name: "Bakkedal Skole",
+    creator: { name: "Karen Lund", role: "teacher" },
+    co_organizers: ["Mette Juhl"],
+    invited_groups: ["3.B"],
+    invited: 24,
+    answered: 21,
+    response_required: true,
+    response_deadline: local("2026-10-23", "23:00"),
+    deadline_passed: true,
+    answer: "accepted",
+    answered_at: local("2026-10-19", "20:14"),
+    booked: {
+      start: local("2026-10-30", "14:15"),
+      end: local("2026-10-30", "14:30"),
+      location: "B12",
+    },
+    attachments: 2,
+    private: false,
+    deleted: false,
+  },
+};

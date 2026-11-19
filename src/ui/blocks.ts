@@ -22,6 +22,7 @@ import {
   type TimetableRow,
 } from "../model/blocks.ts";
 import type { CalendarEvent } from "../core/types.ts";
+import type { DetailTarget } from "../model/details.ts";
 import { dayBar, type BarItem } from "../model/daybar.ts";
 import type { NoteView } from "../model/notes.ts";
 import type { SubjectLabel } from "../model/subjects.ts";
@@ -51,6 +52,8 @@ export interface Part {
   readonly empty: EmptyKind | "none" | undefined;
   /** The child, named above the part when the block is for several. */
   readonly child: Child | undefined;
+  /** The child whose day the part shows. */
+  readonly owner: Child;
   /** The key what a child has opened is kept by. */
   readonly key: string;
   /** The column the part takes when the children stand side by side. */
@@ -316,7 +319,40 @@ function bar(part: Part, ctx: ViewContext): unknown {
     </ul>`;
 }
 
-function lessonRow(row: TimetableRow, ctx: ViewContext, detailed: boolean): TemplateResult {
+// Makes an event's content the button that opens its window.
+type Opener = (event: CalendarEvent) => (content: unknown) => unknown;
+
+/**
+ * Shows what opens a lesson's or an event's window: a button over its whole row, so that a tap
+ * anywhere on the row opens it, and never folds the timetable it is in.
+ */
+function opener(
+  content: unknown,
+  key: string,
+  target: DetailTarget,
+  state: CardState,
+): TemplateResult {
+  return html`<button
+    class="opens"
+    type="button"
+    aria-haspopup="dialog"
+    data-detail=${key}
+    @click=${(tap: Event) => {
+      tap.stopPropagation();
+      state.showDetail(target, key);
+    }}
+  >
+    ${content}
+  </button>`;
+}
+
+function lessonRow(
+  row: TimetableRow,
+  ctx: ViewContext,
+  detailed: boolean,
+  key: string,
+  state: CardState,
+): TemplateResult {
   if (row.kind === "break") {
     return html`<li class="break">
       <span class="break-main">${ctx.t("breakMinutes", { n: row.minutes })}</span>
@@ -346,7 +382,8 @@ function lessonRow(row: TimetableRow, ctx: ViewContext, detailed: boolean): Temp
     >
     <span class="lesson-main">
       <span class="lesson-head">
-        ${subjectName(row, ctx)} ${row.time === "now" && !row.cancelled ? nowLabel(ctx.t) : nothing}
+        ${opener(subjectName(row, ctx), `${key}|${block.start}`, { kind: "lesson", row }, state)}
+        ${row.time === "now" && !row.cancelled ? nowLabel(ctx.t) : nothing}
         ${statusLabel(status, ctx)}
       </span>
       ${meta.length > 0 ? segments(meta, "lesson-meta") : nothing}
@@ -368,10 +405,11 @@ function timeline(
   rows: readonly TimetableRow[],
   row: (item: TimetableRow) => TemplateResult,
   ctx: ViewContext,
+  open: Opener,
 ): unknown[] {
-  const event = (item: TimedEvent): TemplateResult => eventRow(item, ctx);
+  const event = (item: TimedEvent): TemplateResult => eventRow(item, ctx, open);
   const timed = [...part.plan.timed].sort((a, b) => startOf(a).localeCompare(startOf(b)));
-  const lines: unknown[] = part.plan.allDay.map((item) => allDayRow(item, ctx));
+  const lines: unknown[] = part.plan.allDay.map((item) => allDayRow(item, ctx, open));
   const before = (start: string): void => {
     for (let first = timed[0]; first !== undefined && startOf(first) <= start; first = timed[0]) {
       lines.push(event(first));
@@ -386,29 +424,35 @@ function timeline(
   return lines;
 }
 
-// An event's title, with its place on a line under it.
-function eventText(event: CalendarEvent, ctx: ViewContext): TemplateResult {
+// An event's title, with its place on a line under it; `open` makes it the window's button.
+function eventText(
+  event: CalendarEvent,
+  ctx: ViewContext,
+  open: (content: unknown) => unknown,
+): TemplateResult {
   const place = event.location?.trim();
   return html`<span class="lesson-head"
-    >${icon(eventIcon(event.type))}<span class="event-text"
-      >${aula(event.title, ctx)}${
-        place ? html`<span class="event-place">${aula(place, ctx)}</span>` : nothing
-      }</span
-    ></span
+    >${icon(eventIcon(event.type))}${open(
+      html`<span class="event-text"
+        >${aula(event.title, ctx)}${
+          place ? html`<span class="event-place">${aula(place, ctx)}</span>` : nothing
+        }</span
+      >`,
+    )}</span
   >`;
 }
 
-function allDayRow(item: CalendarEvent, ctx: ViewContext): TemplateResult {
+function allDayRow(item: CalendarEvent, ctx: ViewContext, open: Opener): TemplateResult {
   return html`<li class="lesson event-row all-day">
     <span class="lesson-time">${ctx.t("allDay")}</span>
-    <span class="lesson-main">${eventText(item, ctx)}</span>
+    <span class="lesson-main">${eventText(item, ctx, open(item))}</span>
   </li>`;
 }
 
-function eventRow(item: TimedEvent, ctx: ViewContext): TemplateResult {
+function eventRow(item: TimedEvent, ctx: ViewContext, open: Opener): TemplateResult {
   return html`<li class="lesson event-row">
     <span class="lesson-time">${eventWhen(item, ctx)}</span>
-    <span class="lesson-main">${eventText(item.event, ctx)}</span>
+    <span class="lesson-main">${eventText(item.event, ctx, open(item.event))}</span>
   </li>`;
 }
 
@@ -463,17 +507,27 @@ function body(
   switch (id) {
     case "task":
       return important(part, ctx);
-    case "timetable":
-      return unfolded
-        ? html`<ol class="lessons">
-            ${timeline(
-              part,
-              part.content.timetable,
-              (row) => lessonRow(row, ctx, options.detailed),
-              ctx,
-            )}
-          </ol>`
-        : bar(part, ctx);
+    case "timetable": {
+      if (!unfolded) return bar(part, ctx);
+      const { state } = options;
+      const key = `${part.key}|detail|${options.day}`;
+      const open: Opener = (event) => (content) =>
+        opener(
+          content,
+          `${key}|${String(event.id)}`,
+          { kind: "event", event, child: part.owner },
+          state,
+        );
+      return html`<ol class="lessons">
+        ${timeline(
+          part,
+          part.content.timetable,
+          (row) => lessonRow(row, ctx, options.detailed, key, state),
+          ctx,
+          open,
+        )}
+      </ol>`;
+    }
     default:
       return plan(part, ctx, options);
   }

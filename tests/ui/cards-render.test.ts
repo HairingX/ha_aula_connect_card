@@ -87,11 +87,14 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
 });
 
-afterEach(() => {
+afterEach(async () => {
   unmountAll();
   forget();
   vi.useRealTimers();
   vi.restoreAllMocks();
+  // What a WeakRef reached in happy-dom stays alive until the job ends, as do the cards removed
+  // with it while the tests only await promises; a task ends the job.
+  await new Promise((resolve) => setImmediate(resolve));
   vi.unstubAllGlobals();
 });
 

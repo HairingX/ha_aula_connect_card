@@ -805,6 +805,9 @@ export const blocks = css`
     column-gap: var(--aula-space-3);
     row-gap: var(--aula-space-2);
   }
+  .lesson {
+    position: relative;
+  }
   .lesson,
   .break {
     grid-column: 1 / -1;
@@ -1066,6 +1069,238 @@ export const blocks = css`
     display: block;
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
+  }
+
+  /*
+   * A lesson or an event opens its window at a tap anywhere on its row: its button's target is
+   * the row, reaching a little past it, and its state shows there.
+   */
+  .opens {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .opens::after {
+    content: "";
+    position: absolute;
+    inset: calc(-1 * var(--aula-space-1)) calc(-1 * var(--aula-space-2));
+    border-radius: var(--aula-radius);
+  }
+  .opens:focus-visible {
+    outline: none;
+  }
+  .opens:focus-visible::after {
+    outline: 2px solid var(--aula-text);
+  }
+  @media (hover: hover) {
+    .opens:hover::after {
+      background: var(--aula-fill-muted);
+    }
+  }
+  .opens:active::after {
+    background: var(--aula-fill-strong);
+  }
+`;
+
+/**
+ * The window of a lesson or an event, in Home Assistant's dialogs' look: above the page, its
+ * width a phone's or, on the wall, a third more, scrolled within where it is longer than the
+ * screen.
+ */
+export const details = css`
+  .detail {
+    box-sizing: border-box;
+    width: min(calc(100vw - 2 * var(--aula-space-4)), calc(480px * var(--aula-scale)));
+    max-width: none;
+    max-height: calc(100dvh - 2 * var(--aula-space-4));
+    margin: auto;
+    padding: 0;
+    border: 0;
+    border-radius: var(--ha-dialog-border-radius, var(--ha-border-radius-3xl, 24px));
+    background: var(
+      --ha-dialog-surface-background,
+      var(--mdc-theme-surface, var(--card-background-color, #fff))
+    );
+    box-shadow: var(--ha-box-shadow-l, 0 16px 32px -6px rgba(0, 0, 0, 0.2));
+    color: var(--aula-text);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .detail::backdrop {
+    background: var(--mdc-dialog-scrim-color, rgba(0, 0, 0, 0.32));
+  }
+  .detail-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-4);
+    padding: var(--aula-space-4) var(--aula-space-6) var(--aula-space-6);
+  }
+  @media (max-width: 400px) {
+    .detail-body {
+      padding-inline: var(--aula-space-4);
+    }
+  }
+  .detail-cols,
+  .detail-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-4);
+  }
+  /* On the wall the window is wider, the event's people and answer in a column of their own, so
+     that it is read without scrolling. */
+  @media (min-width: 1000px) {
+    .large .detail:has(.detail-cols) {
+      width: min(calc(100vw - 2 * var(--aula-space-4)), 1120px);
+    }
+    .large .detail-cols {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      align-items: start;
+      gap: var(--aula-space-8);
+    }
+  }
+  .detail-head {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--aula-space-3);
+  }
+  .detail-mark {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: calc(40px * var(--aula-scale));
+    height: calc(40px * var(--aula-scale));
+    margin-top: var(--aula-space-1);
+    border-radius: 50%;
+    background: var(--aula-fill-muted);
+    --mdc-icon-size: calc(22px * var(--aula-scale));
+  }
+  .detail-mark ha-icon {
+    color: var(--aula-text);
+  }
+  /* A lesson's mark is its part of the day's bar: its subject's colour, its icon black or white. */
+  .subject-mark {
+    border-radius: calc(10px * var(--aula-scale));
+    background: var(--subject, var(--aula-fill-strong));
+  }
+  .subject-mark ha-icon {
+    color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0);
+  }
+  .detail-titles {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding-top: var(--aula-space-2);
+  }
+  .detail-title {
+    font-size: var(--aula-font-xl);
+    font-weight: var(--aula-medium);
+    overflow-wrap: anywhere;
+  }
+  .detail-meta,
+  .detail-quiet,
+  .detail-booked-label,
+  .detail-row dt {
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+  }
+  /* Its target is 48 px; its mark lines up with the window's edge and the title's first line. */
+  .detail-close {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: var(--aula-target);
+    height: var(--aula-target);
+    margin-inline-end: calc(-1 * var(--aula-space-3));
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    --mdc-icon-size: calc(24px * var(--aula-scale));
+  }
+  .detail-close ha-icon {
+    color: var(--aula-text);
+  }
+  @media (hover: hover) {
+    .detail-close:hover {
+      background: var(--aula-fill-muted);
+    }
+  }
+  .detail-close:active {
+    background: var(--aula-fill-strong);
+  }
+  .detail-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--aula-space-2);
+  }
+  /* The time booked for the child is what the window is opened for: first, and largest. */
+  .detail-booked {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--aula-space-3) var(--aula-space-4);
+    border: 1px solid var(--aula-line);
+    border-inline-start: 4px solid var(--aula-accent);
+    border-radius: var(--aula-radius);
+    background: var(--aula-fill-faint);
+    overflow-wrap: anywhere;
+  }
+  .detail-booked-label {
+    font-weight: var(--aula-medium);
+  }
+  .detail-booked-time {
+    font-size: var(--aula-font-2xl);
+    font-weight: var(--aula-medium);
+  }
+  .detail-facts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-3);
+    margin: 0;
+  }
+  /* Each line's icon stands in a column of its own, beside what it is and what it says. */
+  .detail-row {
+    position: relative;
+    padding-inline-start: calc(var(--aula-icon) + var(--aula-space-3));
+  }
+  .detail-row dt ha-icon {
+    position: absolute;
+    top: 0;
+    inset-inline-start: 0;
+  }
+  .detail-row dd {
+    margin: 0;
+    line-height: var(--aula-paragraph);
+    overflow-wrap: anywhere;
+  }
+  .detail-line {
+    display: block;
+  }
+  .detail-answer {
+    font-weight: var(--aula-medium);
+  }
+  .detail-row .label {
+    margin-inline-start: var(--aula-space-1);
+  }
+  .detail-text {
+    padding-block: var(--aula-space-3);
+    border-block: 1px solid var(--aula-line);
+    line-height: var(--aula-paragraph);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
   }
 `;
 

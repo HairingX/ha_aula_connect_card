@@ -12,6 +12,8 @@ import type {
   CallWS,
   Child,
   DayRange,
+  EventCreator,
+  EventDetails,
   HassConnection,
   Lesson,
   Task,
@@ -85,6 +87,27 @@ function birthday(item: Fields): Birthday | undefined {
   return text(item.date) && text(item.name) ? { date: item.date, name: item.name } : undefined;
 }
 
+function fields(value: unknown): Fields | undefined {
+  return typeof value === "object" && value !== null ? value : undefined;
+}
+
+// A count Aula cannot have, such as a negative one, is none.
+function count(value: unknown): number {
+  return typeof value === "number" && value > 0 ? Math.floor(value) : 0;
+}
+
+function creator(value: unknown): EventCreator | null {
+  const item = fields(value);
+  return item && text(item.name) ? { name: item.name, role: or(item.role, "") } : null;
+}
+
+function booked(value: unknown): EventDetails["booked"] {
+  const item = fields(value);
+  return item && text(item.start) && text(item.end)
+    ? { start: item.start, end: item.end, location: or(item.location, null) }
+    : null;
+}
+
 function isChild(value: unknown): value is Child {
   if (typeof value !== "object" || value === null) return false;
   const child = value as Record<string, unknown>;
@@ -152,6 +175,62 @@ export function subscribeWeek(
   );
 }
 
+/**
+ * Returns Aula's id of an event, which the week gives as a string of digits; undefined for an id
+ * Aula would not know, which no request is made for.
+ */
+export function eventId(event: CalendarEvent): number | undefined {
+  const id = Number(event.id);
+  return /^\d+$/.test(String(event.id)) && Number.isSafeInteger(id) ? id : undefined;
+}
+
+/**
+ * Fetches what Aula has of a child's event. What the answer lacks is taken from `event`, as the
+ * week gives it, or left empty.
+ *
+ * @throws The websocket error when the integration cannot answer.
+ */
+export async function fetchEvent(
+  callWS: CallWS,
+  child: Child,
+  event: CalendarEvent,
+  id: number,
+): Promise<EventDetails> {
+  const item =
+    fields(
+      await callWS({
+        type: "aula_connect/event",
+        entry_id: child.entry_id,
+        child_id: child.child_id,
+        event_id: id,
+      }),
+    ) ?? {};
+  return {
+    title: or(item.title, event.title),
+    type: or(item.type, event.type),
+    all_day: typeof item.all_day === "boolean" ? item.all_day : event.all_day,
+    start: or(item.start, event.start),
+    end: or(item.end, event.end),
+    description: or(item.description, ""),
+    location: or(item.location, event.location),
+    institution_name: or(item.institution_name, ""),
+    creator: creator(item.creator),
+    co_organizers: list(item.co_organizers).filter(text),
+    invited_groups: list(item.invited_groups).filter(text),
+    invited: count(item.invited),
+    answered: count(item.answered),
+    response_required: item.response_required === true,
+    response_deadline: or(item.response_deadline, null),
+    deadline_passed: item.deadline_passed === true,
+    answer: or(item.answer, null),
+    answered_at: or(item.answered_at, null),
+    booked: booked(item.booked),
+    attachments: count(item.attachments),
+    private: item.private === true,
+    deleted: item.deleted === true,
+  };
+}
+
 function errorField(error: unknown, field: "code" | "message"): string | undefined {
   if (typeof error !== "object" || error === null || !(field in error)) return undefined;
   const value = (error as Record<string, unknown>)[field];
@@ -175,5 +254,17 @@ export function errorText(error: unknown, t: Translate): string {
       return t("errorInvalidFormat", { message });
     default:
       return t("errorGeneric", { message });
+  }
+}
+
+/** Returns the text to show for an error fetching an event: short, as it stands beside it. */
+export function eventErrorText(error: unknown, t: Translate): string {
+  switch (errorCode(error)) {
+    case "unknown_command":
+      return t("eventNotSupported");
+    case "not_found":
+      return t("eventNotFound");
+    default:
+      return t("eventUnavailable");
   }
 }

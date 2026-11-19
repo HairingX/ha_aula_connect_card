@@ -16,12 +16,12 @@ import type { Hold } from "../model/child.ts";
 import { dayCardView, type DayCardView } from "../model/day-view.ts";
 import { AulaCard, stub } from "../ui/card.ts";
 import { renderDay } from "../ui/day.ts";
-import { base, blocks, dayStyles } from "../ui/styles.ts";
+import { base, blocks, dayStyles, details } from "../ui/styles.ts";
 
 /** The school day card. */
 export class AulaConnectDayCard extends AulaCard<DayCardConfig, DayCardView> {
   /** The card's styles. */
-  static override styles = base + blocks + dayStyles;
+  static override styles = base + blocks + details + dayStyles;
 
   /** Returns the form of the visual editor. */
   static getConfigForm(): ConfigForm {

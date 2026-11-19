@@ -278,6 +278,7 @@ function blocks(
           plan: part.plan,
           empty: part.empty,
           child: several ? part.child.child : undefined,
+          owner: part.child.child,
           key: childKey(part.child.child),
           col: index + 1,
         })),

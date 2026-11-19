@@ -89,6 +89,8 @@ export interface FakeHassOptions {
   locale?: Partial<HomeAssistant["locale"]> & { first_weekday?: string };
   /** Home Assistant's time zone, Copenhagen's by default. */
   timeZone?: string;
+  /** What `aula_connect/event` answers, by the event's id; any other id is not found. */
+  events?: Readonly<Record<number, unknown>>;
 }
 
 /** A fake `hass`, its connection and its `callWS`. */
@@ -102,6 +104,12 @@ export function fakeHass(options: FakeHassOptions = {}): FakeHass {
   const language = options.language ?? "da";
   const connection = options.connection ?? new FakeConnection();
   const callWS = vi.fn((message: Record<string, unknown>): Promise<unknown> => {
+    if (message.type === "aula_connect/event") {
+      const event = options.events?.[Number(message.event_id)];
+      return event === undefined
+        ? Promise.reject(wsError("not_found", "Event not found"))
+        : Promise.resolve(event);
+    }
     if (message.type !== "aula_connect/children") {
       return Promise.reject(new Error("unexpected command"));
     }
