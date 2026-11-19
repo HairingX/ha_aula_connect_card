@@ -23,7 +23,8 @@ The screenshots show made-up data; no real child, school or teacher.
 ## Installation
 
 You need [Aula Connect](https://github.com/HairingX/ha_aula_connect) **0.0.4 or later** set up:
-the cards read the websocket API that release added.
+the cards read the websocket API that release added. An event's window shows all Aula tells of
+the event from Aula Connect **0.0.11**.
 
 Through HACS:
 

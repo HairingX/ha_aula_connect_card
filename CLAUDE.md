@@ -26,6 +26,12 @@ how it is set up: the README.
     (exclusive, at most 21 days) sends the whole range - `week_plan`, `lessons`, `events`,
     `tasks`, `birthdays` - whenever it can have changed, and `{"ended": true}` once when the
     entry is reloaded or the child is gone; errors are `not_found` and `invalid_format`.
+  - `aula_connect/event` with `entry_id`, `child_id` and `event_id` answers with what Aula tells
+    of one event alone, as it concerns the child and its guardian: its description (HTML),
+    place, creator and co-organisers, invited groups, how many were invited and answered (never
+    who), the guardian's answer, the deadline, the time booked for the child, the attachments
+    counted, and whether it is private or deleted; it is asked when an event's window opens, and
+    its errors are `not_found` and `home_assistant_error`.
   - All-day events have days (`YYYY-MM-DD`, the end the day after the last); lessons and other
     events have ISO date-times with offset. `teachers` are full names. A lesson's `status` is
     `normal`, `substitute`, or another value shown as it is.
@@ -36,7 +42,8 @@ how it is set up: the README.
   - The store subscribes each child for this week and next; the week card browsed to other weeks
     subscribes for those days apart, kept a minute after it moves on, and comes back to this
     week after ten minutes without a touch.
-- A week plan's note may hold HTML: it is shown as plain text, never as markup.
+- A week plan's note and an event's description may hold HTML: they are shown as plain text,
+  never as markup.
 - The tests run the card against a fake `hass` and made-up data (`tests/fixtures/`): no real
   child, school, teacher or text from a real Aula account is ever committed.
 - The screenshots in `docs/` are made from the same made-up data: `npm run build`, then
