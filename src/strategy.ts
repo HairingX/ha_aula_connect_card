@@ -1,0 +1,230 @@
+/**
+ * The Aula Connect dashboard, `strategy: {type: custom:aula-connect}`: a sections view with the
+ * children's bar, the overview and the cards that act, and the overview's pages as subviews; and
+ * a section for one child, `strategy: {type: custom:aula-connect-child, child_id: ...}`.
+ *
+ * @packageDocumentation
+ */
+
+import { fetchChildren } from "./core/api.ts";
+import { translator } from "./core/i18n.ts";
+import type { HomeAssistant } from "./core/types.ts";
+import { DAY_CARD } from "./config/day.ts";
+import {
+  CHILDREN_CARD,
+  DEFAULT_PATHS,
+  HOMEWORK_CARD,
+  OVERVIEW_CARD,
+  SICK_CARD,
+  VACATION_CARD,
+  VACATION_REQUESTS_CARD,
+} from "./config/family.ts";
+import { WEEK_CARD } from "./config/week.ts";
+import { WEEKPLAN_CARD } from "./config/weekplan.ts";
+import { DOCUMENTATION } from "./cards/register.ts";
+
+/** The dashboard strategy's name, after `custom:`. */
+export const DASHBOARD_STRATEGY = "aula-connect";
+
+/** The child's section strategy's name, after `custom:`. */
+export const CHILD_STRATEGY = "aula-connect-child";
+
+/** A card of a generated view. */
+type CardConfig = Readonly<Record<string, unknown>>;
+
+/** A section of a generated view. */
+export interface SectionConfig {
+  /** Always a grid. */
+  readonly type: "grid";
+  /** How many of the view's columns it takes. */
+  readonly column_span?: number;
+  /** Its cards. */
+  readonly cards: readonly CardConfig[];
+}
+
+/** A generated view. */
+export interface ViewConfig {
+  /** Its title. */
+  readonly title: string;
+  /** Its path in the dashboard. */
+  readonly path: string;
+  /** Its icon. */
+  readonly icon?: string;
+  /** Whether it is reached only from another view, with a back arrow. */
+  readonly subview?: boolean;
+  /** Always sections. */
+  readonly type: "sections";
+  /** The most columns it has. */
+  readonly max_columns: number;
+  /** Its sections. */
+  readonly sections: readonly SectionConfig[];
+}
+
+/** What the dashboard strategy is configured with. */
+interface DashboardOptions {
+  readonly children?: unknown;
+  readonly sick?: unknown;
+  readonly vacation?: unknown;
+}
+
+function card(type: string, children: unknown, extra: CardConfig = {}): CardConfig {
+  return {
+    type: `custom:${type}`,
+    ...(Array.isArray(children) && children.length > 0 ? { children } : {}),
+    ...extra,
+  };
+}
+
+function page(title: string, path: string, icon: string, cards: readonly CardConfig[]): ViewConfig {
+  return {
+    title,
+    path,
+    icon,
+    subview: true,
+    type: "sections",
+    max_columns: 2,
+    sections: [{ type: "grid", column_span: 2, cards }],
+  };
+}
+
+/**
+ * Builds the dashboard: the overview's view, with the children's bar over it and the cards that
+ * act beside it, unless `sick` or `vacation` is false; and its pages, each under the bar.
+ */
+export function dashboard(
+  config: DashboardOptions,
+  language: string | undefined,
+): { title: string; views: ViewConfig[] } {
+  const t = translator(language);
+  const { children } = config;
+  const bar = (looks: boolean): CardConfig =>
+    card(CHILDREN_CARD, children, looks ? {} : { look_switch: false });
+  const acting = [
+    ...(config.sick === false ? [] : [card(SICK_CARD, children)]),
+    ...(config.vacation === false
+      ? []
+      : [card(VACATION_REQUESTS_CARD, children), card(VACATION_CARD, children)]),
+  ];
+  return {
+    title: "Aula",
+    views: [
+      {
+        title: "Aula",
+        path: "aula",
+        icon: "mdi:school-outline",
+        type: "sections",
+        max_columns: 3,
+        sections: [
+          { type: "grid", column_span: 2, cards: [bar(true), card(OVERVIEW_CARD, children)] },
+          ...(acting.length > 0 ? [{ type: "grid" as const, cards: acting }] : []),
+        ],
+      },
+      page(t("navHomework"), DEFAULT_PATHS.homework, "mdi:book-open-page-variant-outline", [
+        bar(false),
+        card(HOMEWORK_CARD, children),
+      ]),
+      page(t("navWeekPlan"), DEFAULT_PATHS.weekplan, "mdi:calendar-text-outline", [
+        bar(false),
+        card(WEEKPLAN_CARD, children),
+      ]),
+      page(t("navWeek"), DEFAULT_PATHS.week, "mdi:calendar-week", [
+        bar(false),
+        card(WEEK_CARD, children),
+      ]),
+    ],
+  };
+}
+
+/**
+ * Builds a child's section: its name, its school day and its week plan, and reporting it sick.
+ * The name is the child's as Aula Connect lists it; without the list, the section has none.
+ */
+export async function childSection(
+  config: { readonly child_id?: unknown },
+  hass: Pick<HomeAssistant, "callWS">,
+): Promise<SectionConfig> {
+  const id = Number(config.child_id);
+  if (!Number.isSafeInteger(id)) throw new Error("child_id: must be a child id, such as 1001");
+  const list = await fetchChildren(hass.callWS).catch(() => []);
+  const name = list.find((child) => child.child_id === id)?.first_name;
+  const children = [id];
+  return {
+    type: "grid",
+    cards: [
+      ...(name === undefined ? [] : [{ type: "heading", heading: name, heading_style: "title" }]),
+      card(DAY_CARD, children),
+      card(WEEKPLAN_CARD, children),
+      card(SICK_CARD, children),
+    ],
+  };
+}
+
+/** The dashboard strategy's element: Home Assistant asks its class for the dashboard. */
+export class AulaConnectStrategy extends HTMLElement {
+  /** Builds the dashboard. */
+  static generate(
+    config: DashboardOptions,
+    hass: Pick<HomeAssistant, "language">,
+  ): Promise<{ title: string; views: ViewConfig[] }> {
+    return Promise.resolve(dashboard(config, hass.language));
+  }
+}
+
+/** The child's section strategy's element: Home Assistant asks its class for the section. */
+export class AulaConnectChildStrategy extends HTMLElement {
+  /** Builds the child's section. */
+  static generate(
+    config: { readonly child_id?: unknown },
+    hass: Pick<HomeAssistant, "callWS">,
+  ): Promise<SectionConfig> {
+    return childSection(config, hass);
+  }
+}
+
+/** What Home Assistant lists a strategy by, in the dashboard's and the section's pickers. */
+export interface CustomStrategyEntry {
+  /** The strategy's name, after `custom:`. */
+  readonly type: string;
+  /** What it builds. */
+  readonly strategyType: "dashboard" | "section";
+  /** Its name. */
+  readonly name: string;
+  /** What it builds, in words. */
+  readonly description: string;
+  /** Its documentation. */
+  readonly documentationURL: string;
+}
+
+declare global {
+  interface Window {
+    customStrategies?: CustomStrategyEntry[];
+  }
+}
+
+/**
+ * Defines the strategies' elements and lists them, unless they are defined already, as when a
+ * dashboard loads the bundle twice. Tells whether it defined them.
+ */
+export function registerStrategies(): boolean {
+  const tag = `ll-strategy-dashboard-${DASHBOARD_STRATEGY}`;
+  if (customElements.get(tag)) return false;
+  customElements.define(tag, AulaConnectStrategy);
+  customElements.define(`ll-strategy-section-${CHILD_STRATEGY}`, AulaConnectChildStrategy);
+  (window.customStrategies ??= []).push(
+    {
+      type: DASHBOARD_STRATEGY,
+      strategyType: "dashboard",
+      name: "Aula Connect",
+      description: "The children's day, homework, week plan and week, and what to act on in Aula.",
+      documentationURL: `${DOCUMENTATION}#dashboard`,
+    },
+    {
+      type: CHILD_STRATEGY,
+      strategyType: "section",
+      name: "Aula Connect · Child",
+      description: "One child's school day and week plan, and reporting it sick.",
+      documentationURL: `${DOCUMENTATION}#a-childs-section`,
+    },
+  );
+  return true;
+}

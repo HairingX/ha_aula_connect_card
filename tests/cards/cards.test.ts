@@ -76,7 +76,7 @@ afterEach(() => {
 });
 
 describe("registration", () => {
-  it("defines the three cards and lists them in the card picker", () => {
+  it("defines the cards and lists them in the card picker", () => {
     expect(customElements.get("aula-connect-day-card")).toBe(AulaConnectDayCard);
     expect(customElements.get("aula-connect-weekplan-card")).toBe(AulaConnectWeekplanCard);
     expect(customElements.get("aula-connect-week-card")).toBe(AulaConnectWeekCard);
@@ -97,6 +97,36 @@ describe("registration", () => {
         "aula-connect-week-card",
         false,
         "https://github.com/HairingX/ha_aula_connect_card#week-card",
+      ],
+      [
+        "aula-connect-children-card",
+        true,
+        "https://github.com/HairingX/ha_aula_connect_card#childrens-bar",
+      ],
+      [
+        "aula-connect-overview-card",
+        false,
+        "https://github.com/HairingX/ha_aula_connect_card#overview-card",
+      ],
+      [
+        "aula-connect-homework-card",
+        false,
+        "https://github.com/HairingX/ha_aula_connect_card#homework-card",
+      ],
+      [
+        "aula-connect-sick-card",
+        true,
+        "https://github.com/HairingX/ha_aula_connect_card#sick-card",
+      ],
+      [
+        "aula-connect-vacation-requests-card",
+        true,
+        "https://github.com/HairingX/ha_aula_connect_card#vacation-requests-card",
+      ],
+      [
+        "aula-connect-vacation-card",
+        true,
+        "https://github.com/HairingX/ha_aula_connect_card#vacation-card",
       ],
     ]);
   });
