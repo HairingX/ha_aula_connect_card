@@ -10,8 +10,15 @@ how it is set up: the README.
 
 ## These cards
 
-- They only show. They never act on Aula: no buttons that change anything, nothing marked read;
-  a tap only opens and closes, and what is opened closes again by itself.
+- The school day, week plan, week, overview and homework cards only show. The sick, vacation
+  requests and vacation cards, and the overview's presence window, act in Aula only on a tap,
+  each step its own tap, showing what is sent and to whom, with nothing sent unseen; nothing is
+  ever marked read. What is opened closes again by itself.
+- The children's bar's choice (hidden children, the overview's look, the guardian last acted as)
+  is kept per device in browser storage, wrapped in try/catch: ids and words, never a child's
+  data. People standing in for children come from configuration.
+- The dashboard strategy `custom:aula-connect` and the section strategy `custom:aula-connect-child`
+  are defined as soon as the bundle loads.
 - The day that matters is today until `switch_time` (noon), then the next school day; the cards
   share one store and one clock per connection, in `src/core/`.
 - The layers stay apart: `src/model/` builds plain views from the store's data and imports no
@@ -32,6 +39,15 @@ how it is set up: the README.
     who), the guardian's answer, the deadline, the time booked for the child, the attachments
     counted, and whether it is private or deleted; it is asked when an event's window opens, and
     its errors are `not_found` and `home_assistant_error`.
+  - `aula_connect/today/subscribe` with `entry_id` and `child_id` sends the child's presence, its
+    sick-report route (`none` until first read) and memory, and the vacation requests pending,
+    whenever they can have changed, and `{"ended": true}` like the week. `sick/report` and
+    `sick/undo`, `threads`, `message/reply` (`thread_id`, `text`), `vacations`, `vacation/add`
+    (`entry_id`, `child_ids`, `start`, `end`, `comment`), `vacation/delete` (`entry_id`,
+    `vacation_id`), `vacation_requests` and `vacation_request/answer` (`request_id`, the days from
+    today, `comment`) act on a tap; their errors are `not_found`, `invalid_format`,
+    `not_supported` and `home_assistant_error`. `aula_connect/children` also gives each child's
+    `picture_entity` and its entry's `guardian`.
   - All-day events have days (`YYYY-MM-DD`, the end the day after the last); lessons and other
     events have ISO date-times with offset. `teachers` are full names. A lesson's `status` is
     `normal`, `substitute`, or another value shown as it is.
