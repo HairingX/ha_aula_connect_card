@@ -1,0 +1,243 @@
+/**
+ * The configuration of the family's cards: the children's bar, the overview, the homework page,
+ * and the cards that act on Aula for the family.
+ *
+ * @packageDocumentation
+ */
+
+import { LOOKS, type Look } from "../core/selection.ts";
+import { configRecord, isRecord, resolveCommon, type CommonConfig } from "./common.ts";
+import { configForm, type ConfigForm, type FieldName } from "./form.ts";
+
+/** The children's bar's element. */
+export const CHILDREN_CARD = "aula-connect-children-card";
+/** The overview's element. */
+export const OVERVIEW_CARD = "aula-connect-overview-card";
+/** The homework page's element. */
+export const HOMEWORK_CARD = "aula-connect-homework-card";
+/** The card that reports a child sick. */
+export const SICK_CARD = "aula-connect-sick-card";
+/** The card that answers vacation requests. */
+export const VACATION_REQUESTS_CARD = "aula-connect-vacation-requests-card";
+/** The card that registers vacations. */
+export const VACATION_CARD = "aula-connect-vacation-card";
+
+/** A person whose name and picture stand in for a child's. */
+export interface PersonFor {
+  /** The child's id. */
+  readonly child: number;
+  /** The `person` entity. */
+  readonly person: string;
+}
+
+/** The views the overview's tiles go to, relative to the dashboard unless they begin with "/". */
+export interface Paths {
+  /** The homework page. */
+  readonly homework: string;
+  /** The week plan. */
+  readonly weekplan: string;
+  /** The week. */
+  readonly week: string;
+}
+
+/** The views the dashboard strategy makes, and the overview goes to by default. */
+export const DEFAULT_PATHS: Paths = { homework: "lektier", weekplan: "ugeplan", week: "uge" };
+
+/** The children's bar's configuration. */
+export interface ChildrenBarConfig extends CommonConfig {
+  /** People standing in for children. */
+  readonly people: readonly PersonFor[];
+  /** Whether the bar has the switch between the overview's looks. */
+  readonly lookSwitch: boolean;
+}
+
+/** The overview's configuration. */
+export interface OverviewConfig extends ActionConfig {
+  /** The look, where the card keeps one of its own; undefined to follow the children's bar. */
+  readonly look: Look | undefined;
+  /** The views its tiles go to. */
+  readonly paths: Paths;
+  /** Icons for things to bring, by the thing, over the built-in ones. */
+  readonly packIcons: Readonly<Record<string, string>>;
+}
+
+/** The configuration of the cards that act on Aula: the sick, vacation and requests cards. */
+export interface ActionConfig extends CommonConfig {
+  /** The message to the teachers, `{name}` standing for the child's first name. */
+  readonly sickMessage: string | undefined;
+  /** The guardian to act as, by the name Aula Connect gives the entry; undefined for the last used. */
+  readonly sender: string | undefined;
+}
+
+// The visual editor writes an emptied field as an empty text or null.
+function absent(value: unknown): boolean {
+  return value === undefined || value === null || value === "";
+}
+
+/** Reads `people`: children and the `person` entities standing in for them. */
+export function parsePeople(value: unknown, lenient = false): PersonFor[] {
+  if (absent(value)) return [];
+  if (!Array.isArray(value)) throw new Error("people: must be a list of children and people");
+  return (value as unknown[]).flatMap((item, index) => {
+    const name = `people[${String(index)}]`;
+    if (!isRecord(item)) throw new Error(`${name}: must be a mapping of child and person`);
+    const child = typeof item.child === "string" ? Number(item.child) : item.child;
+    const person = typeof item.person === "string" ? item.person.trim() : "";
+    if (
+      typeof child !== "number" ||
+      !Number.isSafeInteger(child) ||
+      !/^person\.\w+$/.test(person)
+    ) {
+      if (lenient) return [];
+      throw new Error(
+        typeof child !== "number" || !Number.isSafeInteger(child)
+          ? `${name}.child: must be a child id, such as 1001`
+          : `${name}.person: must be a person, such as person.ida`,
+      );
+    }
+    return [{ child, person }];
+  });
+}
+
+/** Reads `look`: rows, columns or board; undefined to follow the children's bar. */
+export function parseLook(value: unknown): Look | undefined {
+  if (absent(value)) return undefined;
+  const look = LOOKS.find((item) => item === value);
+  if (look === undefined) throw new Error("look: must be rows, columns or board");
+  return look;
+}
+
+/** Reads a true or false that is true unless set to false. */
+export function parseFlag(value: unknown, name: string): boolean {
+  if (absent(value)) return true;
+  if (typeof value !== "boolean") throw new Error(`${name}: must be true or false`);
+  return value;
+}
+
+/** Reads `paths`: the views the overview's tiles go to. */
+export function parsePaths(value: unknown): Paths {
+  if (absent(value)) return DEFAULT_PATHS;
+  if (!isRecord(value)) throw new Error("paths: must be a mapping of homework, weekplan and week");
+  const paths = { ...DEFAULT_PATHS };
+  for (const [key, path] of Object.entries(value)) {
+    if (!(key in DEFAULT_PATHS))
+      throw new Error(`paths: unknown key "${key}"; the keys are homework, weekplan and week`);
+    if (absent(path)) continue;
+    if (typeof path !== "string") throw new Error(`paths.${key}: must be a view's path`);
+    paths[key as keyof Paths] = path.trim();
+  }
+  return paths;
+}
+
+/** Reads `pack_icons`: things to bring and their mdi icons. */
+export function parsePackIcons(value: unknown): Record<string, string> {
+  if (absent(value)) return {};
+  if (!isRecord(value)) throw new Error("pack_icons: must be a mapping of things to icons");
+  const icons: Record<string, string> = {};
+  for (const [thing, icon] of Object.entries(value)) {
+    if (typeof icon !== "string" || !/^mdi:[a-z0-9-]+$/.test(icon.trim()))
+      throw new Error(`pack_icons.${thing}: must be an icon, such as mdi:tshirt-crew-outline`);
+    icons[thing.trim().toLowerCase()] = icon.trim();
+  }
+  return icons;
+}
+
+/** Reads an optional text: undefined when it is absent or blank. */
+export function parseText(value: unknown, name: string): string | undefined {
+  if (absent(value)) return undefined;
+  if (typeof value !== "string") throw new Error(`${name}: must be a text`);
+  return value.trim() === "" ? undefined : value.trim();
+}
+
+/**
+ * Checks the children's bar's configuration and fills in its defaults.
+ *
+ * @throws Error naming the first invalid key.
+ */
+export function resolveChildrenConfig(config: unknown, lenient = false): ChildrenBarConfig {
+  const raw = configRecord(config);
+  return {
+    ...resolveCommon(raw, lenient),
+    people: parsePeople(raw.people, lenient),
+    lookSwitch: parseFlag(raw.look_switch, "look_switch"),
+  };
+}
+
+/**
+ * Checks the overview's configuration and fills in its defaults.
+ *
+ * @throws Error naming the first invalid key.
+ */
+export function resolveOverviewConfig(config: unknown, lenient = false): OverviewConfig {
+  const raw = configRecord(config);
+  return {
+    ...resolveActionConfig(raw, lenient),
+    look: parseLook(raw.look),
+    paths: parsePaths(raw.paths),
+    packIcons: parsePackIcons(raw.pack_icons),
+  };
+}
+
+/**
+ * Checks the homework page's configuration and fills in its defaults.
+ *
+ * @throws Error naming the first invalid key.
+ */
+export function resolveHomeworkConfig(config: unknown, lenient = false): CommonConfig {
+  return resolveCommon(configRecord(config), lenient);
+}
+
+/**
+ * Checks the configuration of a card that acts on Aula and fills in its defaults.
+ *
+ * @throws Error naming the first invalid key.
+ */
+export function resolveActionConfig(config: unknown, lenient = false): ActionConfig {
+  const raw = configRecord(config);
+  return {
+    ...resolveCommon(raw, lenient),
+    sickMessage: parseText(raw.sick_message, "sick_message"),
+    sender: parseText(raw.sender, "sender"),
+  };
+}
+
+/** One of the family's cards, by its element. */
+export type FamilyCard =
+  | typeof CHILDREN_CARD
+  | typeof OVERVIEW_CARD
+  | typeof HOMEWORK_CARD
+  | typeof SICK_CARD
+  | typeof VACATION_REQUESTS_CARD
+  | typeof VACATION_CARD;
+
+const FORMS: Readonly<Record<FamilyCard, readonly FieldName[]>> = {
+  [CHILDREN_CARD]: ["children", "people", "look_switch", "size"],
+  [OVERVIEW_CARD]: [
+    "children",
+    "look",
+    "switch_time",
+    "size",
+    "sick_message",
+    "sender",
+    "packing_group",
+    "subject_names_group",
+  ],
+  [HOMEWORK_CARD]: ["children", "size", "subject_names_group"],
+  [SICK_CARD]: ["children", "sick_message", "sender", "size"],
+  [VACATION_REQUESTS_CARD]: ["children", "sender", "size"],
+  [VACATION_CARD]: ["children", "sender", "size"],
+};
+
+const RESOLVE: Readonly<Record<FamilyCard, (config: unknown, lenient: boolean) => unknown>> = {
+  [CHILDREN_CARD]: resolveChildrenConfig,
+  [OVERVIEW_CARD]: resolveOverviewConfig,
+  [HOMEWORK_CARD]: resolveHomeworkConfig,
+  [SICK_CARD]: resolveActionConfig,
+  [VACATION_REQUESTS_CARD]: resolveActionConfig,
+  [VACATION_CARD]: resolveActionConfig,
+};
+
+/** Returns the form of one of the family's cards, by its element. */
+export function familyForm(card: FamilyCard): ConfigForm {
+  return configForm(FORMS[card], RESOLVE[card]);
+}

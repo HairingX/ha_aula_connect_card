@@ -88,6 +88,11 @@ const LABELS: Readonly<Record<string, TextKey>> = {
   packing: "editorPackingList",
   subject_names: "editorSubjectNamesList",
   expand_abbreviations: "editorExpand",
+  people: "editorPeople",
+  look: "editorLook",
+  look_switch: "editorLookSwitch",
+  sick_message: "editorSickMessage",
+  sender: "editorSender",
 };
 
 const HELPERS: Readonly<Record<string, TextKey>> = {
@@ -102,6 +107,10 @@ const HELPERS: Readonly<Record<string, TextKey>> = {
   group_by: "editorGroupByHelper",
   packing_group: "editorPackingHelper",
   subject_names_group: "editorSubjectNamesHelper",
+  people: "editorPeopleHelper",
+  look: "editorLookHelper",
+  sick_message: "editorSickMessageHelper",
+  sender: "editorSenderHelper",
 };
 
 // A block's switch shares its name with a field of its own, such as the timetable's, whose label
@@ -123,7 +132,12 @@ export type FieldName =
   | "group_by"
   | "group_by_day"
   | "packing_group"
-  | "subject_names_group";
+  | "subject_names_group"
+  | "people"
+  | "look"
+  | "look_switch"
+  | "sick_message"
+  | "sender";
 
 function fields(t: Translate): Record<FieldName, FormSchema> {
   const children = knownChildren();
@@ -276,6 +290,60 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
           },
         },
       ],
+    },
+    people: {
+      name: "people",
+      selector: {
+        object: {
+          multiple: true,
+          label_field: "person",
+          fields: {
+            child: {
+              label: t("editorPeopleChild"),
+              required: true,
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: children.map((child) => ({
+                    value: String(child.child_id),
+                    label: child.first_name,
+                  })),
+                },
+              },
+            },
+            person: {
+              label: t("editorPeoplePerson"),
+              required: true,
+              selector: { entity: { filter: { domain: "person" } } },
+            },
+          },
+        },
+      },
+    },
+    look: {
+      name: "look",
+      selector: {
+        select: {
+          mode: "list",
+          options: [
+            { value: "rows", label: t("lookRows") },
+            { value: "columns", label: t("lookColumns") },
+            { value: "board", label: t("lookBoard") },
+          ],
+        },
+      },
+    },
+    look_switch: { name: "look_switch", default: true, selector: { boolean: {} } },
+    sick_message: { name: "sick_message", selector: { text: { multiline: true } } },
+    sender: {
+      name: "sender",
+      selector: {
+        select: {
+          mode: "dropdown",
+          custom_value: true,
+          options: [...new Set(children.map((child) => child.guardian).filter(Boolean))],
+        },
+      },
     },
     subject_names_group: {
       name: "subject_names_group",
