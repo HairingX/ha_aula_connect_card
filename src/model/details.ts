@@ -105,7 +105,7 @@ export interface EventDetail {
   readonly invited: { readonly invited: number; readonly answered: number } | undefined;
   /** The guardian's answer, as Aula names it, and when it was given. */
   readonly answer: { readonly value: string; readonly at: Moment | undefined } | undefined;
-  /** When the answer is due, and whether that has passed. */
+  /** When the answer is due, and whether it passed with no answer given. */
   readonly deadline: (Moment & { readonly passed: boolean }) | undefined;
   /** How many files are attached. */
   readonly attachments: number;
@@ -221,7 +221,10 @@ export function eventDetail(event: CalendarEvent, load: EventLoad, zone: string)
         ? undefined
         : { value: answer, at: answered ? moment(answered, zone) : undefined },
     deadline: details?.response_deadline
-      ? { ...moment(details.response_deadline, zone), passed: details.deadline_passed }
+      ? {
+          ...moment(details.response_deadline, zone),
+          passed: details.deadline_passed && (answer === null || answer === "waiting"),
+        }
       : undefined,
     attachments: details?.attachments ?? 0,
     private: details?.private ?? false,

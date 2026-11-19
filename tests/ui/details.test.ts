@@ -146,7 +146,7 @@ describe("an event's window", () => {
       "Medarrangører Mette Juhl",
       "Inviterede 3.B21 af 24 har svaret",
       "Dit svar Deltager 19. okt. 20.14",
-      "Svarfrist Fredag 23. okt. 23.00 Overskredet",
+      "Svarfrist Fredag 23. okt. 23.00",
       "Vedhæftede filer 2 filer – se dem i Aula",
     ]);
     expect(present(root(card).querySelector(".detail-answer ha-icon")).getAttribute("icon")).toBe(
@@ -400,6 +400,18 @@ describe("the window's content", () => {
     expect(container.querySelector(".detail-answer ha-icon")?.getAttribute("icon")).toBe(
       "mdi:reply-outline",
     );
+  });
+
+  it("marks a deadline passed only where no answer was given by it", () => {
+    const deadline = {
+      response_required: true,
+      response_deadline: "2026-10-23T23:00:00+02:00",
+      deadline_passed: true,
+    };
+    const unanswered = shownOf(detailDialog(view(deadline), ctx, close));
+    expect(said(unanswered, ".detail-row .label.warning")).toEqual(["Overskredet"]);
+    const answered = shownOf(detailDialog(view({ ...deadline, answer: "accepted" }), ctx, close));
+    expect(said(answered, ".detail-row .label.warning")).toEqual([]);
   });
 
   it("calls a parents' meeting a meeting", () => {

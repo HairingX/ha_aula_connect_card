@@ -185,6 +185,19 @@ describe("an event's window", () => {
     ).toEqual({ value: "accepted", at: { at: local("2026-12-20", "18:03"), day: "2026-12-20" } });
   });
 
+  it("says a deadline passed only where no answer was given by it", () => {
+    const passed = (answer: string | null, response_required = true): boolean | undefined =>
+      eventDetail(MEETING, loaded({ answer, response_required }), ZONE).deadline?.passed;
+    expect(passed(null)).toBe(true);
+    expect(passed("waiting")).toBe(true);
+    expect(passed(null, false)).toBe(true);
+    expect(passed("accepted")).toBe(false);
+    expect(passed("declined")).toBe(false);
+    expect(eventDetail(MEETING, loaded({ deadline_passed: false }), ZONE).deadline?.passed).toBe(
+      false,
+    );
+  });
+
   it.each(["guardian", "child", "early-student", "middle-late-student"])(
     "never names a creator who is a %s",
     (role) => {

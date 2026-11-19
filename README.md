@@ -118,8 +118,8 @@ such as a deadline passed, is marked.
   for your child ("Jeres tid") and its room, with the whole meeting's time under it. Then
   **Om samtalen**: another place, and the description as plain text; **Deltagere**: who made it
   and with whom, the groups invited and how many have answered; and last **Svar**: your own
-  answer, with a tick when you said yes, and when you gave it, the deadline for answering and
-  whether it has passed, and how many files are attached (they are seen in Aula). A private or
+  answer, with a tick when you said yes, and when you gave it, the deadline for answering, marked
+  as passed only where you have not answered by it, and how many files are attached (they are seen in Aula). A private or
   deleted event is marked under its title. What Aula has nothing for is left out. Where the rest
   cannot be had, the window says so and shows what it has.
 
