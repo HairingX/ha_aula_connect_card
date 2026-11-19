@@ -306,7 +306,7 @@ the one used last for the child, else the first; the window lets you choose.
 
 ```yaml
 type: custom:aula-connect-sick-card
-sick_message: "{name} er syg i dag og bliver hjemme."
+sick_message: "{name} er syg og bliver derfor hjemme."
 sender: Lise Testesen
 ```
 

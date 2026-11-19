@@ -308,8 +308,8 @@ const TEXTS = {
     "I skrev til lærerne herfra på hverdagen før",
   ],
   sickMessageDefault: [
-    "{name} is ill today and stays at home.",
-    "{name} er syg i dag og bliver hjemme.",
+    "{name} is ill and is staying at home.",
+    "{name} er syg og bliver derfor hjemme.",
   ],
   cancel: ["Cancel", "Annullér"],
   close2: ["Done", "Færdig"],

@@ -79,7 +79,7 @@ describe("the sick card", () => {
     expect(windowText(card)).toContain("Skriv til lærerne?");
     expect(windowText(card)).toContain("Ida er meldt syg i dag");
     expect(find(card, "dialog textarea", undefined, HTMLTextAreaElement).value).toBe(
-      "Ida er syg i dag og bliver hjemme.",
+      "Ida er syg og bliver derfor hjemme.",
     );
     const radios = [...root(card).querySelectorAll<HTMLInputElement>("dialog .thread input")];
     expect(radios.map((radio) => [radio.checked, radio.disabled])).toEqual([
