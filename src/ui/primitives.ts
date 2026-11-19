@@ -25,7 +25,7 @@ import { glue } from "../core/text.ts";
 import type { Child, Day } from "../core/types.ts";
 import type { Fact, TimedEvent } from "../model/blocks.ts";
 import type { ChildState } from "../model/child.ts";
-import type { CardState } from "./card.ts";
+import type { CardState, Face } from "./card.ts";
 import type { FocusReason } from "../model/focus.ts";
 
 /** Shows an mdi icon, hidden from screen readers. */
@@ -127,6 +127,15 @@ export function avatar(child: Child): TemplateResult {
   return html`<span class="avatar" aria-hidden="true"
     >${child.first_name.charAt(0).toUpperCase()}</span
   >`;
+}
+
+/** Shows a child's face: its picture, else its initial in a circle. */
+export function faceImage(face: Face, cls = ""): TemplateResult {
+  return face.picture
+    ? html`<img class="face ${cls}" src=${face.picture} alt="" />`
+    : html`<span class="face initial ${cls}" aria-hidden="true"
+        >${face.name.charAt(0).toUpperCase()}</span
+      >`;
 }
 
 /** The icon of an event, by Aula's type. */

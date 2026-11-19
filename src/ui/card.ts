@@ -10,15 +10,18 @@
 import { html, nothing, render as renderTemplate, type TemplateResult } from "lit/html.js";
 
 import { eventId, fetchEvent } from "../core/api.ts";
+import { selectChildren } from "../core/children.ts";
 import { viewContext, type ViewContext } from "../core/context.ts";
 import { rememberLanguage } from "../core/memory.ts";
+import { onSelection, selection, shownIds } from "../core/selection.ts";
 import { storeFor, type StoreSnapshot } from "../core/store.ts";
-import type { ChildKey, DayRange, HomeAssistant } from "../core/types.ts";
+import type { CallWS, Child, ChildKey, DayRange, HomeAssistant } from "../core/types.ts";
 import type { Hold } from "../model/child.ts";
 import { detailView, type DetailTarget, type EventLoad } from "../model/details.ts";
 import { heldFocus, IDLE_RESET_MS, type Focus } from "../model/focus.ts";
 import { AulaController } from "./controller.ts";
 import { detailDialog } from "./details.ts";
+import { navigate } from "./navigate.ts";
 import { alert, apiError, loading, refreshing } from "./primitives.ts";
 
 /** What the base element reads from every card's configuration. */
@@ -66,13 +69,37 @@ export interface CardState {
    * it, which has the focus again when the window closes.
    */
   showDetail(target: DetailTarget, key: string): void;
+  /**
+   * Opens a window; `key` is the `data-detail` of the button that opened it, which has the focus
+   * again when the window closes. `render` is called at every render while it is open, with the
+   * function that closes it.
+   */
+  openModal(key: string, render: ModalRender): void;
+  /** Renders the card again, as when something it shows has changed. */
+  requestUpdate(): void;
+  /** Returns how a child is shown: a person's name and picture where one stands in for it. */
+  face(child: Child): Face;
+  /** Goes to another view of the dashboard, `path` relative to the dashboard unless it is absolute. */
+  navigate(path: string): void;
+  /** Sends a command to Aula Connect. */
+  readonly callWS: CallWS;
 }
 
-/** What is open in the window, and how far an event's details have come. */
-interface Detail {
-  readonly target: DetailTarget;
+/** Renders an open window, given the function that closes it. */
+export type ModalRender = (ctx: ViewContext, close: () => void) => TemplateResult;
+
+/** How a child is shown: its name and its picture's address, where it has one. */
+export interface Face {
+  /** The name. */
+  readonly name: string;
+  /** The picture's address; undefined without one, as the initial stands in for it then. */
+  readonly picture: string | undefined;
+}
+
+/** What is open in the window. */
+interface Modal {
   readonly key: string;
-  load: EventLoad;
+  readonly render: ModalRender;
 }
 
 const NO_LOAD: EventLoad = { details: undefined, loading: false, error: undefined };
@@ -116,7 +143,9 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
   readonly #shown = new Map<ChildKey, Focus>();
   readonly #opened = new Map<string, boolean>();
   readonly #cut = new Map<string, boolean>();
-  #detail: Detail | undefined;
+  #modal: Modal | undefined;
+  #faces = "";
+  #unwatchSelection: (() => void) | undefined;
   #lastSize: number | undefined;
   #resized: ResizeObserver | undefined;
   #connected = false;
@@ -130,7 +159,11 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     this.renderRoot.append(style);
     this.aula = new AulaController(this, {
       wanted: () =>
-        this.config && { children: this.config.children, extra: this.extraDays(this.config) },
+        this.config && {
+          children: this.config.children,
+          extra: this.extraDays(this.config),
+          today: this.wantsToday,
+        },
       tick: (now) => {
         this.#tick(now);
       },
@@ -161,10 +194,16 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
   /** The days beyond the store's range the card shows: none unless browsed elsewhere. */
   protected extraDays: (config: Config) => DayRange | undefined = () => undefined;
 
+  /** Whether the card shows the children's day as it is now: presence and sickness. */
+  protected wantsToday = false;
+
+  /** Whether the card shows only the children the children's bar shows. */
+  protected followsSelection = true;
+
   /** Goes back to what the card shows by itself, after a while without a touch. */
   protected idle(): void {
     this.#opened.clear();
-    this.#detail = undefined;
+    this.#modal = undefined;
   }
 
   /**
@@ -178,11 +217,67 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     this.requestUpdate();
   }
 
-  /** Sets Home Assistant's state; only a new connection, language or time setting matters. */
+  /**
+   * Sets Home Assistant's state; only a new connection, language or time setting matters, and the
+   * pictures and names of the children and the people standing in for them.
+   */
   set hass(hass: HomeAssistant) {
     this.#hassValue = hass;
     rememberLanguage(hass.language);
-    if (this.aula.setHass(hass)) this.requestUpdate();
+    const faces = this.#facesKey();
+    const changed = faces !== this.#faces;
+    this.#faces = faces;
+    if (this.aula.setHass(hass) || changed) this.requestUpdate();
+  }
+
+  /** Sends a command to Aula Connect; refused while the card has no `hass`. */
+  readonly callWS: CallWS = (message) =>
+    this.#hassValue
+      ? this.#hassValue.callWS(message)
+      : Promise.reject(new Error("Home Assistant is not connected"));
+
+  // The entities a card shows faces of: each child's picture, and the people standing in for them.
+  #facesKey(): string {
+    const states = this.#hassValue?.states ?? {};
+    const ids = [
+      ...(this.aula.snapshot?.children.list ?? []).flatMap((child) =>
+        child.picture_entity ? [child.picture_entity] : [],
+      ),
+      ...selection().people.values(),
+    ];
+    return JSON.stringify(
+      ids.flatMap((id) => {
+        const entity = states[id];
+        return entity
+          ? [[id, entity.attributes.entity_picture, entity.attributes.friendly_name]]
+          : [];
+      }),
+    );
+  }
+
+  /** Returns how a child is shown: a person's name and picture where one stands in for it. */
+  face(child: Child): Face {
+    const states = this.#hassValue?.states ?? {};
+    const person = selection().people.get(child.child_id);
+    const entity = person === undefined ? undefined : states[person];
+    const picture = (id: string | null | undefined): string | undefined => {
+      const value = id ? states[id]?.attributes.entity_picture : undefined;
+      return typeof value === "string" && value !== "" ? value : undefined;
+    };
+    if (entity) {
+      const name = entity.attributes.friendly_name;
+      return {
+        name: typeof name === "string" && name.trim() !== "" ? name.trim() : child.first_name,
+        picture: picture(person) ?? picture(child.picture_entity),
+      };
+    }
+    return { name: child.first_name, picture: picture(child.picture_entity) };
+  }
+
+  /** Goes to another view of the dashboard, `path` relative to the dashboard unless it is absolute. */
+  navigate(path: string): void {
+    this.#lastInteraction = Date.now();
+    navigate(path);
   }
 
   /** Returns the card's height in units of 50 pixels, roughly, for the masonry view. */
@@ -197,6 +292,9 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     this.aula.hostConnected();
     for (const type of INTERACTIONS) this.addEventListener(type, this.#touched, { passive: true });
     this.renderRoot.addEventListener("scroll", this.#touched, { capture: true, passive: true });
+    this.#unwatchSelection = onSelection(() => {
+      this.requestUpdate();
+    });
     this.requestUpdate();
   }
 
@@ -208,6 +306,8 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     this.renderRoot.removeEventListener("scroll", this.#touched, { capture: true });
     this.#resized?.disconnect();
     this.#resized = undefined;
+    this.#unwatchSelection?.();
+    this.#unwatchSelection = undefined;
   }
 
   readonly #touched = (): void => {
@@ -271,14 +371,11 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
    * it, which has the focus again when the window closes. An event's details are asked of Aula.
    */
   showDetail(target: DetailTarget, key: string): void {
-    this.#lastInteraction = Date.now();
-    const detail: Detail = { target, key, load: NO_LOAD };
-    this.#detail = detail;
+    const detail = { load: NO_LOAD };
     const id = target.kind === "event" ? eventId(target.event) : undefined;
-    const hass = this.#hassValue;
-    if (target.kind === "event" && id !== undefined && hass) {
+    if (target.kind === "event" && id !== undefined) {
       detail.load = { ...NO_LOAD, loading: true };
-      fetchEvent(hass.callWS, target.child, target.event, id).then(
+      fetchEvent(this.callWS, target.child, target.event, id).then(
         (details) => {
           detail.load = { ...NO_LOAD, details };
           this.requestUpdate();
@@ -289,15 +386,27 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
         },
       );
     }
+    this.openModal(key, (ctx, close) =>
+      detailDialog(detailView(target, detail.load, ctx.zone), ctx, close),
+    );
+  }
+
+  /**
+   * Opens a window; `key` is the `data-detail` of the button that opened it, which has the focus
+   * again when the window closes.
+   */
+  openModal(key: string, render: ModalRender): void {
+    this.#lastInteraction = Date.now();
+    this.#modal = { key, render };
     this.requestUpdate();
   }
 
   // The card takes the window away rather than closing it, which leaves the focus nowhere: the
   // button that opened it has it again, as after a dialog the browser closes itself.
-  readonly #closeDetail = (): void => {
-    const opened = this.#detail;
+  readonly #closeModal = (): void => {
+    const opened = this.#modal;
     if (!opened) return;
-    this.#detail = undefined;
+    this.#modal = undefined;
     this.requestUpdate();
     void this.updateComplete.then(() => {
       [...this.renderRoot.querySelectorAll<HTMLElement>("[data-detail]")]
@@ -380,15 +489,7 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     return html`<ha-card>
       <div class="aula ${config.size}" lang=${ctx.lang}>
         <div class="body">${this.#body(this.aula.snapshot, config, ctx)}</div>
-        ${
-          this.#detail
-            ? detailDialog(
-                detailView(this.#detail.target, this.#detail.load, ctx.zone),
-                ctx,
-                this.#closeDetail,
-              )
-            : nothing
-        }
+        ${this.#modal ? this.#modal.render(ctx, this.#closeModal) : nothing}
       </div>
     </ha-card>`;
   }
@@ -406,16 +507,25 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     if (children.list.length === 0) {
       return children.refreshing ? loading(t) : html`${top}${alert("info", t("noChildren"))}`;
     }
+    const { hidden } = selection();
+    let shownConfig = config;
+    if (this.followsSelection && hidden.length > 0) {
+      const all = selectChildren(children.list, []).shown.map((child) => child.child_id);
+      const ids = shownIds(config.children, all, hidden);
+      if (ids.length === 0) return html`${top}${alert("info", t("allHidden"))}`;
+      shownConfig = { ...config, children: ids };
+    }
     // On a wall nobody may be near to reload: data the card cannot show is said, not a blank.
     try {
-      const view = this.view(snapshot, config, ctx, this.#hold);
+      const view = this.view(snapshot, shownConfig, ctx, this.#hold);
       this.#lastSize = view.size;
       // A child not listed yet is waited for while the listing is retried, as at a start.
       const missing = children.refreshing ? [] : view.missing;
       // A card none of whose children is listed shows no empty card under the warning.
-      const shown = config.children.length === 0 || view.missing.length < config.children.length;
+      const shown =
+        shownConfig.children.length === 0 || view.missing.length < shownConfig.children.length;
       return html`${top}${missing.map((id) => alert("warning", t("childNotFound", { id })))}${
-        shown ? this.content(view, config, ctx) : nothing
+        shown ? this.content(view, shownConfig, ctx) : nothing
       }`;
     } catch (error) {
       return alert("error", t("errorGeneric", { message: String(error) }));

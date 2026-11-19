@@ -22,7 +22,8 @@ export interface ControllerHooks {
    * The child ids the card shows, and the days beyond the store's range it shows, as when
    * browsed to another week; undefined while it has no configuration.
    */
-  readonly wanted: () => { children: readonly number[]; extra: DayRange | undefined } | undefined;
+  readonly wanted: () =>
+    { children: readonly number[]; extra: DayRange | undefined; today: boolean } | undefined;
   /** Called on each tick of the clock, before the card renders again. */
   readonly tick: (now: Date) => void;
 }
@@ -91,12 +92,13 @@ export class AulaController {
     if (store !== this.#store) this.#unwatch();
     this.#store = store;
     const previous = this.#release;
-    const { children, extra } = wanted;
+    const { children, extra, today } = wanted;
     this.#extra = extra && `${extra.start}/${extra.end}`;
     // Watching before letting go keeps a child both want from lingering or resubscribing.
     this.#release = store.watch({
       children,
       extra,
+      today,
       onChange: () => {
         this.#host.requestUpdate();
       },

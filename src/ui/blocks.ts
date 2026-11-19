@@ -23,7 +23,7 @@ import {
 } from "../model/blocks.ts";
 import type { CalendarEvent } from "../core/types.ts";
 import type { DetailTarget } from "../model/details.ts";
-import { dayBar, type BarItem } from "../model/daybar.ts";
+import { dayBar, type BarItem, type DayBar } from "../model/daybar.ts";
 import type { NoteView } from "../model/notes.ts";
 import type { SubjectLabel } from "../model/subjects.ts";
 import type { CardState } from "./card.ts";
@@ -240,13 +240,42 @@ export function subjectColor(subject: SubjectLabel): string {
  */
 function bar(part: Part, ctx: ViewContext): unknown {
   const today = part.content.view.day === ctx.today;
-  const day = dayBar(
-    part.content.timetable,
-    part.plan.timed,
-    part.plan.allDay,
-    ctx.zone,
-    today ? ctx.now : undefined,
+  return renderDayBar(
+    dayBar(
+      part.content.timetable,
+      part.plan.timed,
+      part.plan.allDay,
+      ctx.zone,
+      today ? ctx.now : undefined,
+    ),
+    ctx,
   );
+}
+
+/** The minutes a bar runs over, from its start to its end. */
+export interface BarAxis {
+  /** Where it starts, in minutes since midnight. */
+  readonly start: number;
+  /** Where it ends. */
+  readonly end: number;
+}
+
+/**
+ * Shows a day's bar; `axis`, where given, sets the minutes it runs over, so that the bars of
+ * several children share their hours.
+ */
+export function renderDayBar(source: DayBar, ctx: ViewContext, axis?: BarAxis): unknown {
+  const day = axis
+    ? {
+        ...source,
+        start: axis.start,
+        end: axis.end,
+        hours: Array.from(
+          { length: Math.max(0, Math.floor(axis.end / 60) - Math.floor(axis.start / 60)) },
+          (_, index) => (Math.floor(axis.start / 60) + index + 1) * 60,
+        ).filter((minute) => minute > axis.start && minute < axis.end),
+      }
+    : source;
   const span = Math.max(1, day.end - day.start);
   const at = (minute: number): string => `${String(((minute - day.start) / span) * 100)}%`;
   const place = (from: number, to: number): string =>

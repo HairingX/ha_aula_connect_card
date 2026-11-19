@@ -29,10 +29,10 @@ import {
   listOf,
   loading,
   segments,
-  tile,
   time,
   timeSpan,
 } from "./primitives.ts";
+import { head, modal, row, section, ticket } from "./window.ts";
 
 const TYPES: Readonly<Record<string, TextKey>> = {
   event: "typeEvent",
@@ -72,68 +72,6 @@ function moment(item: Moment, ctx: ViewContext, long = false): TemplateResult {
     ? capitalize(formatWeekdayShortDate(item.day, ctx.language), ctx.language)
     : formatShortDate(item.day, ctx.language);
   return html`<span class="tabular detail-moment">${date} ${time(item.at, ctx)}</span>`;
-}
-
-/** A line of a section: what it is, beside what it says. */
-function row(title: string, value: unknown): TemplateResult {
-  return html`<div class="detail-row">
-    <dt>${title}</dt>
-    <dd>${value}</dd>
-  </div>`;
-}
-
-/** A section under its quiet heading; nothing when it has nothing. */
-function section(
-  title: string,
-  rows: readonly TemplateResult[],
-  after: unknown = nothing,
-): unknown {
-  return rows.length === 0 && after === nothing
-    ? nothing
-    : html`<section class="detail-section">
-        <h3 class="detail-heading">${title}</h3>
-        ${rows.length > 0 ? html`<dl class="detail-list">${rows}</dl>` : nothing}${after}
-      </section>`;
-}
-
-function head(
-  title: unknown,
-  meta: readonly unknown[],
-  marks: readonly TemplateResult[],
-  ctx: ViewContext,
-  close: () => void,
-): TemplateResult {
-  return html`<header class="detail-head">
-      <div class="detail-titles">
-        <h2 id="detail-title" class="detail-title">${title}</h2>
-        ${meta.length > 0 ? segments(meta, "detail-meta") : nothing}
-      </div>
-      <button class="detail-close" type="button" aria-label=${ctx.t("close")} @click=${close}>
-        ${icon("mdi:close")}
-      </button>
-    </header>
-    ${marks.length > 0 ? html`<p class="detail-labels">${marks}</p>` : nothing}`;
-}
-
-/**
- * The ticket: the day's tile beside the time, large, and under it the day and the place. `what`
- * names the time where it is not the event's own, as a booked one.
- */
-function ticket(
-  day: Day,
-  what: string | undefined,
-  when: unknown,
-  under: readonly unknown[],
-  ctx: ViewContext,
-): TemplateResult {
-  return html`<div class="detail-ticket">
-    ${tile(day, ctx, false)}
-    <div class="detail-stub">
-      ${what === undefined ? nothing : html`<span class="detail-what">${what}</span>`}
-      <span class="detail-when">${when}</span>
-      ${segments(under, "detail-under")}
-    </div>
-  </div>`;
 }
 
 function lesson(view: LessonDetail, ctx: ViewContext, close: () => void): TemplateResult {
@@ -342,17 +280,9 @@ export function detailDialog(
   ctx: ViewContext,
   close: () => void,
 ): TemplateResult {
-  return html`<dialog
-    class="detail"
-    aria-labelledby="detail-title"
-    style=${view.kind === "lesson" && view.color ? `--subject: ${view.color}` : ""}
-    @close=${close}
-    @click=${(tap: Event) => {
-      if (tap.target === tap.currentTarget) close();
-    }}
-  >
-    <div class="detail-body">
-      ${view.kind === "lesson" ? lesson(view, ctx, close) : event(view, ctx, close)}
-    </div>
-  </dialog>`;
+  return modal(
+    view.kind === "lesson" ? lesson(view, ctx, close) : event(view, ctx, close),
+    close,
+    view.kind === "lesson" && view.color ? `--subject: ${view.color}` : "",
+  );
 }
