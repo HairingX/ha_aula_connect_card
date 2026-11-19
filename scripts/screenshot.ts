@@ -2,7 +2,7 @@
  * Renders the built cards with made-up data in Chromium, as Home Assistant shows them: on its own
  * design tokens (`scripts/ha-tokens.css`), in a light or dark theme, with a primary colour as a
  * theme sets it, at a fixed time. Run `npm run build` first, then
- * `node scripts/screenshot.ts [--set docs|review|round|extra|all] [--out DIR] [--only GLOB]`.
+ * `node scripts/screenshot.ts [--set docs|review|round|extra|family|all] [--out DIR] [--only GLOB]`.
  * Playwright with Chromium is installed outside the repository; Roboto is used when installed.
  *
  * Each shot is a scenario of `tests/fixtures/scenarios.ts`, so that it shows a tested case. The
@@ -26,6 +26,13 @@ import { extraKey, rangeFor } from "../src/core/store.ts";
 import { childKey, type Child, type DayRange, type WeekData } from "../src/core/types.ts";
 import { extraWeeks } from "../src/model/week-view.ts";
 import { scenarioNamed, SCENARIOS, type Scenario } from "../tests/fixtures/scenarios.ts";
+import {
+  REQUESTS,
+  STATES,
+  THREADS,
+  todayOf as familyToday,
+  VACATIONS,
+} from "../tests/fixtures/family.ts";
 import { EVENT_DETAILS, weekData } from "../tests/fixtures/week.ts";
 
 interface Page {
@@ -68,6 +75,12 @@ const CARDS = {
   day: "aula-connect-day-card",
   weekplan: "aula-connect-weekplan-card",
   week: "aula-connect-week-card",
+  children: "aula-connect-children-card",
+  overview: "aula-connect-overview-card",
+  homework: "aula-connect-homework-card",
+  sick: "aula-connect-sick-card",
+  requests: "aula-connect-vacation-requests-card",
+  vacation: "aula-connect-vacation-card",
 } as const;
 
 const PRIMARIES = {
@@ -99,6 +112,10 @@ interface Shot {
   readonly browse?: number;
   /** A lesson's or an event's button to open the window of, after `click`: a shot of the screen. */
   readonly dialog?: string;
+  /** Buttons in the window to tap, in order, after it opened. */
+  readonly then?: readonly string[];
+  /** The children's day as it is now, when not the made-up one. */
+  readonly today?: (child: Child) => Record<string, unknown>;
 }
 
 // What a family would set up: the things to bring for sports and swimming.
@@ -134,7 +151,58 @@ function shot(
   };
 }
 
-const ALL_CARDS = Object.keys(CARDS) as Shot["card"][];
+// The cards of the school days; the family's cards have shots of their own.
+const ALL_CARDS: Shot["card"][] = ["day", "weekplan", "week"];
+
+// What the family's cards act on: the overview's looks, the steps of reporting a child sick,
+// and the vacations.
+const SICK_ROW = '.family-row[data-detail="sick|1001"]';
+const REQUEST_ROW = '.family-row[data-detail="request|1002|91"]';
+const ADD_VACATION = '[data-detail="vacation-add"]';
+const PRESENCE = '.presence[data-detail="presence|1001"]';
+const HOMEWORK = '[data-detail="homework|1001"]';
+
+function family(width: number, large = false): Shot[] {
+  const look = { children: 2 as const, large };
+  return [
+    shot("children", "thu-1000", width, look),
+    ...(["rows", "columns", "board"] as const).flatMap((view) => [
+      shot("overview", "thu-1000", width, { ...look, config: { look: view }, tag: view }),
+      shot("overview", "thu-1530", width, { ...look, config: { look: view }, tag: view }),
+    ]),
+    shot("overview", "thu-1000", width, { ...look, theme: "dark", tag: "rows" }),
+    shot("overview", "thu-1000", width, { ...look, dialog: HOMEWORK, tag: "homework" }),
+    shot("overview", "thu-1530", width, { ...look, dialog: PRESENCE, tag: "presence" }),
+    shot("homework", "thu-1000", width, look),
+    shot("sick", "thu-1000", width, look),
+    shot("sick", "thu-1000", width, { ...look, dialog: SICK_ROW, tag: "step-1" }),
+    shot("sick", "thu-1000", width, {
+      ...look,
+      dialog: SICK_ROW,
+      then: ["dialog .window-actions .filled-button"],
+      tag: "step-2",
+    }),
+    shot("sick", "thu-1000", width, {
+      ...look,
+      today: (child) => ({
+        ...familyToday(child),
+        sick: { route: "aula", today: true, since: "2026-10-28", wrote_yesterday: true },
+      }),
+      dialog: SICK_ROW,
+      tag: "since-yesterday",
+    }),
+    shot("sick", "thu-1000", width, {
+      ...look,
+      dialog: SICK_ROW,
+      then: ["dialog .window-actions .filled-button", "dialog .window-actions .filled-button"],
+      tag: "sent",
+    }),
+    shot("requests", "thu-1000", width, look),
+    shot("requests", "thu-1000", width, { ...look, dialog: REQUEST_ROW, tag: "answer" }),
+    shot("vacation", "thu-1000", width, look),
+    shot("vacation", "thu-1000", width, { ...look, dialog: ADD_VACATION, tag: "add" }),
+  ];
+}
 
 const SETS: Record<string, () => Shot[]> = {
   docs: () => [
@@ -156,7 +224,21 @@ const SETS: Record<string, () => Shot[]> = {
     shot("week", "sun-1800", 380),
     shot("week", "thu-1010", 380, { browse: -1, tag: "browsed-back" }),
     shot("day", "thu-1930-meeting", 380, { click: UNFOLD, dialog: MEETING, tag: "event" }),
+    shot("children", "thu-1000", 380, { children: 2 }),
+    shot("overview", "thu-1000", 380, { children: 2, tag: "rows" }),
+    shot("overview", "thu-1000", 1216, { children: 2, large: true, tag: "rows" }),
+    shot("overview", "thu-1000", 800, { children: 2, config: { look: "board" }, tag: "board" }),
+    shot("homework", "thu-1000", 380, { children: 2 }),
+    shot("sick", "thu-1000", 380, {
+      children: 2,
+      dialog: SICK_ROW,
+      then: ["dialog .window-actions .filled-button"],
+      tag: "step-2",
+    }),
+    shot("requests", "thu-1000", 380, { children: 2, dialog: REQUEST_ROW, tag: "answer" }),
+    shot("vacation", "thu-1000", 380, { children: 2 }),
   ],
+  family: () => [...family(380), ...family(800), ...family(1216, true)],
   review: () => [
     ...ALL_CARDS.flatMap((card) => SCENARIOS.map((item) => shot(card, item.id, 380))),
     ...ALL_CARDS.flatMap((card) =>
@@ -411,6 +493,12 @@ interface Mount {
   extra: Record<string, WeekData>;
   /** What `aula_connect/event` answers, by the event's id. */
   events: Readonly<Record<number, unknown>>;
+  /** What the other commands answer, by their type. */
+  answers: Readonly<Record<string, unknown>>;
+  /** Each child's day as it is now, by its key. */
+  today: Readonly<Record<string, unknown>>;
+  /** Home Assistant's entities' states. */
+  states: Readonly<Record<string, unknown>>;
   width: number;
   language: string;
   locale: string;
@@ -430,18 +518,27 @@ function mount(arg: Mount): void {
       time_zone: "server",
     },
     config: { time_zone: arg.zone },
+    states: arg.states,
     callWS: (message: { type: string; event_id?: number }) =>
       message.type === "aula_connect/children"
         ? Promise.resolve({ children: arg.children })
         : message.type === "aula_connect/event" && arg.events[Number(message.event_id)]
           ? Promise.resolve(arg.events[Number(message.event_id)])
-          : Promise.reject(new Error(`unexpected ${JSON.stringify(message)}`)),
+          : message.type in arg.answers
+            ? Promise.resolve(arg.answers[message.type])
+            : Promise.reject(new Error(`unexpected ${JSON.stringify(message)}`)),
     connection: {
       subscribeMessage: (
         callback: (message: unknown) => void,
         message: Record<string, unknown>,
       ) => {
         const key = `${String(message.entry_id)}/${String(message.child_id)}`;
+        if (message.type === "aula_connect/today/subscribe") {
+          setTimeout(() => {
+            callback(arg.today[key]);
+          }, 0);
+          return Promise.resolve(() => Promise.resolve());
+        }
         const ranged = message.start === arg.range.start && message.end === arg.range.end;
         const data = ranged
           ? arg.data[key]
@@ -692,6 +789,21 @@ for (const item of shots) {
       }),
     ),
     events: EVENT_DETAILS,
+    answers: {
+      "aula_connect/threads": THREADS,
+      "aula_connect/message/reply": null,
+      "aula_connect/sick/report": { route: "aula" },
+      "aula_connect/sick/undo": { route: "aula" },
+      "aula_connect/vacations": VACATIONS,
+      "aula_connect/vacation/add": null,
+      "aula_connect/vacation/delete": null,
+      "aula_connect/vacation_requests": REQUESTS,
+      "aula_connect/vacation_request/answer": null,
+    },
+    today: Object.fromEntries(
+      scenario.children.map((child) => [childKey(child), (item.today ?? familyToday)(child)]),
+    ),
+    states: STATES,
     width: item.width,
     language: item.locale.slice(0, 2),
     locale: item.locale,
@@ -749,6 +861,20 @@ for (const item of shots) {
       await new Promise((resolve) => setTimeout(resolve, 50));
       await card?.updateComplete;
     }, tag);
+    for (const target of item.then ?? []) {
+      await tab.evaluate(
+        async ({ selector, button }) => {
+          const card = document.querySelector<HTMLElement & { updateComplete: Promise<unknown> }>(
+            selector,
+          );
+          card?.shadowRoot?.querySelector<HTMLElement>(button)?.click();
+          // What the window sends is answered after a task, and its threads after another.
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          await card?.updateComplete;
+        },
+        { selector: tag, button: target },
+      );
+    }
   }
   const problems = [
     ...((await tab.evaluate(layout, { tag, box: ".body" })) as string[]),
