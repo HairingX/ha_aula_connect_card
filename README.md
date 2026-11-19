@@ -23,7 +23,8 @@ The screenshots show made-up data; no real child, school or teacher.
 ## Installation
 
 You need [Aula Connect](https://github.com/HairingX/ha_aula_connect) **0.0.4 or later** set up:
-the cards read the websocket API that release added.
+the cards read the websocket API that release added. An event's window shows all Aula tells of
+the event from Aula Connect **0.0.11**.
 
 Through HACS:
 
@@ -90,13 +91,44 @@ always as it should be.
     small ⇕ mark at its right end says it can, with no words to read past. Opened, it shows the events lasting the whole day
     first, marked "Hele dagen", then the lessons and the events with a time in the order they
     begin, each lesson with its time first and a line in its subject's colour, its room and
-    teachers, the breaks and the lesson going on now.
+    teachers, the breaks and the lesson going on now. A tap on a lesson or an event there opens
+    [its window](#a-lesson-or-an-event-in-full).
   - **Noter** (notes): the week plan's other notes for the day, in a quieter column; each folds
     after six lines with its own "Vis mere", as a teacher may write fifty.
 
 A block with nothing in it for any child is left out, or says so once. Where `order` puts the
 timetable before Vigtigt, as the week card does, Vigtigt has no box: Husk follows the timetable,
 with a line below it, and what the plan marks follows in rows beside a flag.
+
+### A lesson or an event in full
+
+In the whole timetable, on the school day card and in the week card's open day, a tap on a
+lesson or an event opens a window with everything known of it; the week plan is not in it.
+
+![The window of a parent–teacher meeting](docs/day-thu-1930-meeting-380-light-blue-da-1child-event.png)
+
+Its time stands first, as a ticket with the day's tile beside it, and the rest follows in quiet
+sections. It has no colour of its own, as colours on the cards mean subjects; only a warning,
+such as a deadline passed, is marked.
+
+- **A lesson**: its subject, in its colour, and as Aula names it too where the card writes it out;
+  its time; then the room, the teachers by their full names, and a substitute or other news Aula
+  has for it.
+- **An event**: its title and type, and at once when and where it is, as the week has it. The rest
+  is asked of Aula Connect and follows. For a parents' meeting the ticket shows the time booked
+  for your child ("Jeres tid") and its room, with the whole meeting's time under it. Then
+  **Om samtalen**: another place, and the description as plain text; **Deltagere**: who made it
+  and with whom, the groups invited and how many have answered; and last **Svar**: your own
+  answer, with a tick when you said yes, and when you gave it, the deadline for answering, marked
+  as passed only where you have not answered by it, and how many files are attached (they are seen in Aula). A private or
+  deleted event is marked under its title. What Aula has nothing for is left out. Where the rest
+  cannot be had, the window says so and shows what it has.
+
+The window only shows: nothing in it answers or changes anything in Aula, and it names no parent
+and no other child. It closes with its button, with Escape and at a tap outside it, and by itself
+after ten minutes without a touch, as everything opened does; the focus goes back to the lesson or
+event it was opened from. On the wall, with `size: large`, it is larger, and an event's people
+and answer stand in a column of their own.
 
 ## Week plan card
 
@@ -341,12 +373,16 @@ holds the day, each child's hours and what each child is to bring.
   Monday of this week to the Sunday of the next; browsed to other weeks, the week card subscribes
   for those days too, for as long as it shows them and a minute after. The integration sends the range again whenever
   it can have changed; the cards move to a new day and week by their own clock.
+- `aula_connect/event`, with a child's `entry_id` and `child_id` and an event's `event_id`, when
+  an event's window is opened. An Aula Connect without it gives the window what the week has, and
+  the window says that an update shows more.
 
 ## Privacy
 
 The cards only show. They never change anything in Aula, mark nothing as read and have nothing
-to tap but what opens and closes. They read what Aula Connect has already fetched, through Home
-Assistant's own connection, and send nothing anywhere else.
+to tap but what opens and closes. They read what Aula Connect has fetched, or fetches when an
+event's window asks for it, through Home Assistant's own connection, and send nothing anywhere
+else.
 
 ## Development
 

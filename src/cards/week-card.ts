@@ -19,7 +19,7 @@ import {
 import type { Hold } from "../model/child.ts";
 import { extraWeeks, weekCardView, type WeekCardView } from "../model/week-view.ts";
 import { AulaCard, stub } from "../ui/card.ts";
-import { base, blocks, weekStyles } from "../ui/styles.ts";
+import { base, blocks, details, weekStyles } from "../ui/styles.ts";
 import { renderWeek, type WeekBrowser } from "../ui/week.ts";
 
 /** The week card. */
@@ -28,7 +28,7 @@ export class AulaConnectWeekCard
   implements WeekBrowser
 {
   /** The card's styles. */
-  static override styles = base + blocks + weekStyles;
+  static override styles = base + blocks + details + weekStyles;
   #offset = 0;
 
   /** Shows the week before (-1) or after (1), or with 0 the weeks the card shows by itself. */

@@ -1,20 +1,24 @@
 /**
  * What the three cards share as elements: their configuration and `hass`, the store and the
- * clock, the states before there is anything to show, and what a shared screen needs: the focus
- * day never changes under a finger, and what someone opened closes again by itself.
+ * clock, the states before there is anything to show, the window a lesson or an event opens, and
+ * what a shared screen needs: the focus day never changes under a finger, and what someone opened
+ * closes again by itself.
  *
  * @packageDocumentation
  */
 
 import { html, nothing, render as renderTemplate, type TemplateResult } from "lit/html.js";
 
+import { eventId, fetchEvent } from "../core/api.ts";
 import { viewContext, type ViewContext } from "../core/context.ts";
 import { rememberLanguage } from "../core/memory.ts";
 import { storeFor, type StoreSnapshot } from "../core/store.ts";
 import type { ChildKey, DayRange, HomeAssistant } from "../core/types.ts";
 import type { Hold } from "../model/child.ts";
+import { detailView, type DetailTarget, type EventLoad } from "../model/details.ts";
 import { heldFocus, IDLE_RESET_MS, type Focus } from "../model/focus.ts";
 import { AulaController } from "./controller.ts";
+import { detailDialog } from "./details.ts";
 import { alert, apiError, loading, refreshing } from "./primitives.ts";
 
 /** What the base element reads from every card's configuration. */
@@ -57,7 +61,21 @@ export interface CardState {
   toggle(key: string, fallback: boolean): void;
   /** Tells whether a text marked `data-cut` with the key is cut short where it is folded. */
   cut(key: string): boolean;
+  /**
+   * Opens the window of a lesson or an event; `key` is the `data-detail` of the button that opened
+   * it, which has the focus again when the window closes.
+   */
+  showDetail(target: DetailTarget, key: string): void;
 }
+
+/** What is open in the window, and how far an event's details have come. */
+interface Detail {
+  readonly target: DetailTarget;
+  readonly key: string;
+  load: EventLoad;
+}
+
+const NO_LOAD: EventLoad = { details: undefined, loading: false, error: undefined };
 
 // A screen reader, voice control or find-in-page opens a disclosure with a bare click or none.
 const INTERACTIONS = ["pointerdown", "keydown", "wheel", "click", "focusin"] as const;
@@ -98,6 +116,7 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
   readonly #shown = new Map<ChildKey, Focus>();
   readonly #opened = new Map<string, boolean>();
   readonly #cut = new Map<string, boolean>();
+  #detail: Detail | undefined;
   #lastSize: number | undefined;
   #resized: ResizeObserver | undefined;
   #connected = false;
@@ -145,6 +164,7 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
   /** Goes back to what the card shows by itself, after a while without a touch. */
   protected idle(): void {
     this.#opened.clear();
+    this.#detail = undefined;
   }
 
   /**
@@ -246,12 +266,55 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     return this.#cut.get(key) ?? false;
   }
 
+  /**
+   * Opens the window of a lesson or an event; `key` is the `data-detail` of the button that opened
+   * it, which has the focus again when the window closes. An event's details are asked of Aula.
+   */
+  showDetail(target: DetailTarget, key: string): void {
+    this.#lastInteraction = Date.now();
+    const detail: Detail = { target, key, load: NO_LOAD };
+    this.#detail = detail;
+    const id = target.kind === "event" ? eventId(target.event) : undefined;
+    const hass = this.#hassValue;
+    if (target.kind === "event" && id !== undefined && hass) {
+      detail.load = { ...NO_LOAD, loading: true };
+      fetchEvent(hass.callWS, target.child, target.event, id).then(
+        (details) => {
+          detail.load = { ...NO_LOAD, details };
+          this.requestUpdate();
+        },
+        (error: unknown) => {
+          detail.load = { ...NO_LOAD, error };
+          this.requestUpdate();
+        },
+      );
+    }
+    this.requestUpdate();
+  }
+
+  // The card takes the window away rather than closing it, which leaves the focus nowhere: the
+  // button that opened it has it again, as after a dialog the browser closes itself.
+  readonly #closeDetail = (): void => {
+    const opened = this.#detail;
+    if (!opened) return;
+    this.#detail = undefined;
+    this.requestUpdate();
+    void this.updateComplete.then(() => {
+      [...this.renderRoot.querySelectorAll<HTMLElement>("[data-detail]")]
+        .find((button) => button.dataset.detail === opened.key)
+        ?.focus();
+    });
+  };
+
   /** Renders the card again at the end of the task, once however often it is asked. */
   requestUpdate(): void {
     this.#pending ??= Promise.resolve().then(() => {
       this.#pending = undefined;
       if (!this.#connected) return;
       renderTemplate(this.render(), this.renderRoot);
+      // Only a modal dialog keeps the page behind it from a finger and the keyboard.
+      const dialog = this.renderRoot.querySelector("dialog");
+      if (dialog && !dialog.open) dialog.showModal();
       this.#measure();
     });
   }
@@ -317,6 +380,15 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     return html`<ha-card>
       <div class="aula ${config.size}" lang=${ctx.lang}>
         <div class="body">${this.#body(this.aula.snapshot, config, ctx)}</div>
+        ${
+          this.#detail
+            ? detailDialog(
+                detailView(this.#detail.target, this.#detail.load, ctx.zone),
+                ctx,
+                this.#closeDetail,
+              )
+            : nothing
+        }
       </div>
     </ha-card>`;
   }

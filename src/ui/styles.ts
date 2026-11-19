@@ -805,6 +805,9 @@ export const blocks = css`
     column-gap: var(--aula-space-3);
     row-gap: var(--aula-space-2);
   }
+  .lesson {
+    position: relative;
+  }
   .lesson,
   .break {
     grid-column: 1 / -1;
@@ -1066,6 +1069,274 @@ export const blocks = css`
     display: block;
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
+  }
+
+  /*
+   * A lesson or an event opens its window at a tap anywhere on its row: its button's target is
+   * the row, reaching a little past it, and its state shows there.
+   */
+  .opens {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .opens::after {
+    content: "";
+    position: absolute;
+    inset: calc(-1 * var(--aula-space-1)) calc(-1 * var(--aula-space-2));
+    border-radius: var(--aula-radius);
+  }
+  .opens:focus-visible {
+    outline: none;
+  }
+  .opens:focus-visible::after {
+    outline: 2px solid var(--aula-text);
+  }
+  @media (hover: hover) {
+    .opens:hover::after {
+      background: var(--aula-fill-muted);
+    }
+  }
+  .opens:active::after {
+    background: var(--aula-fill-strong);
+  }
+`;
+
+/**
+ * The window of a lesson or an event, in Home Assistant's dialogs' look: above the page, its
+ * width a phone's or, on the wall, a third more, scrolled within where it is longer than the
+ * screen.
+ */
+export const details = css`
+  .detail {
+    box-sizing: border-box;
+    width: min(calc(100vw - 2 * var(--aula-space-4)), calc(480px * var(--aula-scale)));
+    max-width: none;
+    max-height: calc(100dvh - 2 * var(--aula-space-4));
+    margin: auto;
+    padding: 0;
+    border: 0;
+    border-radius: var(--ha-dialog-border-radius, var(--ha-border-radius-3xl, 24px));
+    background: var(
+      --ha-dialog-surface-background,
+      var(--mdc-theme-surface, var(--card-background-color, #fff))
+    );
+    box-shadow: var(--ha-box-shadow-l, 0 16px 32px -6px rgba(0, 0, 0, 0.2));
+    color: var(--aula-text);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .detail::backdrop {
+    background: var(--mdc-dialog-scrim-color, rgba(0, 0, 0, 0.32));
+  }
+  .detail-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-4);
+    padding: var(--aula-space-4) var(--aula-space-6) var(--aula-space-6);
+  }
+  @media (max-width: 400px) {
+    .detail-body {
+      padding-inline: var(--aula-space-4);
+    }
+  }
+  .detail-cols,
+  .detail-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-4);
+  }
+  /* On the wall an event's window is wider, its people and answer in a column of their own, so
+     that it is read without scrolling. */
+  @media (min-width: 1000px) {
+    .large .detail:has(.detail-col + .detail-col) {
+      width: min(calc(100vw - 2 * var(--aula-space-4)), 1120px);
+    }
+    .large .detail-cols:has(.detail-col + .detail-col) {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      align-items: start;
+      gap: var(--aula-space-8);
+    }
+    .large .detail-col + .detail-col > .detail-section:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+  }
+  .detail-head {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--aula-space-3);
+  }
+  .detail-titles {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding-top: var(--aula-space-2);
+  }
+  .detail-title {
+    display: flex;
+    align-items: baseline;
+    gap: var(--aula-space-2);
+    font-size: var(--aula-font-xl);
+    font-weight: var(--aula-medium);
+    overflow-wrap: anywhere;
+  }
+  /* A lesson's subject has its colour, as in the timetable; nothing else in the window has one. */
+  .detail-dot {
+    flex: none;
+    width: calc(12px * var(--aula-scale));
+    height: calc(12px * var(--aula-scale));
+    border-radius: 50%;
+    background: var(--subject);
+  }
+  .detail-meta,
+  .detail-quiet,
+  .detail-under,
+  .detail-whole,
+  .detail-row dt {
+    color: var(--aula-text-2);
+  }
+  .detail-meta,
+  .detail-quiet {
+    font-size: var(--aula-font-s);
+  }
+  /* Its target is 48 px; its mark lines up with the window's edge and the title's first line. */
+  .detail-close {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: var(--aula-target);
+    height: var(--aula-target);
+    margin-inline-end: calc(-1 * var(--aula-space-3));
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    --mdc-icon-size: calc(24px * var(--aula-scale));
+  }
+  .detail-close ha-icon {
+    color: var(--aula-text);
+  }
+  @media (hover: hover) {
+    .detail-close:hover {
+      background: var(--aula-fill-muted);
+    }
+  }
+  .detail-close:active {
+    background: var(--aula-fill-strong);
+  }
+  .detail-labels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--aula-space-2);
+  }
+  /*
+   * The time is what the window is opened for: a ticket on a plain surface, the day's tile beside
+   * a dashed line, the time the largest text. Colours mean subjects on the card, so it has none.
+   */
+  .detail-ticket {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-4);
+    padding: var(--aula-space-3) var(--aula-space-4) var(--aula-space-3) var(--aula-space-3);
+    border: 1px solid var(--aula-line);
+    border-radius: calc(var(--aula-radius) * 1.5);
+    background: var(--aula-fill-faint);
+  }
+  .detail-ticket .tile {
+    background: var(--aula-fill-strong);
+  }
+  .detail-stub {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding-inline-start: var(--aula-space-4);
+    border-inline-start: 2px dashed var(--aula-line);
+  }
+  .detail-what,
+  .detail-heading {
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+    font-weight: var(--aula-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .detail-when {
+    font-size: var(--aula-font-2xl);
+    font-weight: var(--aula-bold);
+    overflow-wrap: anywhere;
+  }
+  .detail-whole {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: var(--aula-space-2);
+    margin-top: calc(-1 * var(--aula-space-2));
+    padding-inline: var(--aula-space-3);
+    font-size: var(--aula-font-s);
+  }
+  .detail-whole-label {
+    font-weight: var(--aula-medium);
+  }
+  /* The rest in sections under quiet headings, each a list of what it is beside what it says. */
+  .detail-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-2);
+    padding-top: var(--aula-space-4);
+    border-top: 1px solid var(--aula-line);
+  }
+  .detail-list {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: var(--aula-space-2) var(--aula-space-4);
+    margin: 0;
+  }
+  .detail-row {
+    display: contents;
+  }
+  .detail-row dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .detail-line {
+    display: block;
+  }
+  .detail-moment {
+    white-space: nowrap;
+  }
+  .label.detail-answer {
+    background: var(--aula-fill-muted);
+    font-size: var(--aula-font-m);
+  }
+  .detail-row .label.warning {
+    margin-inline-start: var(--aula-space-1);
+  }
+  .detail-row dd > .label.warning:first-child {
+    margin-inline-start: 0;
+  }
+  .detail-text {
+    margin-top: var(--aula-space-1);
+    line-height: var(--aula-paragraph);
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+  /* A wait is shown in the text's colours too. */
+  .detail .pulse {
+    background: var(--aula-text-2);
   }
 `;
 

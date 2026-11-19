@@ -13,6 +13,8 @@ import {
   events,
   holidayFortnight,
   local,
+  MEETING,
+  PARTY,
   plusDays,
   timetable,
   weekData,
@@ -302,6 +304,13 @@ export const SCENARIOS: readonly Scenario[] = [
         timed("t4", "Fodbold i SFO", "14:00", "15:30", "event"),
       ],
     })),
+  ),
+  scenario(
+    "thu-1930-meeting",
+    "Thursday 19:30: Ida's parent–teacher meetings and a party on Friday afternoon",
+    "2026-10-29",
+    "19:30",
+    fortnight("2026-10-26", (data) => ({ ...data, events: [...data.events, MEETING, PARTY] })),
   ),
   scenario(
     "thu-1930-two-teachers",

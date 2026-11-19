@@ -172,3 +172,69 @@ export interface WeekData {
   /** The birthdays in the range; empty without a week plan. */
   birthdays: Birthday[];
 }
+
+/** Who made an event: a name and Aula's institution role, such as "teacher" or "other". */
+export interface EventCreator {
+  /** The full name. */
+  name: string;
+  /** Aula's institution role. */
+  role: string;
+}
+
+/** The time a parents' meeting has booked for the child. */
+export interface BookedTime {
+  /** ISO 8601 date and time with offset. */
+  start: string;
+  /** ISO 8601 date and time with offset. */
+  end: string;
+  /** Where the meeting is. */
+  location: string | null;
+}
+
+/** An event as `aula_connect/event` gives it: what the week gives, and the rest Aula has. */
+export interface EventDetails {
+  /** The event's title. */
+  title: string;
+  /** Aula's type of the event. */
+  type: string;
+  /** Whether the event lasts whole days. */
+  all_day: boolean;
+  /** The first day of an all-day event, `YYYY-MM-DD`, else an ISO 8601 date and time. */
+  start: string;
+  /** The day after the last of an all-day event, else the ISO 8601 date and time it ends. */
+  end: string;
+  /** May hold HTML; shown as plain text. Empty when there is none. */
+  description: string;
+  /** Where the event is. */
+  location: string | null;
+  /** The institution the event is at; empty when Aula names none. */
+  institution_name: string;
+  /** Who made the event. */
+  creator: EventCreator | null;
+  /** The full names of those who arrange it with the creator. */
+  co_organizers: string[];
+  /** The groups invited, by name. */
+  invited_groups: string[];
+  /** How many are invited. */
+  invited: number;
+  /** How many of them have answered. */
+  answered: number;
+  /** Whether Aula asks for an answer. */
+  response_required: boolean;
+  /** When the answer is due, ISO 8601. */
+  response_deadline: string | null;
+  /** Whether the answer is overdue. */
+  deadline_passed: boolean;
+  /** The guardian's own answer: "accepted", "waiting", "declined" or another as Aula names it. */
+  answer: string | null;
+  /** When the guardian answered, ISO 8601. */
+  answered_at: string | null;
+  /** The time booked for the child in a parents' meeting. */
+  booked: BookedTime | null;
+  /** How many files are attached; the files are seen in Aula. */
+  attachments: number;
+  /** Whether the event is private. */
+  private: boolean;
+  /** Whether the event is deleted in Aula. */
+  deleted: boolean;
+}

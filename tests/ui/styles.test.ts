@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { base, blocks, dayStyles, homeworkStyles, weekStyles } from "../../src/ui/styles.ts";
+import {
+  base,
+  blocks,
+  dayStyles,
+  details,
+  homeworkStyles,
+  weekStyles,
+} from "../../src/ui/styles.ts";
 
 interface Rule {
   /** The at-rule the rule is in, such as "@container aula (min-width: 600px)"; "" for none. */
@@ -46,7 +53,7 @@ function declared(sheet: string, selector: string, within = ""): string[] {
     .flatMap((rule) => rule.declarations);
 }
 
-const ALL = [base, blocks, dayStyles, homeworkStyles, weekStyles];
+const ALL = [base, blocks, details, dayStyles, homeworkStyles, weekStyles];
 
 describe("the things to bring", () => {
   it("stand each in its subject's colour, its text black or white, grey without one", () => {
@@ -220,5 +227,21 @@ describe("the week card's days", () => {
     expect(declared(weekStyles, ".holiday-row")).toContain(
       "padding: var(--aula-space-2) calc(var(--aula-space-3) - var(--aula-bleed))",
     );
+  });
+});
+
+describe("a lesson's or an event's window", () => {
+  it("opens at a tap anywhere on its row of the whole timetable", () => {
+    expect(declared(blocks, ".lesson")).toContain("position: relative");
+    expect(declared(blocks, ".opens::after")).toEqual(
+      expect.arrayContaining(['content: ""', "position: absolute"]),
+    );
+  });
+
+  it("has a target of 48 px to close it, and scrolls within where it is longer than the screen", () => {
+    expect(declared(details, ".detail-close")).toEqual(
+      expect.arrayContaining(["width: var(--aula-target)", "height: var(--aula-target)"]),
+    );
+    expect(declared(details, ".detail")).toContain("overflow-y: auto");
   });
 });

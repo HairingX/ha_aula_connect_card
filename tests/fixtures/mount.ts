@@ -8,6 +8,7 @@ import { vi } from "vitest";
 
 import { FakeConnection, fakeHass, present, settle, type FakeHass } from "../fake-hass.ts";
 import { scenarioNamed } from "./scenarios.ts";
+import { EVENT_DETAILS } from "./week.ts";
 
 /** A card element as Home Assistant sees it. */
 export type Card = HTMLElement & {
@@ -46,6 +47,7 @@ export async function mount(
     connection,
     children: [...item.children],
     timeZone: item.zone,
+    events: EVENT_DETAILS,
     ...(options.language === undefined ? {} : { language: options.language }),
   });
   options.setup?.(hass);
