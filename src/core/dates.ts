@@ -32,7 +32,13 @@ function utc(day: Day): Date {
 
 /** Tells whether a text is a real day written `YYYY-MM-DD`. */
 export function isDay(text: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(text) && !Number.isNaN(utc(text).getTime());
+  // A day the calendar has not, such as 30 February, is read as one after it; it is none.
+  const date = utc(text);
+  return (
+    /^\d{4}-\d{2}-\d{2}$/.test(text) &&
+    !Number.isNaN(date.getTime()) &&
+    date.toISOString().startsWith(text)
+  );
 }
 
 /** Returns the instant an ISO 8601 text names, or undefined when it names none. */

@@ -28,7 +28,7 @@ export class FakeConnection {
   readonly listeners = new Map<ConnectionEvent, (() => void)[]>();
   /** The error the next subscriptions are refused with, if any. */
   refuse: Error | undefined = undefined;
-  /** Answers each subscription, after a microtask, with what this gives for its message. */
+  /** Answers each subscription, after a microtask, with what this gives for its message, if anything. */
   respond: ((message: Record<string, unknown>) => unknown) | undefined = undefined;
 
   /** Records a subscription, or refuses it with `refuse`. */
@@ -43,7 +43,8 @@ export class FakeConnection {
     const respond = this.respond;
     if (respond) {
       queueMicrotask(() => {
-        callback(respond(message));
+        const answer = respond(message);
+        if (answer !== undefined) callback(answer);
       });
     }
     return Promise.resolve(unsubscribe);
@@ -91,6 +92,10 @@ export interface FakeHassOptions {
   timeZone?: string;
   /** What `aula_connect/event` answers, by the event's id; any other id is not found. */
   events?: Readonly<Record<number, unknown>>;
+  /** What other commands answer, by their type; a function may also throw or reject. */
+  commands?: Readonly<Record<string, (message: Record<string, unknown>) => unknown>>;
+  /** Home Assistant's entities' states, by entity id. */
+  states?: HomeAssistant["states"];
 }
 
 /** A fake `hass`, its connection and its `callWS`. */
@@ -109,6 +114,14 @@ export function fakeHass(options: FakeHassOptions = {}): FakeHass {
       return event === undefined
         ? Promise.reject(wsError("not_found", "Event not found"))
         : Promise.resolve(event);
+    }
+    const command = options.commands?.[String(message.type)];
+    if (command) {
+      try {
+        return Promise.resolve(command(message));
+      } catch (error) {
+        return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+      }
     }
     if (message.type !== "aula_connect/children") {
       return Promise.reject(new Error("unexpected command"));
@@ -129,6 +142,7 @@ export function fakeHass(options: FakeHassOptions = {}): FakeHass {
     config: { time_zone: options.timeZone ?? "Europe/Copenhagen" },
     connection,
     callWS,
+    ...(options.states === undefined ? {} : { states: options.states }),
   } as FakeHass;
 }
 

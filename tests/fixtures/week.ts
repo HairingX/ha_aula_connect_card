@@ -23,6 +23,8 @@ export const CHILDREN: Child[] = [
     first_name: "Ida",
     name: "Ida Testesen",
     institution_name: "Bakkedal Skole",
+    picture_entity: "image.ida_testesen",
+    guardian: "Lise Testesen",
   },
   {
     entry_id: "entry-a",
@@ -30,6 +32,8 @@ export const CHILDREN: Child[] = [
     first_name: "Oskar",
     name: "Oskar Testesen",
     institution_name: "Bakkedal Skole",
+    picture_entity: "image.oskar_testesen",
+    guardian: "Lise Testesen",
   },
 ];
 

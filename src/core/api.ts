@@ -16,8 +16,16 @@ import type {
   EventDetails,
   HassConnection,
   Lesson,
+  Presence,
+  SickRoute,
   Task,
+  Thread,
+  ThreadList,
+  TodayData,
   Unsubscribe,
+  Vacation,
+  VacationDay,
+  VacationRequest,
   WeekData,
 } from "./types.ts";
 
@@ -108,26 +116,35 @@ function booked(value: unknown): EventDetails["booked"] {
     : null;
 }
 
-function isChild(value: unknown): value is Child {
-  if (typeof value !== "object" || value === null) return false;
-  const child = value as Record<string, unknown>;
-  return (
-    typeof child.entry_id === "string" &&
-    typeof child.child_id === "number" &&
-    typeof child.first_name === "string" &&
-    typeof child.name === "string" &&
-    typeof child.institution_name === "string"
-  );
+function child(value: unknown): Child | undefined {
+  const item = fields(value);
+  if (
+    !item ||
+    !text(item.entry_id) ||
+    typeof item.child_id !== "number" ||
+    !text(item.first_name) ||
+    !text(item.name) ||
+    !text(item.institution_name)
+  )
+    return undefined;
+  return {
+    entry_id: item.entry_id,
+    child_id: item.child_id,
+    first_name: item.first_name,
+    name: item.name,
+    institution_name: item.institution_name,
+    picture_entity: or(item.picture_entity, null),
+    guardian: or(item.guardian, ""),
+  };
 }
 
-/** Lists the children of every Aula Connect entry, leaving out any the cards could not show. */
+/**
+ * Lists the children of every Aula Connect entry, leaving out any the cards could not show. A
+ * child two guardians' entries both have is listed once for each.
+ */
 export async function fetchChildren(callWS: CallWS): Promise<Child[]> {
   const result = await callWS({ type: "aula_connect/children" });
-  const children =
-    typeof result === "object" && result !== null
-      ? (result as Record<string, unknown>).children
-      : undefined;
-  return list(children).filter(isChild);
+  return items(fields(result)?.children, child);
 }
 
 /**
@@ -173,6 +190,254 @@ export function subscribeWeek(
     },
     { resubscribe: false },
   );
+}
+
+const SICK_ROUTES: readonly SickRoute[] = ["aula", "tabulex", "none"];
+
+// Aula writes a time of day "7:05", "07:05" or "07:05:00"; the cards read "07:05".
+function time(value: unknown): string | null {
+  if (!text(value) || !/^\d{1,2}:\d{2}/.test(value)) return null;
+  return value.replace(
+    /^(\d{1,2}):(\d{2}).*$/s,
+    (_whole, hours: string, minutes: string) => `${hours.padStart(2, "0")}:${minutes}`,
+  );
+}
+
+function presence(value: unknown): Presence | null {
+  const item = fields(value);
+  if (!item) return null;
+  return {
+    status: typeof item.status === "number" && Number.isInteger(item.status) ? item.status : null,
+    check_in: time(item.check_in),
+    check_out: time(item.check_out),
+    planned_in: time(item.planned_in),
+    planned_out: time(item.planned_out),
+    exit_with: or(item.exit_with, null),
+  };
+}
+
+function today(value: unknown): TodayData {
+  const item = fields(value) ?? {};
+  const sick = fields(item.sick) ?? {};
+  const route = SICK_ROUTES.find((known) => known === sick.route) ?? "none";
+  return {
+    presence: presence(item.presence),
+    sick: {
+      route,
+      today: sick.today === true,
+      since: or(sick.since, null),
+      wrote_yesterday: sick.wrote_yesterday === true,
+    },
+    vacation_requests_pending: count(item.vacation_requests_pending),
+  };
+}
+
+/**
+ * Subscribes to a child's day as it is now: the presence, the sickness and the vacation requests
+ * awaiting an answer. `onData` gets it whenever the integration reads it anew; `onEnded` is
+ * called instead when the integration ends the subscription, and nothing follows.
+ *
+ * @throws The websocket error when the subscription is refused.
+ */
+export function subscribeToday(
+  connection: HassConnection,
+  child: Child,
+  onData: (data: TodayData) => void,
+  onEnded: () => void,
+): Promise<Unsubscribe> {
+  return connection.subscribeMessage(
+    (message) => {
+      if (fields(message)?.ended === true) onEnded();
+      else onData(today(message));
+    },
+    { type: "aula_connect/today/subscribe", entry_id: child.entry_id, child_id: child.child_id },
+    { resubscribe: false },
+  );
+}
+
+const anId = (value: unknown): value is string | number =>
+  text(value) || (typeof value === "number" && Number.isFinite(value));
+
+// A command about one of an entry's children.
+function about(child: Child, type: string): Record<string, unknown> {
+  return { type: `aula_connect/${type}`, entry_id: child.entry_id, child_id: child.child_id };
+}
+
+/**
+ * Reports a child sick today, along the route the integration finds for it.
+ *
+ * @throws The websocket error: `not_supported` for a route not supported yet.
+ */
+export async function reportSick(callWS: CallWS, child: Child): Promise<void> {
+  await callWS(about(child, "sick/report"));
+}
+
+/**
+ * Takes back today's report of a child's sickness.
+ *
+ * @throws The websocket error.
+ */
+export async function undoSick(callWS: CallWS, child: Child): Promise<void> {
+  await callWS(about(child, "sick/undo"));
+}
+
+function thread(item: Fields): Thread | undefined {
+  if (!anId(item.thread_id) || !text(item.subject)) return undefined;
+  return {
+    thread_id: item.thread_id,
+    subject: item.subject,
+    last_activity: or(item.last_activity, ""),
+    employees: list(item.employees).filter(text),
+    can_reply: item.can_reply !== false,
+  };
+}
+
+/**
+ * Lists the threads a family can write to a child's teachers in, the newest first.
+ *
+ * @throws The websocket error.
+ */
+export async function fetchThreads(callWS: CallWS, child: Child): Promise<ThreadList> {
+  const item = fields(await callWS(about(child, "threads"))) ?? {};
+  return {
+    threads: items(item.threads, thread),
+    remembered: anId(item.remembered) ? item.remembered : null,
+    remembered_stale: item.remembered_stale === true,
+  };
+}
+
+/**
+ * Writes a message in a thread about a child; the integration remembers the thread for the child.
+ *
+ * @throws The websocket error.
+ */
+export async function replyMessage(
+  callWS: CallWS,
+  child: Child,
+  threadId: string | number,
+  message: string,
+): Promise<void> {
+  await callWS({ ...about(child, "message/reply"), thread_id: threadId, text: message });
+}
+
+function vacation(item: Fields): Vacation | undefined {
+  if (!anId(item.id) || !text(item.start) || !text(item.end)) return undefined;
+  return {
+    id: item.id,
+    start: item.start,
+    end: item.end,
+    comment: or(item.comment, ""),
+    editable: item.editable !== false,
+  };
+}
+
+/**
+ * Lists the vacations registered for a child.
+ *
+ * @throws The websocket error.
+ */
+export async function fetchVacations(callWS: CallWS, child: Child): Promise<Vacation[]> {
+  return items(fields(await callWS(about(child, "vacations")))?.vacations, vacation);
+}
+
+/**
+ * Registers a vacation for children of one entry, from `start` to `end`, both included.
+ *
+ * @throws The websocket error.
+ */
+export async function addVacation(
+  callWS: CallWS,
+  entryId: string,
+  childIds: readonly number[],
+  start: string,
+  end: string,
+  comment: string,
+): Promise<void> {
+  await callWS({
+    type: "aula_connect/vacation/add",
+    entry_id: entryId,
+    child_ids: childIds,
+    start,
+    end,
+    comment,
+  });
+}
+
+/**
+ * Deletes a registered vacation.
+ *
+ * @throws The websocket error.
+ */
+export async function deleteVacation(
+  callWS: CallWS,
+  entryId: string,
+  id: string | number,
+): Promise<void> {
+  // A message's own `id` is the websocket's: the vacation is named apart.
+  await callWS({ type: "aula_connect/vacation/delete", entry_id: entryId, vacation_id: id });
+}
+
+function vacationDay(item: Fields): VacationDay | undefined {
+  if (!text(item.date)) return undefined;
+  return {
+    date: item.date,
+    is_coming: typeof item.is_coming === "boolean" ? item.is_coming : null,
+    entry_time: time(item.entry_time),
+    exit_time: time(item.exit_time),
+  };
+}
+
+function vacationRequest(item: Fields): VacationRequest | undefined {
+  if (!anId(item.id) || !text(item.start) || !text(item.end)) return undefined;
+  return {
+    id: item.id,
+    title: or(item.title, ""),
+    start: item.start,
+    end: item.end,
+    deadline: or(item.deadline, null),
+    missing_answer: item.missing_answer === true,
+    note: or(item.note, ""),
+    times_required: item.times_required === true,
+    days: items(item.days, vacationDay),
+  };
+}
+
+/**
+ * Lists a child's vacation requests.
+ *
+ * @throws The websocket error.
+ */
+export async function fetchVacationRequests(
+  callWS: CallWS,
+  child: Child,
+): Promise<VacationRequest[]> {
+  return items(fields(await callWS(about(child, "vacation_requests")))?.requests, vacationRequest);
+}
+
+/**
+ * Answers a vacation request: for each day whether the child comes, with the times where they are
+ * asked for, and a comment.
+ *
+ * @throws The websocket error.
+ */
+export async function answerVacationRequest(
+  callWS: CallWS,
+  child: Child,
+  id: string | number,
+  days: readonly VacationDay[],
+  comment: string,
+): Promise<void> {
+  await callWS({
+    ...about(child, "vacation_request/answer"),
+    request_id: id,
+    days: days.map((day) => ({
+      date: day.date,
+      is_coming: day.is_coming === true,
+      ...(day.is_coming === true && day.entry_time ? { entry_time: day.entry_time } : {}),
+      ...(day.is_coming === true && day.exit_time ? { exit_time: day.exit_time } : {}),
+    })),
+    ...(comment.trim() === "" ? {} : { comment: comment.trim() }),
+  });
 }
 
 /**
@@ -254,6 +519,22 @@ export function errorText(error: unknown, t: Translate): string {
       return t("errorInvalidFormat", { message });
     default:
       return t("errorGeneric", { message });
+  }
+}
+
+/** Returns the text to show for an error of something the cards asked Aula to do. */
+export function actionErrorText(error: unknown, t: Translate): string {
+  switch (errorCode(error)) {
+    case "unknown_command":
+      return t("actionNeedsUpdate");
+    case "not_supported":
+      return t("actionNotSupported");
+    case "not_found":
+      return t("actionNotFound");
+    case "invalid_format":
+      return t("actionInvalid", { message: errorField(error, "message") ?? "" });
+    default:
+      return t("actionFailed");
   }
 }
 

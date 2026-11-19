@@ -242,7 +242,15 @@ describe("an event's window", () => {
         {
           kind: "event",
           event: MEETING,
-          child: { entry_id: "a", child_id: 1, first_name: "", name: "", institution_name: "" },
+          child: {
+            entry_id: "a",
+            child_id: 1,
+            first_name: "",
+            name: "",
+            institution_name: "",
+            picture_entity: null,
+            guardian: "",
+          },
         },
         { details: undefined, loading: false, error },
         ZONE,

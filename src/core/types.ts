@@ -69,6 +69,16 @@ export interface HomeAssistant {
   connection: HassConnection;
   /** Sends a command and resolves with its result. */
   callWS: <T>(message: Record<string, unknown>) => Promise<T>;
+  /** The entities' states, as far as the cards read them: pictures and names. */
+  states?: Readonly<Record<string, HassEntity | undefined>>;
+}
+
+/** An entity's state, as far as the cards read it. */
+export interface HassEntity {
+  /** The state. */
+  readonly state: string;
+  /** The attributes, such as `entity_picture` and `friendly_name`. */
+  readonly attributes: Readonly<Record<string, unknown>>;
 }
 
 /** A child as `aula_connect/children` lists it. */
@@ -83,6 +93,10 @@ export interface Child {
   name: string;
   /** The child's school or institution. */
   institution_name: string;
+  /** The `image` entity with the child's picture from Aula; null without one. */
+  picture_entity: string | null;
+  /** The display name of the guardian whose entry this is; empty when Aula Connect names none. */
+  guardian: string;
 }
 
 /** The result of `aula_connect/children`. */
@@ -237,4 +251,119 @@ export interface EventDetails {
   private: boolean;
   /** Whether the event is deleted in Aula. */
   deleted: boolean;
+}
+
+/** A child's presence today, as the institution's check-in registers it. */
+export interface Presence {
+  /** Aula's presence status: 0 not arrived, 1 sick, 2 reported absent, 3 present, 4 on a field
+   * trip, 5 sleeping, 6 at a spare-time activity, 7 placed somewhere else, 8 gone home. */
+  status: number | null;
+  /** When the child came, "HH:MM". */
+  check_in: string | null;
+  /** When the child went, "HH:MM". */
+  check_out: string | null;
+  /** When the child is planned to come, "HH:MM". */
+  planned_in: string | null;
+  /** When the child is planned to go, "HH:MM". */
+  planned_out: string | null;
+  /** Who collects the child, as the family wrote it in Aula. */
+  exit_with: string | null;
+}
+
+/** How a child is reported sick: Aula's own presence module, IST Tabulex, or not at all. */
+export type SickRoute = "aula" | "tabulex" | "none";
+
+/** What is known of a child's sickness. */
+export interface SickState {
+  /** The route a report takes; `none` also until Aula Connect has first looked for one. */
+  route: SickRoute;
+  /** Whether the child is reported sick today. */
+  today: boolean;
+  /** The first day of the sickness, while it lasts. */
+  since: Day | null;
+  /** Whether the family wrote to the teachers through Home Assistant on the weekday before. */
+  wrote_yesterday: boolean;
+}
+
+/** An event of `aula_connect/today/subscribe`: the child's day as it is now. */
+export interface TodayData {
+  /** The presence; null where the institution registers none. */
+  presence: Presence | null;
+  /** The sickness. */
+  sick: SickState;
+  /** How many vacation requests await an answer. */
+  vacation_requests_pending: number;
+}
+
+/** A message thread a family can write to the teachers in. */
+export interface Thread {
+  /** Aula's id of the thread. */
+  thread_id: string | number;
+  /** Its subject. */
+  subject: string;
+  /** When something last happened in it, ISO 8601. */
+  last_activity: string;
+  /** Its recipients other than the family's guardians, by name: the teachers, mostly. */
+  employees: string[];
+  /** Whether a reply can be written in it: it is not deleted. */
+  can_reply: boolean;
+}
+
+/** The threads of `aula_connect/threads`: the newest first, and the one remembered. */
+export interface ThreadList {
+  /** The threads. */
+  threads: Thread[];
+  /** The thread last written in for the child; null for none. */
+  remembered: string | number | null;
+  /** Whether the remembered thread should be chosen again: from before the school year, left,
+   * or closed to replies. */
+  remembered_stale: boolean;
+}
+
+/** A vacation registered for a child. */
+export interface Vacation {
+  /** Aula's id of it. */
+  id: string | number;
+  /** Its first day. */
+  start: Day;
+  /** Its last day. */
+  end: Day;
+  /** What the family wrote with it. */
+  comment: string;
+  /** Whether it can be deleted. */
+  editable: boolean;
+}
+
+/** A day of a vacation request, and the answer given for it. */
+export interface VacationDay {
+  /** The day. */
+  date: Day;
+  /** Whether the child comes; null while it is not answered. */
+  is_coming: boolean | null;
+  /** When the child comes, "HH:MM", where times are asked for. */
+  entry_time: string | null;
+  /** When the child goes, "HH:MM", where times are asked for. */
+  exit_time: string | null;
+}
+
+/** A vacation request from the institution: which days of a holiday the child comes. */
+export interface VacationRequest {
+  /** Aula's id of the answer it awaits. */
+  id: string | number;
+  /** The holiday's title. */
+  title: string;
+  /** Its first day. */
+  start: Day;
+  /** Its last day. */
+  end: Day;
+  /** The last day to answer; null for none. */
+  deadline: Day | null;
+  /** Whether it is not answered yet. */
+  missing_answer: boolean;
+  /** The institution's note to the family. */
+  note: string;
+  /** Whether the times a child comes and goes are asked for. */
+  times_required: boolean;
+  /** The days asked about: Monday to Friday. */
+  days: VacationDay[];
 }

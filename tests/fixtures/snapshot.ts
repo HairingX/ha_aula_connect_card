@@ -27,6 +27,7 @@ export function snapshotOf(
         { range, data: item.data(child), error: undefined, stale: false },
       ]),
     ),
+    today: new Map(),
   };
 }
 

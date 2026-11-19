@@ -11,10 +11,19 @@ import {
   extraKey,
   rangeFor,
   storeFor,
+  todayKey,
   type AulaStore,
 } from "../../src/core/store.ts";
 import type { Child, Unsubscribe, WeekData } from "../../src/core/types.ts";
-import { FakeConnection, fakeHass, present, settle, wsError, type FakeHass } from "../fake-hass.ts";
+import {
+  FakeConnection,
+  fakeHass,
+  present,
+  settle,
+  wsError,
+  type FakeHass,
+  type FakeSubscription,
+} from "../fake-hass.ts";
 import { CHILDREN, weekData } from "../fixtures/week.ts";
 
 // Thursday of week 44, 2026.
@@ -696,5 +705,84 @@ describe("listing the children again", () => {
     release();
     expect(vi.getTimerCount()).toBe(0);
     expect(listeners(connection)).toBe(0);
+  });
+});
+
+describe("the children's day as it is now", () => {
+  const TODAY = {
+    presence: null,
+    sick: { route: "aula", today: true, since: null, wrote_yesterday: false },
+    vacation_requests_pending: 2,
+  };
+
+  function todays(connection: FakeConnection): FakeSubscription[] {
+    return connection.active.filter((item) => item.message.type === "aula_connect/today/subscribe");
+  }
+
+  it("is subscribed only for a card that shows it, once per child", async () => {
+    const { connection, store } = setup();
+    store.watch({ children: [1001], onChange: vi.fn() });
+    store.watch({ children: [1001], onChange: vi.fn(), today: true });
+    store.watch({ children: [], onChange: vi.fn(), today: true });
+    await settle();
+    expect(todays(connection).map((item) => item.message.child_id)).toEqual([1001, 1002]);
+    expect(todayKey(IDA_KEY)).toBe("entry-a/1001#today");
+    todays(connection)[0]?.callback(TODAY);
+    expect(store.snapshot.today.get(IDA_KEY)).toEqual({ data: TODAY, error: undefined });
+    // The week's data is kept apart, and never marked stale by the day's.
+    expect(store.snapshot.data.get(IDA_KEY)).toBeUndefined();
+  });
+
+  it("shows a refused subscription as the child's error, keeping what came, and tries again", async () => {
+    const { connection, store } = setup();
+    store.watch({ children: [1001], onChange: vi.fn(), today: true });
+    await settle();
+    todays(connection)[0]?.callback(TODAY);
+    todays(connection)[0]?.callback({ ended: true });
+    connection.refuse = wsError("unknown_command", "Unknown command.");
+    await vi.advanceTimersByTimeAsync(RELOAD_DELAY_MS);
+    expect(store.snapshot.today.get(IDA_KEY)).toEqual({ data: TODAY, error: connection.refuse });
+    connection.refuse = undefined;
+    await vi.advanceTimersByTimeAsync(RETRY_MAX_MS);
+    const [again] = todays(connection);
+    again?.callback(TODAY);
+    expect(store.snapshot.today.get(IDA_KEY)?.error).toBeUndefined();
+  });
+
+  it("ignores what comes after the subscription was given up", async () => {
+    const { connection, store } = setup();
+    let refuse: (error: Error) => void = () => undefined;
+    const release = store.watch({ children: [1001], onChange: vi.fn(), today: true });
+    await settle();
+    const [subscription] = todays(connection);
+    connection.subscribeMessage = vi.fn(
+      () =>
+        new Promise<Unsubscribe>((_resolve, reject) => {
+          refuse = reject;
+        }),
+    );
+    release();
+    await vi.advanceTimersByTimeAsync(LINGER_MS);
+    subscription?.callback(TODAY);
+    expect(store.snapshot.today.get(IDA_KEY)).toBeUndefined();
+    const again = store.watch({ children: [1001], onChange: vi.fn(), today: true });
+    await settle();
+    again();
+    await vi.advanceTimersByTimeAsync(LINGER_MS);
+    refuse(new Error("late"));
+    await settle();
+    expect(store.snapshot.today.get(IDA_KEY)).toBeUndefined();
+  });
+
+  it("is dropped with its child when it is no longer listed", async () => {
+    const { connection, store, answer } = setup();
+    store.watch({ children: [], onChange: vi.fn(), today: true });
+    await settle();
+    for (const item of todays(connection)) item.callback(TODAY);
+    expect(store.snapshot.today.size).toBe(2);
+    answer([OSKAR]);
+    connection.emit("ready");
+    await vi.advanceTimersByTimeAsync(RETRY_WINDOW_MS + RETRY_SLOW_MS);
+    expect([...store.snapshot.today.keys()]).toEqual(["entry-a/1002"]);
   });
 });

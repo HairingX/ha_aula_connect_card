@@ -7,7 +7,7 @@
  * @packageDocumentation
  */
 
-import { errorCode, fetchChildren, subscribeWeek } from "./api.ts";
+import { errorCode, fetchChildren, subscribeToday, subscribeWeek } from "./api.ts";
 import { selectChildren } from "./children.ts";
 import { addDays, localTime, startOfWeek, timeZone } from "./dates.ts";
 import { rememberChildren, rememberSubjects } from "./memory.ts";
@@ -20,6 +20,7 @@ import {
   type DayRange,
   type HassConnection,
   type HomeAssistant,
+  type TodayData,
   type Unsubscribe,
   type WeekData,
 } from "./types.ts";
@@ -56,8 +57,22 @@ export function extraKey(key: ChildKey, days: DayRange): ExtraKey {
   return `${key}@${days.start}/${days.end}`;
 }
 
-function childOf(key: ChildKey | ExtraKey): ChildKey {
-  return key.replace(/@.*/, "") as ChildKey;
+/** The key of a child's day as it is now: `todayKey(childKey)`. */
+export type TodayKey = `${ChildKey}#today`;
+
+/** Returns the key a child's day as it is now is subscribed by. */
+export function todayKey(key: ChildKey): TodayKey {
+  return `${key}#today`;
+}
+
+type Key = ChildKey | ExtraKey | TodayKey;
+
+function childOf(key: Key): ChildKey {
+  return key.replace(/[@#].*/, "") as ChildKey;
+}
+
+function isToday(key: Key): key is TodayKey {
+  return key.endsWith("#today");
 }
 
 /** Returns the days a store subscribes for on `today`: from the Monday of its week, 14 days. */
@@ -96,6 +111,16 @@ export interface StoreSnapshot {
   readonly children: ChildrenState;
   /** Each child's data, by its key, and the data of other days by their `extraKey`. */
   readonly data: ReadonlyMap<ChildKey | ExtraKey, ChildData>;
+  /** Each child's day as it is now, by its key, for the children a card wants it of. */
+  readonly today: ReadonlyMap<ChildKey, TodayState>;
+}
+
+/** A child's day as it is now. */
+export interface TodayState {
+  /** The last data; undefined until it has come. */
+  readonly data: TodayData | undefined;
+  /** Why the subscription was refused. */
+  readonly error: unknown;
 }
 
 /** What a card watches. */
@@ -104,6 +129,8 @@ export interface WatchOptions {
   readonly children: readonly number[];
   /** Days beyond the range the card also shows, for its children, at most 21. */
   readonly extra?: DayRange | undefined;
+  /** Whether the card also shows the children's day as it is now. */
+  readonly today?: boolean;
   /** Called, once per microtask at most, when the snapshot has changed. */
   readonly onChange: () => void;
 }
@@ -112,6 +139,7 @@ interface Watcher {
   /** The child ids wanted; null for none, when only the list is wanted. */
   readonly children: readonly number[] | null;
   readonly extra: DayRange | undefined;
+  readonly today: boolean;
   readonly onChange: () => void;
 }
 
@@ -143,8 +171,9 @@ export class AulaStore {
   #zone: string;
   #range: DayRange;
   readonly #watchers = new Set<Watcher>();
-  readonly #subscriptions = new Map<ChildKey | ExtraKey, Subscription>();
+  readonly #subscriptions = new Map<Key, Subscription>();
   readonly #data = new Map<ChildKey | ExtraKey, ChildData>();
+  readonly #today = new Map<ChildKey, TodayState>();
   #list: Child[] | undefined;
   #listError: unknown;
   #refreshing = false;
@@ -155,7 +184,7 @@ export class AulaStore {
   /** Children an earlier listing had and the last lacks: kept for the window, awaited after it. */
   readonly #missing = new Map<ChildKey, Child>();
   /** Children whose subscription was refused, until data comes for them. */
-  readonly #refused = new Set<ChildKey | ExtraKey>();
+  readonly #refused = new Set<Key>();
   /** Counts listings, so that the answer of one replaced by a newer is ignored. */
   #listing = 0;
   /** When the listings began to retry, for the window. */
@@ -181,6 +210,7 @@ export class AulaStore {
       range: this.#range,
       children: { list: this.#list, error: this.#listError, refreshing: this.#refreshing },
       data: new Map(this.#data),
+      today: new Map(this.#today),
     };
     return this.#snapshotCache;
   }
@@ -211,6 +241,7 @@ export class AulaStore {
     return this.#add({
       children: [...options.children],
       extra: options.extra,
+      today: options.today ?? false,
       onChange: options.onChange,
     });
   }
@@ -231,6 +262,7 @@ export class AulaStore {
       const release = this.#add({
         children: null,
         extra: undefined,
+        today: false,
         onChange: () => {
           if (this.#list !== undefined || this.#listError !== undefined) done();
         },
@@ -307,21 +339,23 @@ export class AulaStore {
     if (this.#idle()) this.#detach();
   };
 
-  #markStale(key: ChildKey | ExtraKey): void {
+  #markStale(key: Key): void {
+    if (isToday(key)) return;
     const current = this.#data.get(key);
     if (!current || current.stale) return;
     this.#data.set(key, { ...current, stale: true });
     this.#changed();
   }
 
-  #wanted(): Map<ChildKey | ExtraKey, Wanted> {
-    const result = new Map<ChildKey | ExtraKey, Wanted>();
+  #wanted(): Map<Key, Wanted> {
+    const result = new Map<Key, Wanted>();
     if (!this.#list) return result;
     for (const watcher of this.#watchers) {
       if (!watcher.children) continue;
       for (const child of selectChildren(this.#list, watcher.children).shown) {
         const key = childKey(child);
         result.set(key, { child, range: this.#range });
+        if (watcher.today) result.set(todayKey(key), { child, range: this.#range });
         if (watcher.extra)
           result.set(extraKey(key, watcher.extra), { child, range: watcher.extra });
       }
@@ -355,16 +389,20 @@ export class AulaStore {
     if (this.#idle()) this.#detach();
   }
 
-  #subscribe(key: ChildKey | ExtraKey, child: Child, range: DayRange): void {
+  #subscribe(key: Key, child: Child, range: DayRange): void {
     const subscription: Subscription = {
       range,
-      extra: key !== childOf(key),
+      extra: !isToday(key) && key !== childOf(key),
       alive: true,
       failed: false,
       unsubscribe: Promise.resolve(undefined),
       linger: undefined,
     };
     this.#subscriptions.set(key, subscription);
+    if (isToday(key)) {
+      this.#subscribeToday(key, child, subscription);
+      return;
+    }
     this.#markStale(key);
     subscription.unsubscribe = subscribeWeek(
       this.#connection,
@@ -403,7 +441,34 @@ export class AulaStore {
     });
   }
 
-  #end(key: ChildKey | ExtraKey, subscription: Subscription): void {
+  #subscribeToday(key: TodayKey, child: Child, subscription: Subscription): void {
+    const owner = childOf(key);
+    subscription.unsubscribe = subscribeToday(
+      this.#connection,
+      child,
+      (data) => {
+        if (!subscription.alive) return;
+        this.#today.set(owner, { data, error: undefined });
+        this.#changed();
+        if (this.#refused.delete(key)) this.#retry();
+      },
+      () => {
+        this.#ended(key, subscription);
+      },
+    ).catch((error: unknown) => {
+      if (subscription.alive) {
+        subscription.alive = false;
+        subscription.failed = true;
+        this.#today.set(owner, { data: this.#today.get(owner)?.data, error });
+        this.#refused.add(key);
+        this.#changed();
+        this.#retry();
+      }
+      return undefined;
+    });
+  }
+
+  #end(key: Key, subscription: Subscription): void {
     subscription.alive = false;
     clearTimeout(subscription.linger);
     subscription.linger = undefined;
@@ -416,7 +481,7 @@ export class AulaStore {
   // The integration ends a subscription when its entry is unloaded, as for a reload, or when Aula
   // no longer lists the child. The children are listed once the last of an entry's children has
   // ended and the entry has had a moment to come back.
-  #ended(key: ChildKey | ExtraKey, subscription: Subscription): void {
+  #ended(key: Key, subscription: Subscription): void {
     if (!subscription.alive) return;
     this.#end(key, subscription);
     this.#refreshing = true;
@@ -535,6 +600,7 @@ export class AulaStore {
       this.#list = children;
       this.#refreshing = false;
       for (const key of [...this.#data.keys()]) if (!keys.has(childOf(key))) this.#data.delete(key);
+      for (const key of [...this.#today.keys()]) if (!keys.has(key)) this.#today.delete(key);
     }
     this.#changed();
     this.#reconcile();

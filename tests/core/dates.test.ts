@@ -35,6 +35,8 @@ describe("isDay", () => {
   it.each([
     ["2026-10-29", true],
     ["2026-13-01", false],
+    ["2026-11-31", false],
+    ["2028-02-29", true],
     ["2026-10-29T08:00:00Z", false],
     ["", false],
   ])("tells %j is a day: %s", (text, expected) => {

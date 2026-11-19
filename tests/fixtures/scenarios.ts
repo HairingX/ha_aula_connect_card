@@ -51,6 +51,8 @@ export const EMMA: Child = {
   first_name: "Emma",
   name: "Emma Testesen",
   institution_name: "Bakkedal Skole",
+  picture_entity: null,
+  guardian: "Lise Testesen",
 };
 
 const EMMA_SUBJECTS: Subjects = {

@@ -6,7 +6,15 @@
 
 import { vi } from "vitest";
 
-import { FakeConnection, fakeHass, present, settle, type FakeHass } from "../fake-hass.ts";
+import type { Child } from "../../src/core/types.ts";
+import {
+  FakeConnection,
+  fakeHass,
+  present,
+  settle,
+  type FakeHass,
+  type FakeHassOptions,
+} from "../fake-hass.ts";
 import { scenarioNamed } from "./scenarios.ts";
 import { EVENT_DETAILS } from "./week.ts";
 
@@ -30,6 +38,16 @@ export interface MountOptions {
   readonly clock?: string;
   /** Home Assistant's language. */
   readonly language?: string;
+  /** The children's day as it is now, by child; `aula_connect/today/subscribe` is not answered without it. */
+  readonly today?: (child: Child) => unknown;
+  /** A child's week, when not the scenario's; undefined holds it back. */
+  readonly week?: (child: Child, start: string) => unknown;
+  /** The children listed, when not the scenario's. */
+  readonly children?: readonly Child[];
+  /** What other commands answer, by their type. */
+  readonly commands?: FakeHassOptions["commands"];
+  /** Home Assistant's entities' states. */
+  readonly states?: FakeHassOptions["states"];
 }
 
 /** Mounts a card in a scenario, its data answered at once; timers must be fake. */
@@ -41,11 +59,18 @@ export async function mount(
   const item = scenarioNamed(scenario);
   vi.setSystemTime(new Date(options.clock ?? item.clock));
   const connection = new FakeConnection();
-  connection.respond = (message) =>
-    item.data(present(item.children.find((child) => child.child_id === message.child_id)));
+  const children = options.children ?? item.children;
+  connection.respond = (message) => {
+    const child = present(children.find((known) => known.child_id === message.child_id));
+    if (message.type !== "aula_connect/today/subscribe")
+      return options.week ? options.week(child, String(message.start)) : item.data(child);
+    return options.today ? options.today(child) : undefined;
+  };
   const hass = fakeHass({
     connection,
-    children: [...item.children],
+    children: [...children],
+    ...(options.commands === undefined ? {} : { commands: options.commands }),
+    ...(options.states === undefined ? {} : { states: options.states }),
     timeZone: item.zone,
     events: EVENT_DETAILS,
     ...(options.language === undefined ? {} : { language: options.language }),
