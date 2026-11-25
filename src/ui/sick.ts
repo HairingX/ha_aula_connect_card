@@ -316,7 +316,9 @@ function sickWindow(
   if (!may(family, "sick_reports"))
     return html`${top}${turnedOff("sick_reports", t)}${writeOff}
       <div class="window-actions">${write}</div>`;
-  const cannot = route === "none" || found?.child_found === false;
+  // The check speaks for this moment: a route it finds none on, or a child it cannot find, is no report.
+  const cannot =
+    route === "none" || (found !== undefined && (found.route === "none" || !found.child_found));
   const button = (enabled: boolean): TemplateResult =>
     html`<button
       class="filled-button"

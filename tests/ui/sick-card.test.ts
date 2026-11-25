@@ -471,6 +471,19 @@ describe("the sick card", () => {
     expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([]);
   });
 
+  it("offers no report where the check finds no route, though it says the child is found", async () => {
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      today: day({ route: "tabulex" }),
+      commands: commands({
+        "aula_connect/sick/check": () => ({ route: "none", child_found: true }),
+      }),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    expect(windowText(card)).toContain("Ida kan ikke meldes syg herfra. Meld syg i Aula.");
+    expect(texts(card, "dialog .window-actions button")).toEqual(["Skriv en besked"]);
+    expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([]);
+  });
+
   it("shows a child the check finds reported sick already as done, and offers no report", async () => {
     const { card, hass } = await mount(SICK, "thu-1000", {
       today: day({}),
