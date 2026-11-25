@@ -92,7 +92,10 @@ export interface FakeHassOptions {
   timeZone?: string;
   /** What `aula_connect/event` answers, by the event's id; any other id is not found. */
   events?: Readonly<Record<number, unknown>>;
-  /** What other commands answer, by their type; a function may also throw or reject. */
+  /**
+   * What other commands answer, by their type; a function may also throw or reject.
+   * `aula_connect/sick/check` finds the child, not reported sick, unless told otherwise.
+   */
   commands?: Readonly<Record<string, (message: Record<string, unknown>) => unknown>>;
   /** Home Assistant's entities' states, by entity id. */
   states?: HomeAssistant["states"];
@@ -123,6 +126,8 @@ export function fakeHass(options: FakeHassOptions = {}): FakeHass {
         return Promise.reject(error instanceof Error ? error : new Error(String(error)));
       }
     }
+    if (message.type === "aula_connect/sick/check")
+      return Promise.resolve(sickCheck(connection, message));
     if (message.type !== "aula_connect/children") {
       return Promise.reject(new Error("unexpected command"));
     }
@@ -144,6 +149,25 @@ export function fakeHass(options: FakeHassOptions = {}): FakeHass {
     callWS,
     ...(options.states === undefined ? {} : { states: options.states }),
   } as FakeHass;
+}
+
+/**
+ * Answers `aula_connect/sick/check` as for a child the route knows and has not reported sick
+ * today, along the route the child's day gives, or Aula's.
+ */
+function sickCheck(connection: FakeConnection, message: Record<string, unknown>): unknown {
+  const day = connection.respond?.({
+    type: "aula_connect/today/subscribe",
+    entry_id: message.entry_id,
+    child_id: message.child_id,
+  }) as { sick?: { route?: unknown } } | undefined;
+  return {
+    route: day?.sick?.route ?? "aula",
+    child_found: true,
+    same_institution: true,
+    sick_today: false,
+    would_send: null,
+  };
 }
 
 /**

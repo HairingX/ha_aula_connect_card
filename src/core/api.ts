@@ -18,6 +18,7 @@ import {
   type HassConnection,
   type Lesson,
   type Presence,
+  type SickCheck,
   type SickRoute,
   type Task,
   type Thread,
@@ -265,6 +266,25 @@ function about(child: Child, type: string): Record<string, unknown> {
   return { type: `aula_connect/${type}`, entry_id: child.entry_id, child_id: child.child_id };
 }
 
+const maybe = (value: unknown): boolean | null => (typeof value === "boolean" ? value : null);
+
+/**
+ * Asks the integration whether a child can be reported sick now, and along which route; it sends
+ * nothing to Aula. A child the answer does not say is found is not.
+ *
+ * @throws The websocket error.
+ */
+export async function checkSick(callWS: CallWS, child: Child): Promise<SickCheck> {
+  const item = fields(await callWS(about(child, "sick/check"))) ?? {};
+  return {
+    route: SICK_ROUTES.find((known) => known === item.route) ?? "none",
+    child_found: item.child_found === true,
+    same_institution: maybe(item.same_institution),
+    sick_today: maybe(item.sick_today),
+    would_send: or(item.would_send, null),
+  };
+}
+
 /**
  * Reports a child sick today, along the route the integration finds for it.
  *
@@ -295,7 +315,7 @@ function thread(item: Fields): Thread | undefined {
 }
 
 /**
- * Lists the threads a family can write to a child's teachers in, the newest first.
+ * Lists the threads a family can write about a child in, the newest first.
  *
  * @throws The websocket error.
  */

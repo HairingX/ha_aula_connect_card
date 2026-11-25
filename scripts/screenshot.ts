@@ -792,6 +792,13 @@ for (const item of shots) {
     answers: {
       "aula_connect/threads": THREADS,
       "aula_connect/message/reply": null,
+      "aula_connect/sick/check": {
+        route: "aula",
+        child_found: true,
+        same_institution: true,
+        sick_today: false,
+        would_send: null,
+      },
       "aula_connect/sick/report": { route: "aula" },
       "aula_connect/sick/undo": { route: "aula" },
       "aula_connect/vacations": VACATIONS,

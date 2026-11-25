@@ -184,7 +184,7 @@ describe("a child's presence", () => {
     else expect(presence).toMatchObject(expected);
   });
 
-  it("is at SFO after school: until it leaves, since it came, or here", () => {
+  it("is here after school: until it leaves, since it came, or just here", () => {
     expect(
       presenceOf(today({ presence: { status: 3, planned_out: "16:00" } }), hours, after),
     ).toMatchObject({

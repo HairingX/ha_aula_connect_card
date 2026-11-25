@@ -2056,12 +2056,14 @@ export const family = css`
     margin-top: 0.15em;
   }
   .done-line,
-  .route.aula {
+  .route.aula,
+  .route.tabulex {
     align-items: center;
     font-weight: var(--aula-medium);
   }
   .done-line ha-icon,
-  .route.aula ha-icon {
+  .route.aula ha-icon,
+  .route.tabulex ha-icon {
     color: var(--success-color, #43a047);
   }
   .done-line .text-button {

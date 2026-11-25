@@ -63,7 +63,7 @@ export interface OverviewConfig extends ActionConfig {
 
 /** The configuration of the cards that act on Aula: the sick, vacation and requests cards. */
 export interface ActionConfig extends CommonConfig {
-  /** The message to the teachers, `{name}` standing for the child's first name. */
+  /** The message about the illness, `{name}` standing for the child's first name. */
   readonly sickMessage: string | undefined;
   /** The guardian to act as, by the name Aula Connect gives the entry; undefined for the last used. */
   readonly sender: string | undefined;

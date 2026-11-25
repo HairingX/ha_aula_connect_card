@@ -1,6 +1,6 @@
 /**
  * The sick card, `custom:aula-connect-sick-card`: a row for each child, which reports it sick
- * and writes to the teachers, each on its own tap.
+ * and writes a message about it, each on its own tap.
  *
  * @packageDocumentation
  */

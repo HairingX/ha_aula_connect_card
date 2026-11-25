@@ -1,36 +1,36 @@
 /**
- * Reporting a child sick, and writing to the teachers about it: two steps, each its own tap. The
- * first reports the child sick along the route Aula Connect finds; the second, which the family
- * may skip, writes a message in a thread the family chooses. Nothing is sent without a tap.
+ * Reporting a child sick, and writing a message about it: two steps, each its own tap. The first
+ * reports the child sick along the route Aula Connect finds, once it has checked that the child
+ * can be; the second, which the family may skip, writes a message in a thread the family chooses.
+ * Nothing is sent without a tap.
  *
  * @packageDocumentation
  */
 
 import { html, nothing, type TemplateResult } from "lit/html.js";
 
-import { actionErrorText, fetchThreads, replyMessage, reportSick, undoSick } from "../core/api.ts";
+import {
+  actionErrorText,
+  checkSick,
+  fetchThreads,
+  replyMessage,
+  reportSick,
+  undoSick,
+} from "../core/api.ts";
 import type { ViewContext } from "../core/context.ts";
 import { capitalize, dayOf, formatDay, formatShortDate, instant } from "../core/dates.ts";
-import type { TextKey } from "../core/i18n.ts";
 import { rememberSender } from "../core/selection.ts";
-import type { Change, Child, SickRoute, ThreadList, TodayData } from "../core/types.ts";
+import type { Change, Child, SickCheck, ThreadList, TodayData } from "../core/types.ts";
 import { allowing, senderOf, type FamilyChild, type FamilyView } from "../model/family.ts";
 import type { CardState } from "./card.ts";
 import { alert, faceImage, icon, label, loading, turnedOff } from "./primitives.ts";
 import { head, modal } from "./window.ts";
 
-/** The route's line in the window, and its icon. */
-export const ROUTES: Readonly<Record<SickRoute, readonly [TextKey, string]>> = {
-  aula: ["sickRouteAula", "mdi:check-circle-outline"],
-  tabulex: ["sickRouteTabulex", "mdi:check-circle-outline"],
-  none: ["sickRouteNone", "mdi:information-outline"],
-};
-
 /** What reporting a child sick is about: the child, its entries and its day as it is now. */
 export interface SickTarget {
   /** The child, with its entries and day. */
   readonly family: FamilyChild;
-  /** The message to the teachers, `{name}` standing for the child's first name. */
+  /** The message about the illness, `{name}` standing for the child's first name. */
   readonly message: string | undefined;
   /** The guardian to act as, by the name of the entry's guardian. */
   readonly sender: string | undefined;
@@ -46,6 +46,10 @@ interface Flow {
   reported: boolean;
   /** Whether a report was taken back in this window. */
   undone: boolean;
+  /** The entry the check before a report was last asked for. */
+  checked: Child | undefined;
+  /** What that check answered, or its error; undefined while it runs. */
+  check: SickCheck | { readonly error: unknown } | undefined;
   threads: ThreadList | undefined;
   threadsError: unknown;
   thread: string | number | undefined;
@@ -82,6 +86,8 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
     error: undefined,
     reported: false,
     undone: false,
+    checked: undefined,
+    check: undefined,
     threads: undefined,
     threadsError: undefined,
     thread: undefined,
@@ -126,6 +132,21 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
       },
     );
   };
+  // An answer for an entry no longer chosen is left unshown.
+  const check = (): void => {
+    const entry = flow.entry;
+    flow.checked = entry;
+    flow.check = undefined;
+    const settle = (answer: SickCheck | { readonly error: unknown }): void => {
+      if (flow.checked !== entry) return;
+      flow.check = answer;
+      state.requestUpdate();
+    };
+    checkSick(state.callWS, entry).then(settle, (error: unknown) => {
+      settle({ error });
+    });
+  };
+  const checks = may(family, "sick_reports") && (family.today?.sick.route ?? "none") !== "none";
   const toWrite = (ctx: ViewContext): void => {
     flow.step = "write";
     flow.entry = entryFor("messages");
@@ -183,6 +204,7 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
       started = true;
       toWrite(ctx);
     }
+    if (checks && flow.step === "report" && flow.checked !== flow.entry) check();
     return modal(sickWindow(flow, target, ctx, close, state, actions), close);
   });
 }
@@ -237,7 +259,10 @@ function sickWindow(
   const face = state.face(child);
   const name = face.name;
   const route = today?.sick.route ?? "none";
-  const sickToday = flow.reported || (today?.sick.today === true && !flow.undone);
+  const check = flow.check;
+  const found = check !== undefined && !("error" in check) ? check : undefined;
+  const sickToday =
+    flow.reported || ((today?.sick.today === true || found?.sick_today === true) && !flow.undone);
   const day = capitalize(formatDay(ctx.today, ctx.language), ctx.language);
   const error = flow.error === undefined ? nothing : alert("error", actionErrorText(flow.error, t));
   const done = html`<p class="done-line">
@@ -284,49 +309,53 @@ function sickWindow(
           state.requestUpdate();
         }}
       >
-        ${t("writeTo")}
+        ${t("writeMessage")}
       </button>`
     : nothing;
   const writeOff = writes ? nothing : turnedOff("messages", t);
   if (!may(family, "sick_reports"))
     return html`${top}${turnedOff("sick_reports", t)}${writeOff}
       <div class="window-actions">${write}</div>`;
-  const [routeKey, routeIcon] = ROUTES[route];
-  return html`${top} ${flow.undone ? alert("info", t("undone")) : nothing}
-    <p class="route ${route}">${icon(routeIcon)}<span>${t(routeKey, { name })}</span></p>
-    ${senders(flow, allowing(family, "sick_reports"), ctx, actions)}
-    ${
-      route === "tabulex"
-        ? html`<p class="window-note">
-            ${icon("mdi:alert-outline")}<span>${t("sickFinal")}</span>
-          </p>`
-        : html`<p class="window-note">
-              ${icon("mdi:information-outline")}<span>${t("sickNote")}</span>
-            </p>
-            ${
-              route === "aula"
-                ? html`<p class="window-note">
-                    ${icon("mdi:calendar-refresh-outline")}<span
-                      >${t("sickRecovers", { name })}</span
-                    >
-                  </p>`
-                : nothing
-            }`
+  const cannot = route === "none" || found?.child_found === false;
+  const button = (enabled: boolean): TemplateResult =>
+    html`<button
+      class="filled-button"
+      type="button"
+      ?disabled=${!enabled || flow.busy}
+      @click=${() => {
+        actions.report(ctx);
+      }}
+    >
+      ${flow.busy ? t("sending") : t("sickConfirm")}
+    </button>`;
+  // Until the check answers, and where it fails, the report waits: it may not reach the child.
+  let line: unknown = nothing;
+  let report: unknown = nothing;
+  if (!cannot) {
+    if (check === undefined) [line, report] = [loading(t), button(false)];
+    else if ("error" in check)
+      [line, report] = [alert("error", actionErrorText(check.error, t)), button(false)];
+    else if (sickToday) line = done;
+    else {
+      if (route === "tabulex")
+        line = html`<p class="window-note">
+          ${icon("mdi:alert-outline")}<span>${t("sickFinal")}</span>
+        </p>`;
+      report = button(true);
     }
-    ${writeOff} ${error}
-    <div class="window-actions">
-      ${write}
-      <button
-        class="filled-button"
-        type="button"
-        ?disabled=${route === "none" || flow.busy}
-        @click=${() => {
-          actions.report(ctx);
-        }}
-      >
-        ${flow.busy ? t("sending") : t("sickConfirm")}
-      </button>
-    </div>`;
+  }
+  const routeLine = cannot
+    ? html`<p class="route none">
+        ${icon("mdi:information-outline")}<span>${t("sickRouteNone", { name })}</span>
+      </p>`
+    : html`<p class="route ${route}">
+        ${icon("mdi:check-circle-outline")}<span
+          >${t("sickRoute", { institution: child.institution_name })}</span
+        >
+      </p>`;
+  return html`${top} ${flow.undone ? alert("info", t("undone")) : nothing} ${routeLine}
+    ${senders(flow, allowing(family, "sick_reports"), ctx, actions)} ${line} ${writeOff} ${error}
+    <div class="window-actions">${write} ${report}</div>`;
 }
 
 function writeStep(
@@ -345,8 +374,8 @@ function writeStep(
   const { family } = target;
   const name = state.face(family.child).name;
   const earlier = since(family.today, ctx);
-  // A family that wrote the day before, or whose child was ill before today, has told the
-  // teachers: skipping is what they most likely want.
+  // A family that wrote the day before, or whose child was ill before today, has written
+  // already: skipping is what they most likely want.
   const skipFirst = family.today?.sick.wrote_yesterday === true || earlier !== undefined;
   const threads = flow.threads;
   const chosen = threads?.threads.find((item) => item.thread_id === flow.thread);
@@ -408,7 +437,7 @@ function writeStep(
           </label>`;
         })}
       </div>`;
-  return html`${head(t("writeTeachers"), [name], [], ctx, close, faceMark)}
+  return html`${head(t("writeQuestion"), [name], [], ctx, close, faceMark)}
     ${sickToday ? done : nothing}
     ${earlier ? html`<p class="info-line">${icon("mdi:thermometer")}<span>${t("sickSinceDay", { name, day: formatDay(earlier, ctx.language) })}</span></p>` : nothing}
     ${family.today?.sick.wrote_yesterday ? html`<p class="info-line">${icon("mdi:message-check-outline")}<span>${t("wroteYesterday")}</span></p>` : nothing}
@@ -440,8 +469,6 @@ export function sickState(family: FamilyChild, ctx: ViewContext): string {
   const { t } = ctx;
   const today = family.today;
   if (today?.sick.today) return t("sickToday");
-  // Until Aula Connect has looked for a route it reads none: only Tabulex is said in the row.
-  if (today?.sick.route === "tabulex") return t("sickRouteTabulex");
   return capitalize(formatDay(ctx.today, ctx.language), ctx.language);
 }
 
@@ -457,7 +484,7 @@ export function sickLabel(
 
 /** What the sick card shows. */
 export interface SickCardOptions {
-  /** The message to the teachers, `{name}` standing for the child's first name. */
+  /** The message about the illness, `{name}` standing for the child's first name. */
   readonly message: string | undefined;
   /** The guardian to act as. */
   readonly sender: string | undefined;
@@ -479,7 +506,7 @@ export function renderSickCard(
         const key = `sick|${String(family.child.child_id)}`;
         const sick = family.today?.sick.today === true;
         let title = t("reportSick", { name: face.name });
-        if (sick) title = may(family, "messages") ? t("writeTo") : face.name;
+        if (sick) title = may(family, "messages") ? t("writeMessage") : face.name;
         return html`<li>
           <button
             class="family-row"
@@ -500,6 +527,5 @@ export function renderSickCard(
         </li>`;
       })}
     </ul>
-    <p class="window-note">${icon("mdi:information-outline")}<span>${t("sickNote")}</span></p>
   </section>`;
 }

@@ -4,6 +4,7 @@ import {
   actionErrorText,
   addVacation,
   answerVacationRequest,
+  checkSick,
   deleteVacation,
   fetchChildren,
   fetchThreads,
@@ -122,6 +123,52 @@ describe("the commands that act", () => {
       [{ type: "aula_connect/sick/report", entry_id: "entry-a", child_id: 1001 }],
       [{ type: "aula_connect/sick/undo", entry_id: "entry-a", child_id: 1001 }],
     ]);
+  });
+
+  it("checks whether a child can be reported sick, sending only the check", async () => {
+    const answer = {
+      route: "tabulex",
+      child_found: true,
+      same_institution: false,
+      sick_today: true,
+      would_send: "Ida Testesen, syg i dag",
+    };
+    const callWS = answering(answer);
+    await expect(checkSick(callWS, IDA)).resolves.toEqual(answer);
+    expect(callWS.mock.calls).toEqual([
+      [{ type: "aula_connect/sick/check", entry_id: "entry-a", child_id: 1001 }],
+    ]);
+  });
+
+  it("takes a check it cannot read as finding no child along no route", async () => {
+    const unknown = {
+      route: "none",
+      child_found: false,
+      same_institution: null,
+      sick_today: null,
+      would_send: null,
+    };
+    await expect(checkSick(answering(null), IDA)).resolves.toEqual(unknown);
+    await expect(
+      checkSick(
+        answering({
+          route: "fax",
+          child_found: "yes",
+          same_institution: 1,
+          sick_today: "no",
+          would_send: 7,
+        }),
+        IDA,
+      ),
+    ).resolves.toEqual(unknown);
+    await expect(
+      checkSick(answering({ route: "aula", child_found: true, sick_today: false }), IDA),
+    ).resolves.toEqual({ ...unknown, route: "aula", child_found: true, sick_today: false });
+  });
+
+  it("gives the check's error", async () => {
+    const callWS = vi.fn<CallWS>(() => Promise.reject(wsError("not_allowed", "Off")));
+    await expect(checkSick(callWS, IDA)).rejects.toMatchObject({ code: "not_allowed" });
   });
 
   it("lists the threads, leaving out what is not one", async () => {

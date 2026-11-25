@@ -48,8 +48,12 @@ how it is set up: the README.
     (`entry_id`, `child_ids`, `start`, `end`, `comment`), `vacation/delete` (`entry_id`,
     `vacation_id`), `vacation_requests` and `vacation_request/answer` (`request_id`, the days from
     today, `comment`) act on a tap; their errors are `not_found`, `invalid_format`,
-    `not_supported`, `not_allowed` and `home_assistant_error`. `aula_connect/children` also gives
-    each child's `picture_entity` and its entry's `guardian`.
+    `not_supported`, `not_allowed` and `home_assistant_error`. `sick/check` (`entry_id`,
+    `child_id`) sends nothing: it is asked when the sick window opens at its report step, for a
+    route other than `none`, and again for another sender, and answers `route`, `child_found`,
+    `same_institution`, `sick_today` and `would_send`, with the same errors; the report waits for
+    it. `aula_connect/children` also gives each child's `picture_entity` and its entry's
+    `guardian`.
   - All-day events have days (`YYYY-MM-DD`, the end the day after the last); lessons and other
     events have ISO date-times with offset. `teachers` are full names. A lesson's `status` is
     `normal`, `substitute`, or another value shown as it is.

@@ -86,7 +86,7 @@ export const CHANGES = ["sick_reports", "vacations", "vacation_requests", "messa
 
 /**
  * A change in Aula: reporting a child sick and taking it back, registering and deleting a
- * vacation, answering a vacation request, or writing in a thread to the teachers.
+ * vacation, answering a vacation request, or writing in a thread about a child.
  */
 export type Change = (typeof CHANGES)[number];
 
@@ -284,6 +284,20 @@ export interface Presence {
 /** How a child is reported sick: Aula's own presence module, IST Tabulex, or not at all. */
 export type SickRoute = "aula" | "tabulex" | "none";
 
+/** What `aula_connect/sick/check` finds of reporting a child sick now, sending nothing. */
+export interface SickCheck {
+  /** The route a report would take. */
+  route: SickRoute;
+  /** Whether the route knows the child. */
+  child_found: boolean;
+  /** Whether the route's institution is the child's in Aula; null where it cannot tell. */
+  same_institution: boolean | null;
+  /** Whether the child is reported sick today already; null where it cannot tell. */
+  sick_today: boolean | null;
+  /** What a report would send, as the integration says it; null where it says nothing. */
+  would_send: string | null;
+}
+
 /** What is known of a child's sickness. */
 export interface SickState {
   /** The route a report takes; `none` also until Aula Connect has first looked for one. */
@@ -292,7 +306,7 @@ export interface SickState {
   today: boolean;
   /** The first day of the sickness, while it lasts. */
   since: Day | null;
-  /** Whether the family wrote to the teachers through Home Assistant on the weekday before. */
+  /** Whether the family wrote a message about the child through Home Assistant on the weekday before. */
   wrote_yesterday: boolean;
 }
 
@@ -306,7 +320,7 @@ export interface TodayData {
   vacation_requests_pending: number;
 }
 
-/** A message thread a family can write to the teachers in. */
+/** A message thread a family can write about a child in. */
 export interface Thread {
   /** Aula's id of the thread. */
   thread_id: string | number;
@@ -314,7 +328,7 @@ export interface Thread {
   subject: string;
   /** When something last happened in it, ISO 8601. */
   last_activity: string;
-  /** Its recipients other than the family's guardians, by name: the teachers, mostly. */
+  /** Its recipients other than the family's guardians, by name: the staff, mostly. */
   employees: string[];
   /** Whether a reply can be written in it: it is not deleted. */
   can_reply: boolean;

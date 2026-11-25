@@ -7,7 +7,7 @@ import type { Change, Child } from "../../src/core/types.ts";
 import { fillMessage } from "../../src/ui/sick.ts";
 import { wsError } from "../fake-hass.ts";
 import { SECOND_ENTRY, THREADS, todayOf } from "../fixtures/family.ts";
-import { all, mount, unmountAll } from "../fixtures/mount.ts";
+import { all, mount, text, unmountAll } from "../fixtures/mount.ts";
 import { CHILDREN, EVERY_CHANGE } from "../fixtures/week.ts";
 import { find, root, settled, tap, texts, type, windowText } from "./family-helpers.ts";
 
@@ -59,27 +59,32 @@ afterEach(async () => {
 });
 
 describe("the sick card", () => {
-  it("has a row for each child, saying how it is reported sick", async () => {
+  it("has a row for each child, saying whether it is reported sick today, whatever its route", async () => {
     const { card } = await mount(SICK, "thu-1000", {
       today: (child) =>
         child.child_id === 1001 ? day({ today: true })(child) : day({ route: "tabulex" })(child),
     });
-    expect(texts(card, ".family-title")).toEqual(["Skriv til lærerne", "Meld Oskar syg"]);
-    expect(texts(card, ".family-sub")[0]).toBe("Meldt syg i dag");
-    expect(texts(card, ".family-sub")[1]).toContain("Tabulex");
+    expect(texts(card, ".family-title")).toEqual(["Skriv en besked", "Meld Oskar syg"]);
+    expect(texts(card, ".family-sub")).toEqual(["Meldt syg i dag", "Torsdag 29. oktober"]);
+    expect(text(card)).not.toContain("Tabulex");
+    expect(all(card, ".window-note")).toEqual([]);
     const { card: plain } = await mount(SICK, "thu-1000", { today: day({}) });
     expect(texts(plain, ".family-sub")).toEqual(["Torsdag 29. oktober", "Torsdag 29. oktober"]);
   });
 
-  it("reports a child sick in Tabulex, saying first that it cannot be taken back", async () => {
+  it("reports a child sick at its institution, saying first where it cannot be taken back", async () => {
     const { card, hass } = await mount(SICK, "thu-1000", {
       today: day({ route: "tabulex" }),
       commands: commands(),
     });
     await tap(card, ".family-row", "Meld Ida syg");
-    expect(windowText(card)).toContain("Meldes syg i Tabulex");
-    expect(windowText(card)).toContain("En sygemelding i Tabulex kan ikke fortrydes.");
-    expect(windowText(card)).not.toContain("SFO og dagtilbud");
+    expect(sent(hass.callWS.mock.calls, "sick/check")).toEqual([
+      { type: "aula_connect/sick/check", entry_id: "entry-a", child_id: 1001 },
+    ]);
+    expect(windowText(card)).toContain("Meldes syg hos Bakkedal Skole");
+    expect(windowText(card)).toContain("Sygemeldingen kan ikke fortrydes herfra.");
+    expect(windowText(card)).not.toContain("Tabulex");
+    expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([]);
     await tap(card, "dialog .filled-button", "Meld syg");
     expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([
       { type: "aula_connect/sick/report", entry_id: "entry-a", child_id: 1001 },
@@ -88,17 +93,17 @@ describe("the sick card", () => {
     expect(texts(card, "dialog .text-button")).not.toContain("Fortryd");
   });
 
-  it("reports a child sick, then writes to the teachers in the thread used last", async () => {
+  it("reports a child sick, then writes a message in the thread used last", async () => {
     const { card, hass } = await mount(SICK, "thu-1000", { today: day({}), commands: commands() });
     await tap(card, ".family-row", "Meld Ida syg");
-    expect(windowText(card)).toContain("Meldes syg i Aula (SFO og dagtilbud)");
-    expect(windowText(card)).toContain("Aula raskmelder Ida af sig selv i morgen.");
+    expect(windowText(card)).toContain("Meldes syg hos Bakkedal Skole");
+    expect(all(card, "dialog .window-note")).toEqual([]);
     expect(all(card, "dialog .choices")).toEqual([]);
     await tap(card, "dialog .filled-button", "Meld syg");
     expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([
       { type: "aula_connect/sick/report", entry_id: "entry-a", child_id: 1001 },
     ]);
-    expect(windowText(card)).toContain("Skriv til lærerne?");
+    expect(windowText(card)).toContain("Skriv en besked?");
     expect(windowText(card)).toContain("Ida er meldt syg i dag");
     expect(find(card, "dialog textarea", undefined, HTMLTextAreaElement).value).toBe(
       "Ida er syg og bliver derfor hjemme.",
@@ -147,8 +152,8 @@ describe("the sick card", () => {
       }),
     });
     await tap(card, ".family-row", "Meld Ida syg");
-    await tap(card, "dialog .text-button", "Skriv til lærerne");
-    expect(windowText(card)).toContain("tidligere skoleår");
+    await tap(card, "dialog .text-button", "Skriv en besked");
+    expect(windowText(card)).toContain("er fra et tidligere år eller lukket");
     expect(find(card, "dialog .filled-button", "Send").disabled).toBe(true);
     const radio = find(card, "dialog .thread input", undefined, HTMLInputElement);
     radio.checked = true;
@@ -168,9 +173,9 @@ describe("the sick card", () => {
       commands: commands(),
       config: { sick_message: "{name} er stadig syg." },
     });
-    await tap(card, ".family-row", "Skriv til lærerne");
+    await tap(card, ".family-row", "Skriv en besked");
     expect(windowText(card)).toContain("Ida har været syg siden onsdag 28. oktober");
-    expect(windowText(card)).toContain("I skrev til lærerne herfra på hverdagen før");
+    expect(windowText(card)).toContain("I skrev en besked herfra på hverdagen før");
     expect(find(card, "dialog textarea", undefined, HTMLTextAreaElement).value).toBe(
       "Ida er stadig syg.",
     );
@@ -185,8 +190,8 @@ describe("the sick card", () => {
       today: day({ today: true }),
       commands: commands({ "aula_connect/threads": () => ({ threads: [] }) }),
     });
-    await tap(card, ".family-row", "Skriv til lærerne");
-    expect(windowText(card)).toContain("Ingen tråd om Ida med lærerne");
+    await tap(card, ".family-row", "Skriv en besked");
+    expect(windowText(card)).toContain("Ingen tråd om Ida at skrive i");
     unmountAll();
     const { card: failing } = await mount(SICK, "thu-1000", {
       today: day({ today: true }),
@@ -196,7 +201,7 @@ describe("the sick card", () => {
         },
       }),
     });
-    await tap(failing, ".family-row", "Skriv til lærerne");
+    await tap(failing, ".family-row", "Skriv en besked");
     expect(windowText(failing)).toContain("Opdatér Aula Connect");
   });
 
@@ -213,12 +218,11 @@ describe("the sick card", () => {
     await tap(card, "dialog .filled-button", "Meld syg");
     expect(windowText(card)).toContain("Aula Connect kan ikke gøre det for dette barn endnu.");
     unmountAll();
-    const { card: none } = await mount(SICK, "thu-1000", { today: day({ route: "none" }) });
+    const { card: none, hass } = await mount(SICK, "thu-1000", { today: day({ route: "none" }) });
     await tap(none, ".family-row", "Meld Ida syg");
-    expect(windowText(none)).toContain(
-      "Aula Connect har endnu ikke fundet ud af, hvordan Ida meldes syg herfra",
-    );
-    expect(find(none, "dialog .filled-button", "Meld syg").disabled).toBe(true);
+    expect(windowText(none)).toContain("Ida kan ikke meldes syg herfra. Meld syg i Aula.");
+    expect(texts(none, "dialog .window-actions button")).toEqual(["Skriv en besked"]);
+    expect(sent(hass.callWS.mock.calls, "sick/check")).toEqual([]);
   });
 
   it("acts as the guardian chosen, and asks that guardian's threads", async () => {
@@ -230,7 +234,7 @@ describe("the sick card", () => {
     await tap(card, ".family-row", "Meld Ida syg");
     expect(texts(card, "dialog .choice")).toEqual(["Lise Testesen", "Peter Testesen"]);
     await tap(card, "dialog .choice", "Peter");
-    await tap(card, "dialog .text-button", "Skriv til lærerne");
+    await tap(card, "dialog .text-button", "Skriv en besked");
     await tap(card, "dialog .choice", "Lise");
     expect(
       sent(hass.callWS.mock.calls, "threads").map(
@@ -262,7 +266,7 @@ describe("the sick card", () => {
       }),
     });
     await tap(card, ".family-row", "Meld Ida syg");
-    await tap(card, "dialog .text-button", "Skriv til lærerne");
+    await tap(card, "dialog .text-button", "Skriv en besked");
     expect(texts(card, ".thread-meta")).toEqual(["Karen Lund"]);
     await tap(card, "dialog .filled-button", "Send");
     expect(sent(hass.callWS.mock.calls, "message/reply")).toHaveLength(1);
@@ -278,7 +282,7 @@ describe("the sick card", () => {
     expect(texts(card, ".family-sub")).toEqual(["Torsdag 29. oktober", "Torsdag 29. oktober"]);
     await tap(card, ".family-row", "Meld Ida syg");
     expect(texts(card, "dialog .choice")).toEqual(["Lise Testesen", "entry-b"]);
-    expect(windowText(card)).toContain("Aula Connect har endnu ikke fundet ud af");
+    expect(windowText(card)).toContain("Ida kan ikke meldes syg herfra. Meld syg i Aula.");
   });
 
   it("offers no report where reporting sick is turned off, only writing", async () => {
@@ -289,11 +293,12 @@ describe("the sick card", () => {
     });
     await tap(card, ".family-row", "Meld Ida syg");
     expect(windowText(card)).toContain("Sygemelding er slået fra i Aula Connects indstillinger.");
-    expect(windowText(card)).not.toContain("Meldes syg i Aula");
-    expect(texts(card, "dialog .window-actions button")).toEqual(["Skriv til lærerne"]);
-    await tap(card, "dialog .text-button", "Skriv til lærerne");
-    expect(windowText(card)).toContain("Skriv til lærerne?");
+    expect(windowText(card)).not.toContain("Meldes syg hos");
+    expect(texts(card, "dialog .window-actions button")).toEqual(["Skriv en besked"]);
+    await tap(card, "dialog .text-button", "Skriv en besked");
+    expect(windowText(card)).toContain("Skriv en besked?");
     expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([]);
+    expect(sent(hass.callWS.mock.calls, "sick/check")).toEqual([]);
   });
 
   it("reports without writing where writing is turned off, and claims no message", async () => {
@@ -362,7 +367,7 @@ describe("the sick card", () => {
       today: day({ today: true }),
       commands: commands(),
     });
-    await tap(card, ".family-row", "Skriv til lærerne");
+    await tap(card, ".family-row", "Skriv en besked");
     expect(windowText(card)).toContain("Ida er meldt syg i dag");
     expect(all(card, "dialog .done-line .text-button")).toEqual([]);
   });
@@ -427,6 +432,124 @@ describe("the sick card", () => {
     await tap(card, ".family-row", "Meld Ida syg");
     await tap(card, "dialog .filled-button", "Meld syg");
     expect(windowText(card)).toContain("Aula Connects indstillinger tillader ikke dette.");
+  });
+
+  it("checks before a report, the report waiting while it runs", async () => {
+    let answer: (value: unknown) => void = () => undefined;
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      today: day({}),
+      commands: commands({
+        "aula_connect/sick/check": () =>
+          new Promise((resolve) => {
+            answer = resolve;
+          }),
+      }),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    expect(windowText(card)).toContain("Henter fra Aula…");
+    expect(find(card, "dialog .filled-button", "Meld syg").disabled).toBe(true);
+    answer({ route: "aula", child_found: true, sick_today: false });
+    await settled(card);
+    expect(windowText(card)).not.toContain("Henter fra Aula…");
+    expect(find(card, "dialog .filled-button", "Meld syg").disabled).toBe(false);
+    expect(sent(hass.callWS.mock.calls, "sick/check")).toHaveLength(1);
+    expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([]);
+  });
+
+  it("offers no report for a child the check does not find, sending Aula's way instead", async () => {
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      today: day({ route: "tabulex" }),
+      commands: commands({
+        "aula_connect/sick/check": () => ({ route: "tabulex", child_found: false }),
+      }),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    expect(windowText(card)).toContain("Ida kan ikke meldes syg herfra. Meld syg i Aula.");
+    expect(windowText(card)).not.toContain("Meldes syg hos");
+    expect(windowText(card)).not.toContain("kan ikke fortrydes");
+    expect(texts(card, "dialog .window-actions button")).toEqual(["Skriv en besked"]);
+    expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([]);
+  });
+
+  it("shows a child the check finds reported sick already as done, and offers no report", async () => {
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      today: day({}),
+      commands: commands({
+        "aula_connect/sick/check": () => ({ route: "aula", child_found: true, sick_today: true }),
+      }),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    expect(windowText(card)).toContain("Ida er meldt syg i dag");
+    expect(texts(card, "dialog .window-actions button")).toEqual(["Skriv en besked"]);
+    await tap(card, "dialog .text-button", "Skriv en besked");
+    expect(windowText(card)).toContain("Skriv en besked?");
+    expect(windowText(card)).toContain("Ida er meldt syg i dag");
+    await tap(card, "dialog .done-line .text-button", "Fortryd");
+    expect(sent(hass.callWS.mock.calls, "sick/undo")).toHaveLength(1);
+    expect(windowText(card)).toContain("Sygemeldingen er taget tilbage");
+    expect(windowText(card)).not.toContain("Ida er meldt syg i dag");
+    expect(find(card, "dialog .filled-button", "Meld syg").disabled).toBe(false);
+    expect(sent(hass.callWS.mock.calls, "sick/check")).toHaveLength(1);
+    expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([]);
+  });
+
+  it("checks a child opened reported sick once its report is taken back", async () => {
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      today: day({ today: true }),
+      commands: commands(),
+    });
+    await tap(card, ".family-row", "Skriv en besked");
+    expect(sent(hass.callWS.mock.calls, "sick/check")).toEqual([]);
+    await tap(card, "dialog .done-line .text-button", "Fortryd");
+    expect(sent(hass.callWS.mock.calls, "sick/check")).toHaveLength(1);
+    expect(find(card, "dialog .filled-button", "Meld syg").disabled).toBe(false);
+  });
+
+  it("says why the check failed, and keeps the report from being sent", async () => {
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      today: day({}),
+      commands: commands({
+        "aula_connect/sick/check": () => {
+          throw wsError("not_allowed", "Off");
+        },
+      }),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    expect(windowText(card)).toContain("Aula Connects indstillinger tillader ikke dette.");
+    expect(find(card, "dialog .filled-button", "Meld syg").disabled).toBe(true);
+    expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([]);
+  });
+
+  it("checks again for another sender, showing only the answer for the one chosen", async () => {
+    const answers: Record<string, (value: unknown) => void> = {};
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      children: [...CHILDREN, ...SECOND_ENTRY],
+      today: day({}),
+      commands: commands({
+        "aula_connect/sick/check": (message) =>
+          new Promise((resolve) => {
+            answers[String(message.entry_id)] = resolve;
+          }),
+      }),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    await tap(card, "dialog .choice", "Peter");
+    expect(
+      sent(hass.callWS.mock.calls, "sick/check").map(
+        (message) => (message as { entry_id: string }).entry_id,
+      ),
+    ).toEqual(["entry-a", "entry-b"]);
+    answers["entry-a"]?.({ route: "aula", child_found: false });
+    await settled(card);
+    expect(windowText(card)).toContain("Henter fra Aula…");
+    expect(windowText(card)).not.toContain("kan ikke meldes syg herfra");
+    answers["entry-b"]?.({ route: "aula", child_found: true, sick_today: false });
+    await settled(card);
+    expect(find(card, "dialog .filled-button", "Meld syg").disabled).toBe(false);
+    await tap(card, "dialog .filled-button", "Meld syg");
+    expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([
+      { type: "aula_connect/sick/report", entry_id: "entry-b", child_id: 1001 },
+    ]);
   });
 
   it("fills a child's name into the message", () => {

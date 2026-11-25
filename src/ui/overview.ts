@@ -60,7 +60,7 @@ export interface OverviewOptions {
   readonly paths: Paths;
   /** Icons for things to bring, by the thing in lower case, over the built-in ones. */
   readonly packIcons: Readonly<Record<string, string>>;
-  /** The message to the teachers, `{name}` standing for the child's first name. */
+  /** The message about the illness, `{name}` standing for the child's first name. */
   readonly message: string | undefined;
   /** The guardian to act as. */
   readonly sender: string | undefined;
@@ -735,7 +735,7 @@ export function openPresence(
                       );
                     }}
                   >
-                    ${t("writeTo")}
+                    ${t("writeMessage")}
                   </button>`
               : allowing(family, "sick_reports").length === 0
                 ? turnedOff("sick_reports", t)

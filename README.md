@@ -249,7 +249,7 @@ look_switch: true
 `custom:aula-connect-overview-card` shows each child's day that matters now at a glance: its
 hours, its day as a bar on one axis for all the children, what to bring with an icon for each
 thing, and the homework due from that day on. Beside the name, the child's presence today as the
-institution registers it: at school until the day ends, at SFO since a time, coming, gone home,
+institution registers it: at school until the day ends, here since a time, coming, gone home,
 or sick; after `switch_time` it says that it is today's. Under the children, tiles go to the
 homework, the week plan and the week, and **Det sker** lists what is coming the next seven days
 once, with the faces of the children it is for.
@@ -288,19 +288,20 @@ without a touch.
 
 ## Sick card
 
-![Writing to the teachers](docs/sick-thu-1000-380-light-blue-da-2child-step-2.png)
+![Writing a message](docs/sick-thu-1000-380-light-blue-da-2child-step-2.png)
 
 `custom:aula-connect-sick-card` has a row for each child. Reporting a child sick is two steps,
 each its own tap:
 
-1. **Meld syg** reports the child sick along the route Aula Connect has found: in Aula, for SFO
-   and day care, where **Fortryd** takes it back the same day; or in IST's Tabulex, which takes no
-   report back, as the window says before you tap. Until Aula Connect has looked for the route
-   it says so, rather than that the child cannot be reported.
-2. **Skriv til lærerne?** writes to the school, which a report does not tell: the message, made
-   from `sick_message`, in a thread you choose, the one written in last chosen for you. **Spring
-   over** writes nothing; it comes first where the child has been ill since before today, or you
-   wrote from here the weekday before.
+1. **Meld syg** reports the child sick at its institution, as Aula names it. Before you can tap
+   **Meld syg**, the card checks that the child can be reported sick from here; it sends nothing
+   doing so. Where the child can't be, the window says so and to report sick in Aula, and offers
+   no button; where the child is reported sick today already, it says that instead. Where a
+   report can be taken back, **Fortryd** takes it back the same day; where it can't, the window
+   says so before you tap.
+2. **Skriv en besked?** writes a message about it: made from `sick_message`, in a thread you
+   choose, the one written in last chosen for you. **Spring over** writes nothing; it comes first
+   where the child has been ill since before today, or you wrote from here the weekday before.
 
 A child two guardians each have in Aula Connect is reported as the guardian in `sender`, else as
 the one used last for the child, else the first; the window lets you choose.
@@ -358,7 +359,7 @@ entry does; otherwise the card says they are turned off.
 | `look`                 | overview                 | the bar's                   | `rows`, `columns` or `board`, kept whatever the children's bar chooses.                                                                                                |
 | `paths`                | overview                 | `lektier`, `ugeplan`, `uge` | The views the tiles go to: `homework`, `weekplan`, `week`; relative to the dashboard unless they begin with `/`.                                                       |
 | `pack_icons`           | overview                 | none                        | An mdi icon for a thing to bring, by the thing, over the built-in ones.                                                                                                |
-| `sick_message`         | overview, sick           | a sentence                  | The message to the teachers; `{name}` is the child's first name.                                                                                                       |
+| `sick_message`         | overview, sick           | a sentence                  | The message about the illness; `{name}` is the child's first name.                                                                                                     |
 | `sender`               | overview, sick, vacation | the one used last           | The guardian to act as, by the name Aula Connect gives the entry.                                                                                                      |
 
 A school day card in YAML, every option at its default but the children:
@@ -543,10 +544,12 @@ holds the day, each child's hours and what each child is to bring.
   the window says that an update shows more.
 - `aula_connect/today/subscribe`, with a child's `entry_id` and `child_id`, for the presence, the
   sickness and the vacation requests awaiting an answer, by the cards that show them.
+- `aula_connect/sick/check`, with a child's `entry_id` and `child_id`, when the sick window
+  opens at its report step, and again for another sender; it sends nothing to Aula.
 - `aula_connect/sick/report` and `aula_connect/sick/undo`, with a child's `entry_id` and
   `child_id`, on a tap.
-- `aula_connect/threads`, with a child's `entry_id` and `child_id`, when the message to the
-  teachers is written; `aula_connect/message/reply` with a `thread_id` and the `text`, on a tap.
+- `aula_connect/threads`, with a child's `entry_id` and `child_id`, when the message about the
+  illness is written; `aula_connect/message/reply` with a `thread_id` and the `text`, on a tap.
 - `aula_connect/vacations` with a child's `entry_id` and `child_id`;
   `aula_connect/vacation/add` with an `entry_id`, `child_ids`, `start`, `end` and a `comment`, and
   `aula_connect/vacation/delete` with an `entry_id` and a `vacation_id`, on a tap.

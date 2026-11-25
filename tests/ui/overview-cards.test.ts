@@ -247,7 +247,7 @@ describe("the overview", () => {
       today: (child) => (child.child_id === 1001 ? todayOf(child) : sickToday(child)),
     });
     expect(texts(card, ".ov-title")).toEqual(["I morgen fredag 30. oktober"]);
-    expect(texts(card, ".presence")).toEqual(["I dag: I SFO · går 15.30", "I dag: Syg"]);
+    expect(texts(card, ".presence")).toEqual(["I dag: Til stede · går 15.30", "I dag: Syg"]);
     expect(texts(card, ".ov-top .label.warning")).toEqual(["Meldt syg i dag"]);
   });
 
@@ -280,7 +280,7 @@ describe("the overview", () => {
     expect(windowText(card)).toContain("Planlagt 07.00–15.30");
     expect(windowText(card)).toContain("I dag kom 07.05");
     expect(windowText(card)).toContain("Hentes af Mor");
-    expect(windowText(card)).toContain("Skole 08.00–12.55");
+    expect(windowText(card)).toContain("Skema 08.00–12.55");
     await tap(card, "dialog .filled-button");
     expect(windowText(card)).toContain("Meld Ida syg");
     await tap(card, "dialog .filled-button", "Meld syg");
@@ -291,7 +291,7 @@ describe("the overview", () => {
     });
   });
 
-  it("opens the teachers' message from the presence of a child reported sick", async () => {
+  it("opens the message from the presence of a child reported sick", async () => {
     const { card } = await mount(OVERVIEW, "thu-1000", {
       today: sickToday,
       commands: { "aula_connect/threads": () => ({ threads: [] }) },
@@ -299,7 +299,7 @@ describe("the overview", () => {
     await tap(card, ".presence", "Syg");
     expect(windowText(card)).toContain("Nu Syg");
     await tap(card, "dialog .filled-button");
-    expect(windowText(card)).toContain("Skriv til lærerne");
+    expect(windowText(card)).toContain("Skriv en besked?");
   });
 
   it("opens an event coming, and goes to the pages", async () => {
@@ -502,9 +502,7 @@ describe("a child's presence window", () => {
     await tap(card, ".presence", "Kommer");
     expect(windowText(card)).toContain("Planlagt 07.45");
     expect(windowText(card)).not.toContain("I dag kom");
-    expect(windowText(card)).toContain(
-      "Aula Connect har endnu ikke fundet ud af, hvordan Oskar meldes syg herfra",
-    );
+    expect(windowText(card)).toContain("Oskar kan ikke meldes syg herfra. Meld syg i Aula.");
   });
 
   it("offers reporting sick and writing only where Aula Connect's options allow them", async () => {
