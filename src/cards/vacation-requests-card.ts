@@ -66,7 +66,7 @@ export class AulaConnectVacationRequestsCard extends AulaCard<ActionConfig, Fami
   ): TemplateResult {
     const children = view.children.map((item) => {
       const id = item.child.child_id;
-      const entry = senderOf(item, config.sender);
+      const entry = senderOf(item, config.sender, "vacation_requests");
       // The requests are asked for again each day and when the number awaiting an answer
       // changes; until the child's day has come, or failed to, that number is not known.
       const known = item.today !== undefined || item.error !== undefined;

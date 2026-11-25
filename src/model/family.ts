@@ -8,7 +8,7 @@
 import { selectChildren } from "../core/children.ts";
 import { selection } from "../core/selection.ts";
 import type { StoreSnapshot } from "../core/store.ts";
-import { childKey, type Child, type TodayData } from "../core/types.ts";
+import { childKey, type Change, type Child, type TodayData } from "../core/types.ts";
 
 /** A child, the entries it is in, and its day as it is now. */
 export interface FamilyChild {
@@ -53,15 +53,24 @@ export function familyView(snapshot: StoreSnapshot, ids: readonly number[]): Fam
   return { children, missing, size: 1 + children.length };
 }
 
+/** Returns the entries of a child that allow a change in Aula. */
+export function allowing(family: Pick<FamilyChild, "entries">, change: Change): Child[] {
+  return family.entries.filter((entry) => entry.allowed.includes(change));
+}
+
 /**
- * Returns the entry to act from for a child: the one of the guardian `sender` names, else the one
- * last acted from, else the first, else the child as it is shown.
+ * Returns the entry to make a change from for a child, among those that allow it where any does:
+ * the one of the guardian `sender` names, else the one last acted from, else the first, else the
+ * child as it is shown.
  */
 export function senderOf(
   family: Pick<FamilyChild, "child" | "entries">,
   sender: string | undefined,
+  change: Change,
 ): Child {
-  const { child, entries } = family;
+  const { child } = family;
+  const allowed = allowing(family, change);
+  const entries = allowed.length > 0 ? allowed : family.entries;
   const last = selection().senders.get(child.child_id);
   return (
     entries.find((entry) => sender !== undefined && entry.guardian === sender) ??

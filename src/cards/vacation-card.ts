@@ -63,7 +63,7 @@ export class AulaConnectVacationCard extends AulaCard<ActionConfig, FamilyView> 
   ): TemplateResult {
     const children = view.children.map((item) => {
       const id = item.child.child_id;
-      const entry = senderOf(item, config.sender);
+      const entry = senderOf(item, config.sender, "vacations");
       // Asked for again each day, as a wall screen stays for days.
       const load = this.#vacations.get(`${entry.entry_id}|${String(id)}`, ctx.today, () =>
         fetchVacations(this.callWS, entry),

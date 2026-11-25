@@ -13,10 +13,10 @@ import type { ViewContext } from "../core/context.ts";
 import { capitalize, dayOf, formatDay, formatShortDate, instant } from "../core/dates.ts";
 import type { TextKey } from "../core/i18n.ts";
 import { rememberSender } from "../core/selection.ts";
-import type { Child, SickRoute, ThreadList, TodayData } from "../core/types.ts";
-import { senderOf, type FamilyChild, type FamilyView } from "../model/family.ts";
+import type { Change, Child, SickRoute, ThreadList, TodayData } from "../core/types.ts";
+import { allowing, senderOf, type FamilyChild, type FamilyView } from "../model/family.ts";
 import type { CardState } from "./card.ts";
-import { alert, faceImage, icon, label, loading } from "./primitives.ts";
+import { alert, faceImage, icon, label, loading, turnedOff } from "./primitives.ts";
 import { head, modal } from "./window.ts";
 
 /** The route's line in the window, and its icon. */
@@ -58,20 +58,26 @@ export function fillMessage(template: string, child: Child): string {
   return template.replace(/\{name\}/g, child.first_name);
 }
 
+function may(family: FamilyChild, change: Change): boolean {
+  return allowing(family, change).length > 0;
+}
+
 function since(today: TodayData | undefined, ctx: ViewContext): string | undefined {
   const day = today?.sick.since;
   return day && day < ctx.today ? day : undefined;
 }
 
 /**
- * Opens the window that reports a child sick, at the first step, or at the second with `write`;
- * `key` is the opening button's `data-detail`.
+ * Opens the window that reports a child sick, at the first step; with `write` at the second, or
+ * at the end where writing is turned off. `key` is the opening button's `data-detail`.
  */
 export function openSick(state: CardState, target: SickTarget, key: string, write = false): void {
   const { family } = target;
+  const writes = may(family, "messages");
+  const step = write ? (writes ? "write" : "done") : "report";
   const flow: Flow = {
-    step: write ? "write" : "report",
-    entry: senderOf(family, target.sender),
+    step,
+    entry: senderOf(family, target.sender, step === "write" ? "messages" : "sick_reports"),
     busy: false,
     error: undefined,
     reported: false,
@@ -82,6 +88,8 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
     text: "",
     sent: false,
   };
+  const entryFor = (change: Change): Child =>
+    flow.entry.allowed.includes(change) ? flow.entry : senderOf(family, target.sender, change);
   const run = (action: () => Promise<void>, done: () => void): void => {
     flow.busy = true;
     flow.error = undefined;
@@ -120,6 +128,7 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
   };
   const toWrite = (ctx: ViewContext): void => {
     flow.step = "write";
+    flow.entry = entryFor("messages");
     flow.text = fillMessage(target.message ?? ctx.t("sickMessageDefault"), family.child);
     flow.error = undefined;
     loadThreads();
@@ -133,15 +142,17 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
           rememberSender(family.child.child_id, entry.entry_id);
           flow.reported = true;
           flow.undone = false;
-          toWrite(ctx);
+          if (writes) toWrite(ctx);
+          else flow.step = "done";
         },
       );
     },
     undo: (): void => {
-      const entry = flow.entry;
+      const entry = entryFor("sick_reports");
       run(
         () => undoSick(state.callWS, entry),
         () => {
+          flow.entry = entry;
           flow.reported = false;
           flow.undone = true;
           flow.step = "report";
@@ -166,7 +177,7 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
     },
     write: toWrite,
   };
-  let started = !write;
+  let started = flow.step !== "write";
   state.openModal(key, (ctx, close) => {
     if (!started) {
       started = true;
@@ -184,12 +195,17 @@ interface Actions {
   readonly write: (ctx: ViewContext) => void;
 }
 
-function senders(flow: Flow, family: FamilyChild, ctx: ViewContext, actions: Actions): unknown {
-  if (family.entries.length < 2) return nothing;
+function senders(
+  flow: Flow,
+  entries: readonly Child[],
+  ctx: ViewContext,
+  actions: Actions,
+): unknown {
+  if (entries.length < 2) return nothing;
   return html`<div class="field">
     <span class="field-label" id="sender-label">${ctx.t("sendAs")}</span>
     <div class="choices" role="group" aria-labelledby="sender-label">
-      ${family.entries.map(
+      ${entries.map(
         (entry) =>
           html`<button
             class="choice"
@@ -227,7 +243,7 @@ function sickWindow(
   const done = html`<p class="done-line">
     ${icon("mdi:check-circle-outline")}<span>${t("sickDone", { name })}</span>
     ${
-      route === "aula"
+      route === "aula" && may(family, "sick_reports")
         ? html`<button
             class="text-button"
             type="button"
@@ -241,9 +257,15 @@ function sickWindow(
   </p>`;
   const faceMark = faceImage(face, "window-face");
   if (flow.step === "done") {
-    return html`${head(t("writeTitle", { name }), [day], [], ctx, close, faceMark)}
-      ${sickToday ? done : nothing}
-      <p class="done-line">${icon("mdi:send-check-outline")}<span>${t("sent")}</span></p>
+    const title = flow.sent ? t("writeTitle", { name }) : t("reportSick", { name });
+    return html`${head(title, [day], [], ctx, close, faceMark)} ${sickToday ? done : nothing}
+      ${
+        flow.sent
+          ? html`<p class="done-line">
+              ${icon("mdi:send-check-outline")}<span>${t("sent")}</span>
+            </p>`
+          : turnedOff("messages", t)
+      }
       <div class="window-actions">
         <button class="filled-button" type="button" @click=${close}>${t("close2")}</button>
       </div>`;
@@ -251,11 +273,28 @@ function sickWindow(
   if (flow.step === "write")
     return writeStep(flow, target, ctx, close, state, actions, faceMark, done, error, sickToday);
   // At the first step the child is not reported sick: a child reported sick opens at the second.
+  const top = head(t("reportSick", { name }), [day], [], ctx, close, faceMark);
+  const writes = may(family, "messages");
+  const write = writes
+    ? html`<button
+        class="text-button"
+        type="button"
+        @click=${() => {
+          actions.write(ctx);
+          state.requestUpdate();
+        }}
+      >
+        ${t("writeTo")}
+      </button>`
+    : nothing;
+  const writeOff = writes ? nothing : turnedOff("messages", t);
+  if (!may(family, "sick_reports"))
+    return html`${top}${turnedOff("sick_reports", t)}${writeOff}
+      <div class="window-actions">${write}</div>`;
   const [routeKey, routeIcon] = ROUTES[route];
-  return html`${head(t("reportSick", { name }), [day], [], ctx, close, faceMark)}
-    ${flow.undone ? alert("info", t("undone")) : nothing}
+  return html`${top} ${flow.undone ? alert("info", t("undone")) : nothing}
     <p class="route ${route}">${icon(routeIcon)}<span>${t(routeKey, { name })}</span></p>
-    ${senders(flow, family, ctx, actions)}
+    ${senders(flow, allowing(family, "sick_reports"), ctx, actions)}
     ${
       route === "tabulex"
         ? html`<p class="window-note">
@@ -274,18 +313,9 @@ function sickWindow(
                 : nothing
             }`
     }
-    ${error}
+    ${writeOff} ${error}
     <div class="window-actions">
-      <button
-        class="text-button"
-        type="button"
-        @click=${() => {
-          actions.write(ctx);
-          state.requestUpdate();
-        }}
-      >
-        ${t("writeTo")}
-      </button>
+      ${write}
       <button
         class="filled-button"
         type="button"
@@ -382,7 +412,7 @@ function writeStep(
     ${sickToday ? done : nothing}
     ${earlier ? html`<p class="info-line">${icon("mdi:thermometer")}<span>${t("sickSinceDay", { name, day: formatDay(earlier, ctx.language) })}</span></p>` : nothing}
     ${family.today?.sick.wrote_yesterday ? html`<p class="info-line">${icon("mdi:message-check-outline")}<span>${t("wroteYesterday")}</span></p>` : nothing}
-    ${senders(flow, family, ctx, actions)}
+    ${senders(flow, allowing(family, "messages"), ctx, actions)}
     <div class="field">
       <span class="field-label">${t("threadLabel")}</span>
       ${picker}
@@ -448,6 +478,8 @@ export function renderSickCard(
         const face = state.face(family.child);
         const key = `sick|${String(family.child.child_id)}`;
         const sick = family.today?.sick.today === true;
+        let title = t("reportSick", { name: face.name });
+        if (sick) title = may(family, "messages") ? t("writeTo") : face.name;
         return html`<li>
           <button
             class="family-row"
@@ -460,9 +492,7 @@ export function renderSickCard(
           >
             ${faceImage(face)}
             <span class="family-text">
-              <span class="family-title"
-                >${sick ? t("writeTo") : t("reportSick", { name: face.name })}</span
-              >
+              <span class="family-title">${title}</span>
               <span class="family-sub">${sickState(family, ctx)}</span>
             </span>
             ${sickLabel(family, ctx)} ${icon("mdi:chevron-right", "chevron-end")}

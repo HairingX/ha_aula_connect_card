@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "../../src/index.ts";
 import { forget } from "../../src/core/memory.ts";
 import { reloadSelection, rememberSender } from "../../src/core/selection.ts";
-import type { Child, VacationRequest } from "../../src/core/types.ts";
+import type { Change, Child, VacationRequest } from "../../src/core/types.ts";
 import { requestState } from "../../src/ui/vacation-requests.ts";
 import { present, wsError } from "../fake-hass.ts";
 import { REQUESTS, SECOND_ENTRY, todayOf, VACATIONS } from "../fixtures/family.ts";
@@ -18,6 +18,11 @@ const VACATION = "aula-connect-vacation-card";
 const [, OSKAR] = CHILDREN as [Child, Child];
 
 type Commands = Record<string, (message: Record<string, unknown>) => unknown>;
+
+/** The children, their entry allowing only the changes given. */
+function allowing(allowed: readonly Change[]): Child[] {
+  return CHILDREN.map((child) => ({ ...child, allowed }));
+}
 
 /** Oskar's requests and vacations; Ida has none. */
 function commands(overrides: Commands = {}): Commands {
@@ -219,6 +224,37 @@ describe("the vacation requests card", () => {
 });
 
 describe("a request's state", () => {
+  it("offers no answer where answering is turned off, and sends none", async () => {
+    const { card, hass } = await mount(REQUESTS_CARD, "thu-1000", {
+      children: allowing(["vacations"]),
+      today: todayOf,
+      commands: commands(),
+    });
+    await tap(card, ".family-row", "Juleferie");
+    expect(windowText(card)).toContain(
+      "Svar på ferieanmodninger er slået fra i Aula Connects indstillinger.",
+    );
+    expect(all(card, "dialog .answer-day")).toEqual([]);
+    expect(all(card, "dialog .window-actions")).toEqual([]);
+    expect(sent(hass.callWS.mock, "vacation_request/answer")).toEqual([]);
+  });
+
+  it("answers from a guardian whose entry allows it", async () => {
+    const { card, hass } = await mount(REQUESTS_CARD, "thu-1000", {
+      children: [...allowing([]), ...SECOND_ENTRY],
+      today: todayOf,
+      commands: commands(),
+      config: { children: [1002] },
+    });
+    await tap(card, ".family-row", "Ferien");
+    await day(card, 1, "Kommer ikke");
+    await day(card, 2, "Kommer ikke");
+    await tap(card, "dialog .filled-button", "Send svar");
+    expect(sent(hass.callWS.mock, "vacation_request/answer")).toMatchObject([
+      { entry_id: "entry-b", child_id: 1002 },
+    ]);
+  });
+
   it("says it awaits an answer, by its deadline where it has one", () => {
     const ctx = contextOf(scenarioNamed("thu-1000"));
     const request = present(REQUESTS.requests[0]) as VacationRequest;
@@ -324,6 +360,35 @@ describe("the vacation card", () => {
       },
     ]);
     expect(windowText(card)).toContain("Ferien er meldt");
+  });
+
+  it("offers neither registering nor deleting where that is turned off", async () => {
+    const { card } = await mount(VACATION, "thu-1000", {
+      children: allowing(["vacation_requests"]),
+      commands: commands(),
+    });
+    expect(texts(card, ".family-title")).toEqual(["29.–30. oktober", "21.–23. december"]);
+    expect(all(card, ".family-row .icon-button")).toEqual([]);
+    expect(all(card, ".window-actions")).toEqual([]);
+    expect(texts(card, ".off")).toEqual([
+      "Registrering og sletning af ferie er slået fra i Aula Connects indstillinger.",
+    ]);
+  });
+
+  it("registers a vacation only for the children whose entry allows it", async () => {
+    const { card, hass } = await mount(VACATION, "thu-1000", {
+      children: CHILDREN.map((child) => ({
+        ...child,
+        allowed: child.child_id === 1001 ? ["vacations" as const] : [],
+      })),
+      commands: commands(),
+    });
+    expect(all(card, ".family-row .icon-button")).toEqual([]);
+    await tap(card, ".window-actions .filled-button", "Meld ferie");
+    expect(all(card, "dialog .face-choice")).toEqual([]);
+    await type(card, 'dialog input[type="date"]', "2026-11-02");
+    await tap(card, "dialog .filled-button", "Meld ferie");
+    expect(sent(hass.callWS.mock, "vacation/add")).toMatchObject([{ child_ids: [1001] }]);
   });
 
   it("registers for one child without asking whom, and says why it was not registered", async () => {

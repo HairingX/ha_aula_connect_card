@@ -37,6 +37,19 @@ describe("the children's listing", () => {
       { ...bare, picture_entity: null, guardian: "" },
     ]);
   });
+
+  it("keeps the changes an entry allows that the cards know, and none without a list", async () => {
+    const listed = await fetchChildren(
+      answering({
+        children: [
+          { ...IDA, allowed: ["messages", "teleport", 3, "sick_reports", "messages"] },
+          { ...OSKAR, allowed: "messages" },
+          { ...OSKAR, allowed: undefined },
+        ],
+      }),
+    );
+    expect(listed.map((child) => child.allowed)).toEqual([["sick_reports", "messages"], [], []]);
+  });
 });
 
 describe("subscribeToday", () => {
@@ -262,6 +275,10 @@ describe("actionErrorText", () => {
   it.each([
     [wsError("unknown_command", "Unknown command."), "Update Aula Connect to do this from here."],
     [wsError("not_supported", "No"), "Aula Connect can't do this for this child yet."],
+    [
+      wsError("not_allowed", "Off"),
+      "Aula Connect's options don't allow this. Turn it on there, and try again.",
+    ],
     [wsError("not_found", "Gone"), "Aula no longer knows it. Reload, and try again."],
     [wsError("invalid_format", "bad day"), "Aula Connect could not read it: bad day"],
     [{ code: "invalid_format" }, "Aula Connect could not read it: "],

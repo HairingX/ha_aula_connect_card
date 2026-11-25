@@ -250,6 +250,7 @@ describe("an event's window", () => {
             institution_name: "",
             picture_entity: null,
             guardian: "",
+            allowed: [],
           },
         },
         { details: undefined, loading: false, error },

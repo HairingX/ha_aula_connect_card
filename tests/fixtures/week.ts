@@ -9,11 +9,20 @@
 import type {
   Birthday,
   CalendarEvent,
+  Change,
   Child,
   Lesson,
   Task,
   WeekData,
 } from "../../src/core/types.ts";
+
+/** Every change in Aula, as an entry whose options allow them all has them. */
+export const EVERY_CHANGE: readonly Change[] = [
+  "sick_reports",
+  "vacations",
+  "vacation_requests",
+  "messages",
+];
 
 /** Two made-up children at a made-up school. */
 export const CHILDREN: Child[] = [
@@ -25,6 +34,7 @@ export const CHILDREN: Child[] = [
     institution_name: "Bakkedal Skole",
     picture_entity: "image.ida_testesen",
     guardian: "Lise Testesen",
+    allowed: EVERY_CHANGE,
   },
   {
     entry_id: "entry-a",
@@ -34,6 +44,7 @@ export const CHILDREN: Child[] = [
     institution_name: "Bakkedal Skole",
     picture_entity: "image.oskar_testesen",
     guardian: "Lise Testesen",
+    allowed: EVERY_CHANGE,
   },
 ];
 

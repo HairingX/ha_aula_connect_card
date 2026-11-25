@@ -11,7 +11,7 @@ import {
   type TodayData,
   type VacationRequest,
 } from "../../src/core/types.ts";
-import { entriesOf, familyView, senderOf } from "../../src/model/family.ts";
+import { allowing, entriesOf, familyView, senderOf } from "../../src/model/family.ts";
 import { homeworkPageView } from "../../src/model/homework-page.ts";
 import { clockOf, overviewView, presenceOf } from "../../src/model/overview.ts";
 import {
@@ -100,12 +100,28 @@ describe("the family", () => {
   it("acts as the guardian named, else the one acted as last, else the first", () => {
     const entries = entriesOf([...CHILDREN, ...SECOND_ENTRY], 1001);
     const family = { child: IDA, entries };
-    expect(senderOf(family, "Peter Testesen").entry_id).toBe("entry-b");
-    expect(senderOf(family, undefined).entry_id).toBe("entry-a");
+    expect(senderOf(family, "Peter Testesen", "vacations").entry_id).toBe("entry-b");
+    expect(senderOf(family, undefined, "vacations").entry_id).toBe("entry-a");
     rememberSender(1001, "entry-b");
-    expect(senderOf(family, "Nobody").entry_id).toBe("entry-b");
-    expect(senderOf({ child: IDA, entries: [] }, undefined)).toBe(IDA);
+    expect(senderOf(family, "Nobody", "vacations").entry_id).toBe("entry-b");
+    expect(senderOf({ child: IDA, entries: [] }, undefined, "vacations")).toBe(IDA);
     reloadSelection();
+  });
+
+  it("acts from an entry that allows the change, where any does", () => {
+    const [lise, peter] = entriesOf([...CHILDREN, ...SECOND_ENTRY], 1001) as [Child, Child];
+    const family = { child: IDA, entries: [{ ...lise, allowed: [] }, peter] };
+    expect(allowing(family, "messages")).toEqual([peter]);
+    expect(senderOf(family, "Lise Testesen", "messages")).toBe(peter);
+    expect(allowing({ entries: [{ ...lise, allowed: ["vacations"] }] }, "messages")).toEqual([]);
+    const none = {
+      child: IDA,
+      entries: [
+        { ...lise, allowed: [] },
+        { ...peter, allowed: [] },
+      ],
+    };
+    expect(senderOf(none, "Peter Testesen", "messages").entry_id).toBe("entry-b");
   });
 });
 

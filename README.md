@@ -255,7 +255,8 @@ homework, the week plan and the week, and **Det sker** lists what is coming the 
 once, with the faces of the children it is for.
 
 A tap on the homework opens it day by day; a tap on the presence opens the day's times, and
-reports the child sick from there. An event opens its window as in the school day card.
+reports the child sick from there, where Aula Connect's options allow it. An event opens its
+window as in the school day card.
 
 Three looks, chosen in the children's bar or kept with `look`:
 
@@ -304,6 +305,11 @@ each its own tap:
 A child two guardians each have in Aula Connect is reported as the guardian in `sender`, else as
 the one used last for the child, else the first; the window lets you choose.
 
+Each step shows only where Aula Connect's options allow it: reporting sick, and writing in a
+thread, are each turned on in an entry's options, and where no entry of the child allows one the
+window says it is turned off instead. A guardian is offered for a step only where their entry
+allows it.
+
 ```yaml
 type: custom:aula-connect-sick-card
 sick_message: "{name} er syg og bliver derfor hjemme."
@@ -317,7 +323,8 @@ sender: Lise Testesen
 `custom:aula-connect-vacation-requests-card` lists the institution's vacation requests that can
 still be answered, those awaiting an answer first. A request is answered day by day, **Kommer**
 or **Kommer ikke**, with the times the child comes and goes where the institution asks for them,
-and a comment; days gone by are not answered, and after the deadline nothing is.
+and a comment; days gone by are not answered, and after the deadline nothing is. Answering shows
+only where Aula Connect's options allow it; otherwise the request's window says it is turned off.
 
 ## Vacation card
 
@@ -326,6 +333,8 @@ and a comment; days gone by are not answered, and after the deadline nothing is.
 `custom:aula-connect-vacation-card` lists the vacations registered for the children and not over
 yet. **Meld ferie** registers one for the children chosen, from a first day from today to a last
 day within a year, with a comment of up to 250 characters; a vacation is deleted once confirmed.
+Registering and deleting show only where Aula Connect's options allow them, for the children whose
+entry does; otherwise the card says they are turned off.
 
 ## Configuration
 
@@ -523,7 +532,8 @@ holds the day, each child's hours and what each child is to bring.
 
 ## The API it uses
 
-- `aula_connect/children`, to list the children.
+- `aula_connect/children`, to list the children, with the changes in Aula each entry's options
+  allow (`allowed`). A command for a change they do not allow is refused with `not_allowed`.
 - `aula_connect/week/subscribe`, with a child's `entry_id` and `child_id` and the days from the
   Monday of this week to the Sunday of the next; browsed to other weeks, the week card subscribes
   for those days too, for as long as it shows them and a minute after. The integration sends the range again whenever

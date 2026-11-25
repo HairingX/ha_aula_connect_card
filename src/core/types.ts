@@ -81,6 +81,15 @@ export interface HassEntity {
   readonly attributes: Readonly<Record<string, unknown>>;
 }
 
+/** The changes in Aula an entry of Aula Connect can allow, each off until its options allow it. */
+export const CHANGES = ["sick_reports", "vacations", "vacation_requests", "messages"] as const;
+
+/**
+ * A change in Aula: reporting a child sick and taking it back, registering and deleting a
+ * vacation, answering a vacation request, or writing in a thread to the teachers.
+ */
+export type Change = (typeof CHANGES)[number];
+
 /** A child as `aula_connect/children` lists it. */
 export interface Child {
   /** The Aula Connect entry the child is in. */
@@ -97,6 +106,8 @@ export interface Child {
   picture_entity: string | null;
   /** The display name of the guardian whose entry this is; empty when Aula Connect names none. */
   guardian: string;
+  /** The changes in Aula the entry allows; a command for any other is refused. */
+  allowed: readonly Change[];
 }
 
 /** The result of `aula_connect/children`. */

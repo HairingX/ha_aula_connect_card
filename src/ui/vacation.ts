@@ -21,7 +21,16 @@ import {
 } from "../model/vacation.ts";
 import type { CardState } from "./card.ts";
 import type { Load } from "./loads.ts";
-import { alert, apiError, faceImage, icon, label, listOf, loading } from "./primitives.ts";
+import {
+  alert,
+  apiError,
+  faceImage,
+  icon,
+  label,
+  listOf,
+  loading,
+  turnedOff,
+} from "./primitives.ts";
 import { head, modal } from "./window.ts";
 
 /** A child's vacations, and the entry they are asked and registered from. */
@@ -311,6 +320,7 @@ export function renderVacations(
 ): TemplateResult {
   const { t } = ctx;
   const waiting = children.some(({ load }) => load.data === undefined && load.error === undefined);
+  const allowed = children.filter(({ entry }) => entry.allowed.includes("vacations"));
   const rows = children.flatMap((target) => {
     const { load, family } = target;
     if (load.error !== undefined && load.data === undefined)
@@ -331,7 +341,7 @@ export function renderVacations(
         </span>
         ${vacation.start <= ctx.today ? label(t("today")) : nothing}
         ${
-          vacation.editable
+          vacation.editable && target.entry.allowed.includes("vacations")
             ? html`<button
                 class="icon-button"
                 type="button"
@@ -367,19 +377,22 @@ export function renderVacations(
               ${icon("mdi:calendar-blank-outline")}<span>${t("noVacations")}</span>
             </p>`
     }
-    <div class="window-actions">
-      <button
-        class="filled-button"
-        type="button"
-        aria-haspopup="dialog"
-        data-detail="vacation-add"
-        ?disabled=${children.length === 0}
-        @click=${() => {
-          openAddVacation(state, children, "vacation-add", changed);
-        }}
-      >
-        ${icon("mdi:plus")}<span>${t("addVacation")}</span>
-      </button>
-    </div>
+    ${
+      allowed.length === 0
+        ? turnedOff("vacations", t)
+        : html`<div class="window-actions">
+            <button
+              class="filled-button"
+              type="button"
+              aria-haspopup="dialog"
+              data-detail="vacation-add"
+              @click=${() => {
+                openAddVacation(state, allowed, "vacation-add", changed);
+              }}
+            >
+              ${icon("mdi:plus")}<span>${t("addVacation")}</span>
+            </button>
+          </div>`
+    }
   </section>`;
 }

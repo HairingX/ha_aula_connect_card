@@ -28,7 +28,9 @@ how it is set up: the README.
   When a change needs more, the owner raises it; code is never contorted to stay under it.
 - Its data is the integration's websocket API, and nothing else:
   - `aula_connect/children` lists the children: `entry_id`, `child_id`, `first_name`, `name`,
-    `institution_name`.
+    `institution_name`, and `allowed`, the changes the entry's options allow (`sick_reports`,
+    `vacations`, `vacation_requests`, `messages`); a change none of a child's entries allows is
+    not offered, and the card says it is turned off.
   - `aula_connect/week/subscribe` with `entry_id`, `child_id`, `start` (inclusive) and `end`
     (exclusive, at most 21 days) sends the whole range - `week_plan`, `lessons`, `events`,
     `tasks`, `birthdays` - whenever it can have changed, and `{"ended": true}` once when the
@@ -46,8 +48,8 @@ how it is set up: the README.
     (`entry_id`, `child_ids`, `start`, `end`, `comment`), `vacation/delete` (`entry_id`,
     `vacation_id`), `vacation_requests` and `vacation_request/answer` (`request_id`, the days from
     today, `comment`) act on a tap; their errors are `not_found`, `invalid_format`,
-    `not_supported` and `home_assistant_error`. `aula_connect/children` also gives each child's
-    `picture_entity` and its entry's `guardian`.
+    `not_supported`, `not_allowed` and `home_assistant_error`. `aula_connect/children` also gives
+    each child's `picture_entity` and its entry's `guardian`.
   - All-day events have days (`YYYY-MM-DD`, the end the day after the last); lessons and other
     events have ISO date-times with offset. `teachers` are full names. A lesson's `status` is
     `normal`, `substitute`, or another value shown as it is.

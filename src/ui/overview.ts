@@ -22,6 +22,7 @@ import type { Look } from "../core/selection.ts";
 import type { Child, Day } from "../core/types.ts";
 import type { Paths } from "../config/family.ts";
 import { isHolidayEvent } from "../model/days.ts";
+import { allowing } from "../model/family.ts";
 import { dayBar, type DayBar } from "../model/daybar.ts";
 import type {
   ComingItem,
@@ -46,6 +47,7 @@ import {
   segments,
   timeSpan,
   timeText,
+  turnedOff,
 } from "./primitives.ts";
 import { openSick, sickLabel } from "./sick.ts";
 import { head, modal, row, section, ticket } from "./window.ts";
@@ -719,29 +721,33 @@ export function openPresence(
         <div class="window-actions">
           ${
             today.sick.today
-              ? html`<button
-                  class="filled-button"
-                  type="button"
-                  @click=${() => {
-                    openSick(
-                      state,
-                      { family, message: options.message, sender: options.sender },
-                      key,
-                      true,
-                    );
-                  }}
-                >
-                  ${t("writeTo")}
-                </button>`
-              : route === "none"
-                ? html`<p class="window-note">
-                    ${icon("mdi:thermometer")}<span
-                      >${t("sickRouteNone", { name: face.name })}</span
-                    >
-                  </p>`
-                : html`<button class="filled-button" type="button" @click=${sick}>
-                    ${t("reportSick", { name: face.name })}
+              ? allowing(family, "messages").length === 0
+                ? turnedOff("messages", t)
+                : html`<button
+                    class="filled-button"
+                    type="button"
+                    @click=${() => {
+                      openSick(
+                        state,
+                        { family, message: options.message, sender: options.sender },
+                        key,
+                        true,
+                      );
+                    }}
+                  >
+                    ${t("writeTo")}
                   </button>`
+              : allowing(family, "sick_reports").length === 0
+                ? turnedOff("sick_reports", t)
+                : route === "none"
+                  ? html`<p class="window-note">
+                      ${icon("mdi:thermometer")}<span
+                        >${t("sickRouteNone", { name: face.name })}</span
+                      >
+                    </p>`
+                  : html`<button class="filled-button" type="button" @click=${sick}>
+                      ${t("reportSick", { name: face.name })}
+                    </button>`
           }
         </div>`,
       close,

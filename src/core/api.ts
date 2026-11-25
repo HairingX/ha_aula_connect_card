@@ -6,27 +6,28 @@
  */
 
 import type { Translate } from "./i18n.ts";
-import type {
-  Birthday,
-  CalendarEvent,
-  CallWS,
-  Child,
-  DayRange,
-  EventCreator,
-  EventDetails,
-  HassConnection,
-  Lesson,
-  Presence,
-  SickRoute,
-  Task,
-  Thread,
-  ThreadList,
-  TodayData,
-  Unsubscribe,
-  Vacation,
-  VacationDay,
-  VacationRequest,
-  WeekData,
+import {
+  CHANGES,
+  type Birthday,
+  type CalendarEvent,
+  type CallWS,
+  type Child,
+  type DayRange,
+  type EventCreator,
+  type EventDetails,
+  type HassConnection,
+  type Lesson,
+  type Presence,
+  type SickRoute,
+  type Task,
+  type Thread,
+  type ThreadList,
+  type TodayData,
+  type Unsubscribe,
+  type Vacation,
+  type VacationDay,
+  type VacationRequest,
+  type WeekData,
 } from "./types.ts";
 
 function list(value: unknown): unknown[] {
@@ -135,6 +136,7 @@ function child(value: unknown): Child | undefined {
     institution_name: item.institution_name,
     picture_entity: or(item.picture_entity, null),
     guardian: or(item.guardian, ""),
+    allowed: CHANGES.filter((change) => list(item.allowed).includes(change)),
   };
 }
 
@@ -529,6 +531,8 @@ export function actionErrorText(error: unknown, t: Translate): string {
       return t("actionNeedsUpdate");
     case "not_supported":
       return t("actionNotSupported");
+    case "not_allowed":
+      return t("actionNotAllowed");
     case "not_found":
       return t("actionNotFound");
     case "invalid_format":

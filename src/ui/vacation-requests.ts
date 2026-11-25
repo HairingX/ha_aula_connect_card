@@ -27,7 +27,7 @@ import {
 } from "../model/vacation.ts";
 import type { CardState } from "./card.ts";
 import type { Load } from "./loads.ts";
-import { alert, apiError, aula, faceImage, icon, label, loading } from "./primitives.ts";
+import { alert, apiError, aula, faceImage, icon, label, loading, turnedOff } from "./primitives.ts";
 import { head, modal } from "./window.ts";
 
 /** A child's vacation requests, and the entry they are asked and answered from. */
@@ -204,10 +204,16 @@ function requestWindow(
         <button class="filled-button" type="button" @click=${close}>${t("close2")}</button>
       </div>`;
   }
+  const note = request.note
+    ? html`<p class="window-note">
+        ${icon("mdi:information-outline")}<span>${aula(request.note, ctx)}</span>
+      </p>`
+    : nothing;
+  if (!target.entry.allowed.includes("vacation_requests"))
+    return html`${top}${note}${turnedOff("vacation_requests", t)}`;
   const locked = passed || answer.busy;
   const ready = answerReady(answer.days, request.times_required, ctx.today);
-  return html`${top}
-    ${request.note ? html`<p class="window-note">${icon("mdi:information-outline")}<span>${aula(request.note, ctx)}</span></p>` : nothing}
+  return html`${top} ${note}
     ${
       passed
         ? alert("warning", t("requestDeadlinePassed"))

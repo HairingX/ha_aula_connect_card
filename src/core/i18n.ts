@@ -312,6 +312,14 @@ const TEXTS = {
     "{name} is ill and is staying at home.",
     "{name} er syg og bliver derfor hjemme.",
   ],
+  sickReportsOff: [
+    "Reporting sick is turned off in Aula Connect's options.",
+    "Sygemelding er slået fra i Aula Connects indstillinger.",
+  ],
+  messagesOff: [
+    "Replying in threads is turned off in Aula Connect's options.",
+    "Svar i tråde er slået fra i Aula Connects indstillinger.",
+  ],
   cancel: ["Cancel", "Annullér"],
   close2: ["Done", "Færdig"],
   sending: ["Sending to Aula…", "Sender til Aula…"],
@@ -347,6 +355,14 @@ const TEXTS = {
     "Første dag er fra i dag, sidste dag efter den og inden for et år.",
   ],
   commentCount: ["{n} of 250 characters", "{n} af 250 tegn"],
+  vacationsOff: [
+    "Registering and deleting vacations is turned off in Aula Connect's options.",
+    "Registrering og sletning af ferie er slået fra i Aula Connects indstillinger.",
+  ],
+  vacationRequestsOff: [
+    "Answering vacation requests is turned off in Aula Connect's options.",
+    "Svar på ferieanmodninger er slået fra i Aula Connects indstillinger.",
+  ],
   // What the cards ask Aula to do
   allHidden: [
     "Every child of this card is hidden in the children's bar.",
@@ -359,6 +375,10 @@ const TEXTS = {
   actionNotSupported: [
     "Aula Connect can't do this for this child yet.",
     "Aula Connect kan ikke gøre det for dette barn endnu.",
+  ],
+  actionNotAllowed: [
+    "Aula Connect's options don't allow this. Turn it on there, and try again.",
+    "Aula Connects indstillinger tillader ikke dette. Slå det til der, og prøv igen.",
   ],
   actionNotFound: [
     "Aula no longer knows it. Reload, and try again.",

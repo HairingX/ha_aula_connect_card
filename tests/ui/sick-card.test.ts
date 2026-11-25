@@ -3,12 +3,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "../../src/index.ts";
 import { forget } from "../../src/core/memory.ts";
 import { reloadSelection, selection } from "../../src/core/selection.ts";
-import type { Child } from "../../src/core/types.ts";
+import type { Change, Child } from "../../src/core/types.ts";
 import { fillMessage } from "../../src/ui/sick.ts";
 import { wsError } from "../fake-hass.ts";
 import { SECOND_ENTRY, THREADS, todayOf } from "../fixtures/family.ts";
 import { all, mount, unmountAll } from "../fixtures/mount.ts";
-import { CHILDREN } from "../fixtures/week.ts";
+import { CHILDREN, EVERY_CHANGE } from "../fixtures/week.ts";
 import { find, root, settled, tap, texts, type, windowText } from "./family-helpers.ts";
 
 const SICK = "aula-connect-sick-card";
@@ -19,6 +19,11 @@ function day(sick: Record<string, unknown>) {
     ...todayOf(child),
     sick: { route: "aula", today: false, since: null, wrote_yesterday: false, ...sick },
   });
+}
+
+/** The children, their entry allowing only the changes given. */
+function allowing(allowed: readonly Change[]): Child[] {
+  return CHILDREN.map((child) => ({ ...child, allowed }));
 }
 
 function commands(overrides: Record<string, (message: Record<string, unknown>) => unknown> = {}) {
@@ -274,6 +279,154 @@ describe("the sick card", () => {
     await tap(card, ".family-row", "Meld Ida syg");
     expect(texts(card, "dialog .choice")).toEqual(["Lise Testesen", "entry-b"]);
     expect(windowText(card)).toContain("Aula Connect har endnu ikke fundet ud af");
+  });
+
+  it("offers no report where reporting sick is turned off, only writing", async () => {
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      children: allowing(["messages"]),
+      today: day({}),
+      commands: commands(),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    expect(windowText(card)).toContain("Sygemelding er slået fra i Aula Connects indstillinger.");
+    expect(windowText(card)).not.toContain("Meldes syg i Aula");
+    expect(texts(card, "dialog .window-actions button")).toEqual(["Skriv til lærerne"]);
+    await tap(card, "dialog .text-button", "Skriv til lærerne");
+    expect(windowText(card)).toContain("Skriv til lærerne?");
+    expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([]);
+  });
+
+  it("reports without writing where writing is turned off, and claims no message", async () => {
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      children: allowing(["sick_reports"]),
+      today: day({}),
+      commands: commands(),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    expect(windowText(card)).toContain("Svar i tråde er slået fra i Aula Connects indstillinger.");
+    expect(texts(card, "dialog .window-actions button")).toEqual(["Meld syg"]);
+    await tap(card, "dialog .filled-button", "Meld syg");
+    expect(sent(hass.callWS.mock.calls, "sick/report")).toHaveLength(1);
+    expect(windowText(card)).toContain("Ida er meldt syg i dag");
+    expect(windowText(card)).toContain("Svar i tråde er slået fra");
+    expect(windowText(card)).not.toContain("Beskeden er sendt");
+    expect(sent(hass.callWS.mock.calls, "threads")).toEqual([]);
+    await tap(card, "dialog .done-line .text-button", "Fortryd");
+    expect(sent(hass.callWS.mock.calls, "sick/undo")).toHaveLength(1);
+    expect(windowText(card)).toContain("Sygemeldingen er taget tilbage");
+    await tap(card, "dialog .filled-button", "Meld syg");
+    await tap(card, "dialog .filled-button", "Færdig");
+    expect(windowText(card)).toBe("");
+  });
+
+  it("offers nothing where both are turned off, saying so", async () => {
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      children: allowing([]),
+      today: day({}),
+      commands: commands(),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    expect(texts(card, "dialog .off")).toEqual([
+      "Sygemelding er slået fra i Aula Connects indstillinger.",
+      "Svar i tråde er slået fra i Aula Connects indstillinger.",
+    ]);
+    expect(all(card, "dialog .window-actions button")).toEqual([]);
+    expect(hass.callWS.mock.calls.map(([message]) => message.type)).toEqual([
+      "aula_connect/children",
+    ]);
+  });
+
+  it("shows a child reported sick as done where writing is turned off", async () => {
+    const { card } = await mount(SICK, "thu-1000", {
+      children: allowing(["sick_reports"]),
+      today: day({ today: true }),
+      commands: commands(),
+    });
+    expect(texts(card, ".family-title")).toEqual(["Ida", "Oskar"]);
+    await tap(card, ".family-row", "Ida");
+    expect(windowText(card)).toContain("Ida er meldt syg i dag");
+    expect(windowText(card)).toContain("Svar i tråde er slået fra");
+    expect(texts(card, "dialog .done-line .text-button")).toEqual(["Fortryd"]);
+    unmountAll();
+    const { card: neither } = await mount(SICK, "thu-1000", {
+      children: allowing([]),
+      today: day({ today: true }),
+    });
+    await tap(neither, ".family-row", "Ida");
+    expect(all(neither, "dialog .done-line .text-button")).toEqual([]);
+  });
+
+  it("writes about a child reported sick without offering to take it back where that is off", async () => {
+    const { card } = await mount(SICK, "thu-1000", {
+      children: allowing(["messages"]),
+      today: day({ today: true }),
+      commands: commands(),
+    });
+    await tap(card, ".family-row", "Skriv til lærerne");
+    expect(windowText(card)).toContain("Ida er meldt syg i dag");
+    expect(all(card, "dialog .done-line .text-button")).toEqual([]);
+  });
+
+  it("lists as senders only the guardians whose entry allows each step", async () => {
+    const children = [
+      ...CHILDREN.map((child) => ({ ...child, allowed: [...EVERY_CHANGE] })),
+      ...SECOND_ENTRY.map((child) => ({ ...child, allowed: ["sick_reports" as const] })),
+    ];
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      children,
+      today: day({}),
+      commands: commands(),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    expect(texts(card, "dialog .choice")).toEqual(["Lise Testesen", "Peter Testesen"]);
+    await tap(card, "dialog .choice", "Peter");
+    await tap(card, "dialog .filled-button", "Meld syg");
+    expect(all(card, "dialog .choice")).toEqual([]);
+    await tap(card, "dialog .done-line .text-button", "Fortryd");
+    const entries = (kind: string) =>
+      sent(hass.callWS.mock.calls, kind).map(
+        (message) => (message as { entry_id: string }).entry_id,
+      );
+    expect(entries("sick/report")).toEqual(["entry-b"]);
+    expect(entries("threads")).toEqual(["entry-a"]);
+    expect(entries("sick/undo")).toEqual(["entry-a"]);
+  });
+
+  it("acts from a guardian whose entry allows the change, over the one configured", async () => {
+    const children = [
+      ...CHILDREN.map((child) => ({ ...child, allowed: ["sick_reports" as const] })),
+      ...SECOND_ENTRY.map((child) => ({ ...child, allowed: ["messages" as const] })),
+    ];
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      children,
+      today: day({}),
+      commands: commands(),
+      config: { sender: "Peter Testesen" },
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    await tap(card, "dialog .filled-button", "Meld syg");
+    await tap(card, "dialog .done-line .text-button", "Fortryd");
+    const entries = (kind: string) =>
+      sent(hass.callWS.mock.calls, kind).map(
+        (message) => (message as { entry_id: string }).entry_id,
+      );
+    expect(entries("sick/report")).toEqual(["entry-a"]);
+    expect(entries("threads")).toEqual(["entry-b"]);
+    expect(entries("sick/undo")).toEqual(["entry-a"]);
+  });
+
+  it("says when Aula Connect refuses a change its options do not allow", async () => {
+    const { card } = await mount(SICK, "thu-1000", {
+      today: day({}),
+      commands: commands({
+        "aula_connect/sick/report": () => {
+          throw wsError("not_allowed", "Off");
+        },
+      }),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    await tap(card, "dialog .filled-button", "Meld syg");
+    expect(windowText(card)).toContain("Aula Connects indstillinger tillader ikke dette.");
   });
 
   it("fills a child's name into the message", () => {

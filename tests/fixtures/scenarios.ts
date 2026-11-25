@@ -11,6 +11,7 @@ import {
   allDay,
   CHILDREN,
   events,
+  EVERY_CHANGE,
   holidayFortnight,
   local,
   MEETING,
@@ -53,6 +54,7 @@ export const EMMA: Child = {
   institution_name: "Bakkedal Skole",
   picture_entity: null,
   guardian: "Lise Testesen",
+  allowed: EVERY_CHANGE,
 };
 
 const EMMA_SUBJECTS: Subjects = {

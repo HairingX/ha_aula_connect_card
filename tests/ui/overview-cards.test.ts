@@ -9,7 +9,7 @@ import { AulaConnectVacationCard } from "../../src/cards/vacation-card.ts";
 import { AulaConnectVacationRequestsCard } from "../../src/cards/vacation-requests-card.ts";
 import { forget } from "../../src/core/memory.ts";
 import { reloadSelection, selection, setLook } from "../../src/core/selection.ts";
-import type { Child } from "../../src/core/types.ts";
+import type { Change, Child } from "../../src/core/types.ts";
 import { IDLE_RESET_MS } from "../../src/model/focus.ts";
 import { subjectNamer } from "../../src/model/subjects.ts";
 import { childrenBarView } from "../../src/ui/children-bar.ts";
@@ -505,6 +505,30 @@ describe("a child's presence window", () => {
     expect(windowText(card)).toContain(
       "Aula Connect har endnu ikke fundet ud af, hvordan Oskar meldes syg herfra",
     );
+  });
+
+  it("offers reporting sick and writing only where Aula Connect's options allow them", async () => {
+    const only = (allowed: readonly Change[]): Child[] =>
+      CHILDREN.map((child) => ({ ...child, allowed }));
+    const { card } = await mount(OVERVIEW, "thu-1000", {
+      children: only(["messages"]),
+      today: todayOf,
+    });
+    await tap(card, ".presence", "I skole");
+    expect(all(card, "dialog .window-actions button")).toEqual([]);
+    expect(texts(card, "dialog .off")).toEqual([
+      "Sygemelding er slået fra i Aula Connects indstillinger.",
+    ]);
+    unmountAll();
+    const { card: sick } = await mount(OVERVIEW, "thu-1000", {
+      children: only(["sick_reports"]),
+      today: sickToday,
+    });
+    await tap(sick, ".presence", "Syg");
+    expect(all(sick, "dialog .window-actions button")).toEqual([]);
+    expect(texts(sick, "dialog .off")).toEqual([
+      "Svar i tråde er slået fra i Aula Connects indstillinger.",
+    ]);
   });
 
   it("shows a child reported sick without times, on a day without school", async () => {

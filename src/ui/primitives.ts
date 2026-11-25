@@ -20,9 +20,9 @@ import {
   daysBetween,
   instant,
 } from "../core/dates.ts";
-import type { Translate } from "../core/i18n.ts";
+import type { TextKey, Translate } from "../core/i18n.ts";
 import { glue } from "../core/text.ts";
-import type { Child, Day } from "../core/types.ts";
+import type { Change, Child, Day } from "../core/types.ts";
 import type { Fact, TimedEvent } from "../model/blocks.ts";
 import type { ChildState } from "../model/child.ts";
 import type { CardState, Face } from "./card.ts";
@@ -39,6 +39,20 @@ export function alert(kind: "error" | "warning" | "info", message: string): Temp
   return html`<div class="alert ${kind}" role=${kind === "info" ? "status" : "alert"}>
     ${icon(name)}<span>${message}</span>
   </div>`;
+}
+
+const OFF: Readonly<Record<Change, TextKey>> = {
+  sick_reports: "sickReportsOff",
+  vacations: "vacationsOff",
+  vacation_requests: "vacationRequestsOff",
+  messages: "messagesOff",
+};
+
+/** Shows, in one line, that a change in Aula is turned off in Aula Connect's options. */
+export function turnedOff(change: Change, t: Translate): TemplateResult {
+  return html`<p class="window-note off">
+    ${icon("mdi:toggle-switch-off-outline")}<span>${t(OFF[change])}</span>
+  </p>`;
 }
 
 /** Shows an error from the API. */
