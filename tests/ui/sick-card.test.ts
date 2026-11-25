@@ -95,8 +95,9 @@ describe("the sick card", () => {
   });
 
   it("names the institution only where the children shown are at more than one", async () => {
+    const [ida] = CHILDREN as [Child, Child];
     const { card } = await mount(SICK, "thu-1000", {
-      children: [CHILDREN[0] as Child, OSKAR_ELSEWHERE],
+      children: [ida, OSKAR_ELSEWHERE],
       today: day({}),
       commands: commands(),
     });
