@@ -66,6 +66,23 @@ describe("the sick card", () => {
     expect(texts(plain, ".family-sub")).toEqual(["Torsdag 29. oktober", "Torsdag 29. oktober"]);
   });
 
+  it("reports a child sick in Tabulex, saying first that it cannot be taken back", async () => {
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      today: day({ route: "tabulex" }),
+      commands: commands(),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    expect(windowText(card)).toContain("Meldes syg i Tabulex");
+    expect(windowText(card)).toContain("En sygemelding i Tabulex kan ikke fortrydes.");
+    expect(windowText(card)).not.toContain("SFO og dagtilbud");
+    await tap(card, "dialog .filled-button", "Meld syg");
+    expect(sent(hass.callWS.mock.calls, "sick/report")).toEqual([
+      { type: "aula_connect/sick/report", entry_id: "entry-a", child_id: 1001 },
+    ]);
+    expect(windowText(card)).toContain("Ida er meldt syg i dag");
+    expect(texts(card, "dialog .text-button")).not.toContain("Fortryd");
+  });
+
   it("reports a child sick, then writes to the teachers in the thread used last", async () => {
     const { card, hass } = await mount(SICK, "thu-1000", { today: day({}), commands: commands() });
     await tap(card, ".family-row", "Meld Ida syg");

@@ -733,15 +733,15 @@ export function openPresence(
                 >
                   ${t("writeTo")}
                 </button>`
-              : route === "aula"
-                ? html`<button class="filled-button" type="button" @click=${sick}>
-                    ${t("reportSick", { name: face.name })}
-                  </button>`
-                : html`<p class="window-note">
+              : route === "none"
+                ? html`<p class="window-note">
                     ${icon("mdi:thermometer")}<span
-                      >${t(route === "tabulex" ? "sickRouteTabulex" : "sickRouteNone", { name: face.name })}</span
+                      >${t("sickRouteNone", { name: face.name })}</span
                     >
                   </p>`
+                : html`<button class="filled-button" type="button" @click=${sick}>
+                    ${t("reportSick", { name: face.name })}
+                  </button>`
           }
         </div>`,
       close,

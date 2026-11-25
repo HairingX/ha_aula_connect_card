@@ -265,9 +265,10 @@ const TEXTS = {
   sickToday: ["Reported sick today", "Meldt syg i dag"],
   sickSince: ["Ill since {day}", "Syg siden {day}"],
   sickRouteAula: ["Reported in Aula (SFO and day care)", "Meldes syg i Aula (SFO og dagtilbud)"],
-  sickRouteTabulex: [
-    "Through Tabulex – Aula Connect can't do this yet",
-    "Via Tabulex – Aula Connect kan ikke gøre det endnu",
+  sickRouteTabulex: ["Reported in Tabulex", "Meldes syg i Tabulex"],
+  sickFinal: [
+    "Tabulex can't take a sick report back.",
+    "En sygemelding i Tabulex kan ikke fortrydes.",
   ],
   sickRouteNone: [
     "Aula Connect hasn't found how {name} is reported sick from here yet",

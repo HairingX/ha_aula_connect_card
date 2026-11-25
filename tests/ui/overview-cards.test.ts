@@ -483,7 +483,7 @@ describe("the overview's other days", () => {
 });
 
 describe("a child's presence window", () => {
-  it("shows the times there are, and that the institution reports sickness elsewhere", async () => {
+  it("shows the times there are, and how the child is reported sick", async () => {
     const { card } = await mount(OVERVIEW, "thu-1000", {
       today: (child) =>
         child.child_id === 1001
@@ -497,7 +497,7 @@ describe("a child's presence window", () => {
     expect(windowText(card)).toContain("Planlagt 15.00");
     expect(windowText(card)).toContain("I dag gik 14.10");
     expect(windowText(card)).not.toContain("Hentes af");
-    expect(windowText(card)).toContain("Tabulex");
+    expect(texts(card, "dialog .filled-button")).toContain("Meld Ida syg");
     await tap(card, ".detail-close");
     await tap(card, ".presence", "Kommer");
     expect(windowText(card)).toContain("Planlagt 07.45");

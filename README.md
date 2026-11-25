@@ -293,9 +293,9 @@ without a touch.
 each its own tap:
 
 1. **Meld syg** reports the child sick along the route Aula Connect has found: in Aula, for SFO
-   and day care. **Fortryd** takes it back the same day. A child at an institution that uses
-   Tabulex cannot be reported from here yet, and until Aula Connect has looked for the route it
-   says so, rather than that the child cannot be reported.
+   and day care, where **Fortryd** takes it back the same day; or in IST's Tabulex, which takes no
+   report back, as the window says before you tap. Until Aula Connect has looked for the route
+   it says so, rather than that the child cannot be reported.
 2. **Skriv til lærerne?** writes to the school, which a report does not tell: the message, made
    from `sick_message`, in a thread you choose, the one written in last chosen for you. **Spring
    over** writes nothing; it comes first where the child has been ill since before today, or you

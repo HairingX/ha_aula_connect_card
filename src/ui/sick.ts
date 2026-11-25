@@ -22,7 +22,7 @@ import { head, modal } from "./window.ts";
 /** The route's line in the window, and its icon. */
 export const ROUTES: Readonly<Record<SickRoute, readonly [TextKey, string]>> = {
   aula: ["sickRouteAula", "mdi:check-circle-outline"],
-  tabulex: ["sickRouteTabulex", "mdi:information-outline"],
+  tabulex: ["sickRouteTabulex", "mdi:check-circle-outline"],
   none: ["sickRouteNone", "mdi:information-outline"],
 };
 
@@ -256,13 +256,23 @@ function sickWindow(
     ${flow.undone ? alert("info", t("undone")) : nothing}
     <p class="route ${route}">${icon(routeIcon)}<span>${t(routeKey, { name })}</span></p>
     ${senders(flow, family, ctx, actions)}
-    <p class="window-note">${icon("mdi:information-outline")}<span>${t("sickNote")}</span></p>
     ${
-      route === "aula"
+      route === "tabulex"
         ? html`<p class="window-note">
-            ${icon("mdi:calendar-refresh-outline")}<span>${t("sickRecovers", { name })}</span>
+            ${icon("mdi:alert-outline")}<span>${t("sickFinal")}</span>
           </p>`
-        : nothing
+        : html`<p class="window-note">
+              ${icon("mdi:information-outline")}<span>${t("sickNote")}</span>
+            </p>
+            ${
+              route === "aula"
+                ? html`<p class="window-note">
+                    ${icon("mdi:calendar-refresh-outline")}<span
+                      >${t("sickRecovers", { name })}</span
+                    >
+                  </p>`
+                : nothing
+            }`
     }
     ${error}
     <div class="window-actions">
@@ -279,7 +289,7 @@ function sickWindow(
       <button
         class="filled-button"
         type="button"
-        ?disabled=${route !== "aula" || flow.busy}
+        ?disabled=${route === "none" || flow.busy}
         @click=${() => {
           actions.report(ctx);
         }}
