@@ -72,6 +72,8 @@ export interface OverviewChild {
   readonly hoursToday: { readonly start: string; readonly end: string } | undefined;
   /** The child as each entry has it: one per guardian. */
   readonly entries: readonly Child[];
+  /** Whether the institution is named beside the child: only where the children shown are at more than one. */
+  readonly showsInstitution: boolean;
 }
 
 /** Something coming: an event, or a classmate's birthday. */
@@ -198,6 +200,7 @@ function childOf(
   snapshot: StoreSnapshot,
   list: readonly Child[],
   ctx: ViewContext,
+  showsInstitution: boolean,
 ): OverviewChild {
   const view = dayIn(basis, basis.focus.day);
   const content =
@@ -219,6 +222,7 @@ function childOf(
     presence: presenceOf(today, hoursToday, ctx),
     hoursToday,
     entries: entriesOf(list, basis.child.child_id),
+    showsInstitution,
   };
 }
 
@@ -265,7 +269,8 @@ export function overviewView(
 ): OverviewView {
   const { bases, missing } = childBases(snapshot, options, ctx, hold);
   const list = snapshot.children.list ?? [];
-  const children = bases.map((basis) => childOf(basis, snapshot, list, ctx));
+  const several = new Set(bases.map((basis) => basis.child.institution_name)).size > 1;
+  const children = bases.map((basis) => childOf(basis, snapshot, list, ctx, several));
   const days = new Set(children.map((item) => item.focus.day));
   const [shared] = days;
   const last = addDays(ctx.today, AHEAD_DAYS - 1);

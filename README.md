@@ -293,7 +293,8 @@ without a touch.
 `custom:aula-connect-sick-card` has a row for each child. Reporting a child sick is two steps,
 each its own tap:
 
-1. **Meld syg** reports the child sick at its institution, as Aula names it. Before you can tap
+1. **Meld syg** reports the child sick at its institution; the window names the institution only
+   where the card shows children at more than one. Before you can tap
    **Meld syg**, the card checks that the child can be reported sick from here; it sends nothing
    doing so. Where the child can't be, the window says so and to report sick in Aula, and offers
    no button; where the child is reported sick today already, it says that instead. Where a

@@ -20,6 +20,8 @@ export interface FamilyChild {
   readonly today: TodayData | undefined;
   /** Why its day could not be had. */
   readonly error: unknown;
+  /** Whether the institution is named beside the child: only where the children shown are at more than one. */
+  readonly showsInstitution: boolean;
 }
 
 /** What a card acting for the family shows. */
@@ -41,6 +43,7 @@ export function entriesOf(list: readonly Child[], childId: number): Child[] {
 export function familyView(snapshot: StoreSnapshot, ids: readonly number[]): FamilyView {
   const list = snapshot.children.list ?? [];
   const { shown, missing } = selectChildren(list, ids);
+  const several = new Set(shown.map((child) => child.institution_name)).size > 1;
   const children = shown.map((child) => {
     const today = snapshot.today.get(childKey(child));
     return {
@@ -48,6 +51,7 @@ export function familyView(snapshot: StoreSnapshot, ids: readonly number[]): Fam
       entries: entriesOf(list, child.child_id),
       today: today?.data,
       error: today?.error,
+      showsInstitution: several,
     };
   });
   return { children, missing, size: 1 + children.length };

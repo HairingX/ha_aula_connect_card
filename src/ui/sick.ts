@@ -346,15 +346,18 @@ function sickWindow(
       report = button(true);
     }
   }
-  const routeLine = cannot
-    ? html`<p class="route none">
-        ${icon("mdi:information-outline")}<span>${t("sickRouteNone", { name })}</span>
-      </p>`
-    : html`<p class="route ${route}">
-        ${icon("mdi:check-circle-outline")}<span
-          >${t("sickRoute", { institution: child.institution_name })}</span
-        >
-      </p>`;
+  // The institution is said only where it tells the children shown apart.
+  let routeLine: unknown = nothing;
+  if (cannot)
+    routeLine = html`<p class="route none">
+      ${icon("mdi:information-outline")}<span>${t("sickRouteNone", { name })}</span>
+    </p>`;
+  else if (family.showsInstitution)
+    routeLine = html`<p class="route ${route}">
+      ${icon("mdi:check-circle-outline")}<span
+        >${t("sickRoute", { institution: child.institution_name })}</span
+      >
+    </p>`;
   return html`${top} ${flow.undone ? alert("info", t("undone")) : nothing} ${routeLine}
     ${senders(flow, allowing(family, "sick_reports"), ctx, actions)} ${line} ${writeOff} ${error}
     <div class="window-actions">${write} ${report}</div>`;

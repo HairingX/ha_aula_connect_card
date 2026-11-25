@@ -678,6 +678,7 @@ export function openPresence(
       entries: item.entries,
       today,
       error: undefined,
+      showsInstitution: item.showsInstitution,
     };
     const route = today.sick.route;
     const rows = [
