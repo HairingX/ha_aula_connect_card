@@ -106,7 +106,7 @@ describe("the family's cards' configuration", () => {
     [() => parseLookSettings("full", "rows"), "rows: must be a mapping of its settings"],
     [
       () => parseLookSettings({ important: "all" }, "board"),
-      "board.important: must be compact or full",
+      "board.important: must be list or button",
     ],
     [
       () => parseLookSettings({ clock: "round" }, "board"),
@@ -117,12 +117,12 @@ describe("the family's cards' configuration", () => {
       'rows: unknown key "clock"; the keys are important, important_max',
     ],
     [
-      () => parseLookSettings({ important_max: 0 }, "columns"),
-      "columns.important_max: must be a whole number from 1 to 20",
+      () => parseLookSettings({ important_max: 100 }, "columns"),
+      "columns.important_max: must be a whole number from 1 to 99",
     ],
     [
       () => parseLookSettings({ important_max: "3" }, "board"),
-      "board.important_max: must be a whole number from 1 to 20",
+      "board.important_max: must be a whole number from 1 to 99",
     ],
     [() => parseSickThreads("501"), "sick_threads: must be a list of children and threads"],
     [() => parseSickThreads([501]), "sick_threads[0]: must be a mapping of child and thread"],
@@ -175,22 +175,22 @@ describe("the family's cards' configuration", () => {
     expect(parse).toThrow(message);
   });
 
-  it("shows what is important compact unless asked for in full", () => {
+  it("lists the next three important notes unless set otherwise", () => {
     expect(resolveOverviewConfig({})).toMatchObject({
-      rows: { important: "compact", max: 3 },
-      columns: { important: "compact", max: 3 },
-      board: { important: "full", max: 3, clock: "digital" },
+      rows: { important: "list", max: 3 },
+      columns: { important: "list", max: 3 },
+      board: { important: "list", max: 3, clock: "digital" },
     });
     expect(
       resolveOverviewConfig({
-        rows: { important: "full", important_max: 5 },
-        board: { important: "compact", clock: "analog" },
+        rows: { important: "list", important_max: 99 },
+        board: { important: "button", clock: "analog" },
         columns: null,
       }),
     ).toMatchObject({
-      rows: { important: "full", max: 5 },
-      columns: { important: "compact", max: 3 },
-      board: { important: "compact", max: 3, clock: "analog" },
+      rows: { important: "list", max: 99 },
+      columns: { important: "list", max: 3 },
+      board: { important: "button", max: 3, clock: "analog" },
     });
     expect(
       parsePackIcons(

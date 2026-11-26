@@ -949,24 +949,59 @@ describe("the folded day", () => {
     expect(all(card, '[data-block="task"] .vital-flag ha-icon')).toHaveLength(1);
   });
 
-  it("names a part of the bar where it has room, else abbreviates it, else gives its colour alone", async () => {
-    // Idræt fits, Dansk only as DAN, and Engelsk not even so.
-    const room: Record<string, Record<string, number>> = {
-      Idræt: { "": 40 },
-      Dansk: { "": 90, short: 40 },
-      Engelsk: { "": 90, short: 90, none: 0 },
-    };
+  // The room each part needs, by what it shows: its name or abbreviation, and a change's icon or
+  // a mark in a corner.
+  const measured = async (room: Record<string, Record<string, number>>): Promise<string[][]> => {
     vi.spyOn(Element.prototype, "scrollWidth", "get").mockImplementation(function (this: Element) {
-      const fit = (this as HTMLElement).dataset.fit ?? "";
-      return room[this.querySelector(".bar-name")?.textContent ?? ""]?.[fit] ?? 0;
+      const { fit = "", mark = "" } = (this as HTMLElement).dataset;
+      return room[this.querySelector(".bar-name")?.textContent ?? ""]?.[`${fit}|${mark}`] ?? 0;
     });
     vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(50);
     const { card } = await mount(DAY, "thu-0715", { config: { children: [1001] } });
     await card.updateComplete;
-    expect(all(card, ".daybar .bar-item").map((part) => (part as HTMLElement).dataset.fit)).toEqual(
-      ["", "short", "none"],
-    );
+    const parts = all(card, ".daybar .bar-item") as HTMLElement[];
     vi.restoreAllMocks();
+    return parts.map((part) => [part.dataset.fit ?? "", part.dataset.mark ?? ""]);
+  };
+
+  it("names a part of the bar where it has room, else abbreviates it, else gives its colour alone", async () => {
+    // Idræt fits, Dansk only as DAN, and Engelsk, with a substitute, not even so.
+    expect(
+      await measured({
+        Idræt: { "|": 40 },
+        Dansk: { "|": 90, "|corner": 90, "short|": 40 },
+        Engelsk: { "|": 90, "|corner": 90, "short|": 90, "short|corner": 90 },
+      }),
+    ).toEqual([
+      ["", ""],
+      ["short", ""],
+      ["none", "corner"],
+    ]);
+  });
+
+  it("gives a change's icon way to a mark in a corner before the subject's name", async () => {
+    expect(
+      await measured({
+        Idræt: { "|": 40 },
+        Dansk: { "|": 40 },
+        Engelsk: { "|": 90, "|corner": 40 },
+      }),
+    ).toEqual([
+      ["", ""],
+      ["", ""],
+      ["", "corner"],
+    ]);
+    expect(
+      await measured({
+        Idræt: { "|": 40 },
+        Dansk: { "|": 40 },
+        Engelsk: { "|": 90, "|corner": 90, "short|": 40 },
+      }),
+    ).toEqual([
+      ["", ""],
+      ["", ""],
+      ["short", ""],
+    ]);
   });
 
   it("unfolds the whole timetable on a tap, and folds it again", async () => {

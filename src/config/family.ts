@@ -229,7 +229,7 @@ export function parseLookSettings(
   )
     throw new Error(`${look}.important_max: must be a whole number from 1 to ${String(MAX_NOTES)}`);
   const settings: LookSettings = {
-    important: oneOf(value.important, `${look}.important`, ["compact", "full"], defaults.important),
+    important: oneOf(value.important, `${look}.important`, ["list", "button"], defaults.important),
     max: typeof max === "number" ? max : defaults.max,
   };
   return defaults.clock === undefined

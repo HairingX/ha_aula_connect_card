@@ -25,6 +25,14 @@ import { navigate } from "./navigate.ts";
 import { holdPage, releasePage } from "./page-hold.ts";
 import { alert, apiError, loading, refreshing } from "./primitives.ts";
 
+const FITS = [
+  ["", ""],
+  ["", "corner"],
+  ["short", ""],
+  ["short", "corner"],
+  ["none", "corner"],
+] as const;
+
 /** What the base element reads from every card's configuration. */
 export interface CardConfigBase {
   /** The child ids shown; every child when empty. */
@@ -462,8 +470,10 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     for (const bar of this.renderRoot.querySelectorAll<HTMLElement>(".daybar")) {
       this.#resized?.observe(bar);
       for (const part of bar.querySelectorAll<HTMLElement>(".bar-item")) {
-        for (const fit of ["", "short", "none"]) {
+        // The subject's name goes before a change's icon, which gives way to a mark in a corner.
+        for (const [fit, mark] of FITS) {
           part.dataset.fit = fit;
+          part.dataset.mark = mark;
           if (part.scrollWidth <= part.clientWidth + 1) break;
         }
       }

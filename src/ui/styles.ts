@@ -881,6 +881,21 @@ export const blocks = css`
   .bar-item[data-fit="short"] > .bar-short {
     display: inline;
   }
+  /* A changed lesson, such as one with a substitute, shows its change's icon after its subject
+     where there is room, else a mark in a corner; its window says what changed. */
+  .bar-item[data-mark="corner"] > ha-icon {
+    display: none;
+  }
+  .bar-item.changed[data-mark="corner"]::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: calc(11px * var(--aula-scale));
+    height: calc(11px * var(--aula-scale));
+    background: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0);
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+  }
   .bar-item.cancelled {
     background: none;
     box-shadow: inset 0 0 0 2px var(--subject, var(--aula-fill-strong));
@@ -2476,9 +2491,14 @@ export const family = css`
   .ov-who .face {
     --aula-face: calc(36px * var(--aula-scale));
   }
+  /* A long name ends in an ellipsis rather than taking a second line. */
   .ov-name {
+    min-width: 0;
+    overflow: hidden;
     font-size: var(--aula-font-l);
     font-weight: var(--aula-medium);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .ov-hours {
     display: flex;
@@ -2592,43 +2612,12 @@ export const family = css`
     --mdc-icon-size: 1.15em;
     color: inherit;
   }
-  .ov-important,
-  .ov-soon,
-  .board-important {
-    display: flex;
-    align-items: center;
-    gap: var(--aula-space-2);
-    box-sizing: border-box;
-    width: 100%;
-    min-height: var(--aula-target);
-    padding: 0 var(--aula-space-3);
-    border: 0;
-    border-radius: var(--aula-radius);
-    background: var(--aula-fill-muted);
-    color: var(--aula-text);
-    font: inherit;
-    font-weight: var(--aula-medium);
-    text-align: start;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .ov-important ha-icon:first-child,
-  .board-important ha-icon {
-    color: var(--aula-text);
-  }
-  .ov-important.none {
-    background: none;
-    box-shadow: inset 0 0 0 1px var(--aula-line);
-    color: var(--aula-text-2);
-    font-weight: var(--aula-normal);
-    cursor: default;
-  }
   @media (hover: hover) {
-    button:is(.ov-important, .ov-soon, .board-important, .presence, .ov-tile):hover {
+    button:is(.presence, .ov-tile):hover {
       background: var(--aula-fill-strong);
     }
   }
-  button:is(.ov-important, .ov-soon, .board-important, .presence, .ov-tile):active {
+  button:is(.presence, .ov-tile):active {
     background: var(--aula-fill-strong);
   }
   .presence {
@@ -2678,48 +2667,12 @@ export const family = css`
   .ov-col-head .face {
     --aula-face: calc(48px * var(--aula-scale));
   }
-  .ov-soon {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0;
-    padding: var(--aula-space-2) var(--aula-space-3);
-    background: var(--aula-fill-faint);
-    box-shadow: inset 0 0 0 1px var(--aula-line);
-    font-weight: var(--aula-normal);
-  }
-  .ov-soon-head,
   .board-head {
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
     font-weight: var(--aula-bold);
     letter-spacing: 0.06em;
     text-transform: uppercase;
-  }
-  .ov-soon-item {
-    display: flex;
-    align-items: center;
-    gap: var(--aula-space-2);
-    min-height: calc(36px * var(--aula-scale));
-  }
-  .ov-soon-item + .ov-soon-item {
-    border-top: 1px solid var(--aula-line);
-  }
-  .ov-dot {
-    flex: none;
-    width: calc(10px * var(--aula-scale));
-    height: calc(10px * var(--aula-scale));
-    border-radius: 50%;
-    background: var(--subject, var(--aula-fill-strong));
-  }
-  .ov-soon-text {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .ov-soon-text b {
-    font-weight: var(--aula-medium);
   }
   .ov-when,
   .ov-more {
@@ -2825,24 +2778,52 @@ export const family = css`
   .board-thing > ha-icon {
     color: var(--aula-text);
   }
-  /* What is important stands apart from the children's tiles: a heading marked in the colour of
-     what needs the family, and each note a card in its subject's colour. */
-  .ov-important-full {
+  /* What is important coming up stands apart from the children's day: a heading marked in the
+     colour of what needs the family, and the next notes, each a line in its subject's colour. */
+  .ov-important {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-2);
+    box-sizing: border-box;
+    width: 100%;
+    padding: var(--aula-space-3);
+    border: 0;
+    border-radius: var(--aula-radius);
+    background: var(--aula-surface);
+    box-shadow: inset 0 0 0 1px var(--aula-line);
+    color: var(--aula-text);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ov-important.is-button {
+    width: auto;
+    max-width: 100%;
+    align-self: flex-start;
+    justify-self: start;
+    padding: var(--aula-space-1) var(--aula-space-3) var(--aula-space-1) var(--aula-space-1);
+    border-radius: 999px;
+  }
+  @media (hover: hover) {
+    .ov-important:hover {
+      background: var(--aula-fill-faint);
+    }
+  }
+  .ov-important:active {
+    background: var(--aula-fill-faint);
   }
   /* The subjects and what to bring belong together; what is important is the family's own, and
      stands apart from them. */
-  :is(.ov-panel, .ov-col) > :is(.ov-important-full, .board-important) {
+  :is(.ov-panel, .ov-col) > .ov-important {
     margin-top: var(--aula-space-6);
   }
   .ov-important-head {
     display: flex;
     align-items: center;
     gap: var(--aula-space-2);
-    margin: 0;
-    font-size: var(--aula-font-l);
+    min-width: 0;
+    font-size: var(--aula-font-m);
     font-weight: var(--aula-bold);
   }
   .ov-important-mark {
@@ -2859,43 +2840,66 @@ export const family = css`
   .ov-important-mark ha-icon {
     color: inherit;
   }
-  .ov-important-count {
-    display: grid;
-    place-items: center;
-    min-width: calc(26px * var(--aula-scale));
-    height: calc(26px * var(--aula-scale));
-    padding: 0 var(--aula-space-2);
-    box-sizing: border-box;
-    border-radius: 999px;
-    background: var(--aula-warning-fill);
-    font-size: var(--aula-font-s);
+  /* One line high: what does not fit beside the first day wraps out of sight. */
+  .ov-important-sum {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    column-gap: 0.35em;
+    min-width: 0;
+    height: 1.3em;
+    overflow: hidden;
+    line-height: 1.3;
+  }
+  .ov-important-sum > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ov-important-go {
+    flex: none;
+    margin-inline-start: auto;
+    color: var(--aula-text-2);
+  }
+  .ov-important-lines {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-1);
+  }
+  .ov-important-line {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-2);
+    min-height: calc(32px * var(--aula-scale));
+    padding: 0 var(--aula-space-2) 0 var(--aula-space-3);
+    border-inline-start: calc(4px * var(--aula-scale)) solid var(--subject, var(--aula-line));
+    border-radius: var(--aula-radius);
+    background: color-mix(in srgb, var(--subject, var(--aula-text-2)) 14%, var(--aula-surface));
+  }
+  .ov-important-line > :is(.label.subject, .ov-when) {
+    flex: none;
+    white-space: nowrap;
+  }
+  .ov-important-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* The board has the room to say each note whole. */
+  .ov-panel .ov-important-line {
+    padding-block: var(--aula-space-1);
+  }
+  .ov-panel .ov-important-text {
+    white-space: normal;
   }
   .note-due > li.due {
     padding: var(--aula-space-3) var(--aula-space-3) var(--aula-space-3) var(--aula-space-4);
     border-inline-start: calc(5px * var(--aula-scale)) solid var(--subject, var(--aula-line));
     border-radius: var(--aula-radius);
     background: color-mix(in srgb, var(--subject, var(--aula-text-2)) 14%, var(--aula-surface));
-  }
-  .ov-important-more,
-  .ov-important-unfold {
-    align-self: flex-start;
-  }
-  .board-important {
-    width: auto;
-    align-self: flex-start;
-    padding: 0 var(--aula-space-4) 0 var(--aula-space-3);
-    border-radius: 999px;
-  }
-  .board-count {
-    display: grid;
-    place-items: center;
-    min-width: calc(24px * var(--aula-scale));
-    height: calc(24px * var(--aula-scale));
-    border-radius: 999px;
-    background: var(--aula-text);
-    color: var(--aula-surface);
-    font-size: var(--aula-font-s);
-    font-weight: var(--aula-bold);
   }
   .ov-nav {
     display: grid;
@@ -3051,9 +3055,7 @@ export const family = css`
        as wide as the widest; the hours, the bar and what to bring; and what is important. */
     .look-rows .ov-rows {
       display: grid;
-      grid-template-columns:
-        fit-content(calc(220px * var(--aula-scale))) minmax(0, 1fr)
-        calc(300px * var(--aula-scale));
+      grid-template-columns: fit-content(calc(220px * var(--aula-scale))) minmax(0, 1fr);
       column-gap: var(--aula-space-6);
     }
     .look-rows .ov-row {
@@ -3081,12 +3083,8 @@ export const family = css`
     .look-rows .ov-top .face {
       --aula-face: calc(48px * var(--aula-scale));
     }
-    .look-rows .ov-row > :not(.ov-top, .ov-important, .ov-important-full) {
+    .look-rows .ov-row > :not(.ov-top) {
       grid-column: 2;
-    }
-    .look-rows .ov-row > :is(.ov-important, .ov-important-full) {
-      grid-row: 1 / span 4;
-      grid-column: 3;
     }
     .ov-nav {
       grid-template-columns: repeat(var(--tiles, 3), minmax(0, calc(200px * var(--aula-scale))));

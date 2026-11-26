@@ -98,7 +98,9 @@ always as it should be.
     time of another goes into it as its subject [merges](#subject-names) - "2 lærere" into the
     lessons it overlaps - or gets a lane of its own under it. The events with a time have an
     outlined lane under the lessons, and each event lasting the whole day a hatched one. A
-    substitute's part has a mark; a cancelled lesson's is an outline, struck through. A tap
+    substitute's part has its icon after the subject where there is room, else a mark in its
+    corner, as has a part with other news, as the subject comes first; its window says what
+    changed. A cancelled lesson's is an outline, struck through. A tap
     anywhere on the timetable opens it as a calendar shows a day, and another folds it again; the
     small ⇕ mark at its right end says it can, with no words to read past. Opened, it shows the events lasting the whole day
     first, marked "Hele dagen", then the lessons and the events with a time in the order they
@@ -224,11 +226,11 @@ strategy:
     - thing: Idrætstaske
       icon: mdi:bag-personal
   board: # each look of the overview set apart; see the overview
-    important: full
+    important: list
     important_max: 3
     clock: analog
   rows:
-    important: compact
+    important: button
 ```
 
 The dashboard is made anew each time it is opened, so it follows the cards' later versions. To
@@ -297,11 +299,12 @@ children.
 
 Three looks, chosen in the children's bar or kept with `look`:
 
-- **Rækker** (`rows`): a row per child: its hours and presence on one line over its bar, and what
-  to bring under it. On a wide screen the face and the name stand at the left, as wide as the
-  longest name, the children's bars lined up beside them, and what is important at the right; on
-  the wall the school hours stand in large under the name.
-- **Kolonner** (`columns`): a column per child, with what is important soon listed.
+- **Rækker** (`rows`): a row per child: its hours and presence on one line over its bar, what
+  to bring under it, and what is important under that. On a wide screen the face and the name
+  stand at the left, as wide as the longest name up to a limit, a longer one ending in "…", and
+  the children's bars lined up beside them, as wide as the row; on the wall the school hours
+  stand in large under the name.
+- **Kolonner** (`columns`): a column per child, with what is important under it.
 - **Tavle** (`board`): large tiles for the children themselves, read from across the room: the
   school hours, from and to, in large under the name; today's subjects in the order of the day,
   a tap on one opening its lesson; and the things to pack, each in its subject's colour and with
@@ -311,10 +314,12 @@ Three looks, chosen in the children's bar or kept with `look`:
   hours, and shows the time now; a tap shows it large, and any tap closes it. A child away or
   sick has its presence there instead.
 
-Each look is set apart, under `rows`, `columns` and `board`: `important` is `compact`, one line
-that opens what is important day by day, or `full`, the first day's notes shown, `important_max`
-of them before **Vis 2 mere** unfolds the rest, and the later days a tap away. By default the
-board shows them in full and the rows and columns compact, three at most.
+What is important is headed by an orange flag and how much is due when - **4 vigtige ting til i
+dag · 2 til i morgen**, the later day only where it fits - and left out where nothing is. Each
+look is set apart, under `rows`, `columns` and `board`: `important` is `list`, the default, the
+next `important_max` notes (3 unless set, up to 99) a line each with its subject in its colour
+and its day, and **+ 2 mere** for the rest; or `button`, the heading alone. A tap opens them all,
+day by day. On the board a note's line is whole; elsewhere it ends in "…" where it does not fit.
 
 ```yaml
 type: custom:aula-connect-overview-card
@@ -328,11 +333,11 @@ pack_icons: # over the built-in icons, by the thing
   - thing: Blokfløjte
     icon: mdi:music
 board:
-  important: full # compact or full
-  important_max: 3 # notes shown before "Vis 2 mere"
+  important: list # list or button
+  important_max: 3 # notes listed, 1 to 99
   clock: analog # digital or analog
 rows:
-  important: compact
+  important: button
 ```
 
 A thing to bring without an icon of its own gets one by a word in it - a bag for a taske, a bike
@@ -438,8 +443,8 @@ children whose entry does; otherwise the card says they are turned off.
 | `look`                 | overview                 | the bar's                                               | `rows`, `columns` or `board`, kept whatever the children's bar chooses.                                                                                                |
 | `paths`                | overview                 | `vigtigt`, `ugeplan`, `uge`, `fravaer`                  | The views the tiles go to: `important`, `weekplan`, `week`, `absence`; relative to the dashboard unless they begin with `/`; `false` leaves a tile out.                |
 | `pack_icons`           | overview                 | none                                                    | An mdi icon for a thing to bring, as a list of `thing` and `icon`, over the built-in ones.                                                                             |
-| `rows`, `columns`      | overview                 | `important: compact`, `important_max: 3`                | How the look shows what is important: `compact`, or `full` with `important_max` notes before "Vis … mere".                                                             |
-| `board`                | overview                 | `important: full`, `important_max: 3`, `clock: digital` | As `rows`, and `clock`: `analog` adds a clock of the school hours beside the name.                                                                                     |
+| `rows`, `columns`      | overview                 | `important: list`, `important_max: 3`                   | How the look shows what is important: `list`, the next `important_max` notes (1 to 99), or `button`, how much for when.                                                |
+| `board`                | overview                 | `important: list`, `important_max: 3`, `clock: digital` | As `rows`, and `clock`: `analog` adds a clock of the school hours beside the name.                                                                                     |
 | `sick_message`         | overview, sick           | a sentence                                              | The message about the illness; `{name}` is the child's first name.                                                                                                     |
 | `sick_threads`         | overview, sick           | the one written in last                                 | The thread each child's illness is written about in: `child` and `thread`, Aula's ids.                                                                                 |
 | `sick_write`           | overview, sick           | `true`                                                  | `false` ends a report at the report, the message a tap away.                                                                                                           |

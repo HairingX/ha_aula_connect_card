@@ -180,21 +180,18 @@ export function whenText(day: Day, ctx: ViewContext): string {
   return ahead < 7 ? formatWeekday(day, ctx.language) : formatShortDate(day, ctx.language);
 }
 
-/**
- * Returns the important button's words: the first day's important notes, and the next day's within three
- * days; `first` is the first of `important`.
- */
-export function importantLine(
+/** Returns how much is important for its first day, and for the next where it is soon. */
+function importantParts(
   first: ImportantDue,
   important: readonly ImportantDue[],
   ctx: ViewContext,
-): string {
+): string[] {
   const on = (day: Day): number => important.filter((item) => item.day === day).length;
   const text = ctx.t("importantFor", { n: on(first.day), when: whenText(first.day, ctx) });
   const next = important.find((item) => item.day !== first.day);
   return next && daysBetween(ctx.today, next.day) <= 3
-    ? `${text} · ${ctx.t("importantThen", { n: on(next.day), when: whenText(next.day, ctx) })}`
-    : text;
+    ? [text, ctx.t("importantThen", { n: on(next.day), when: whenText(next.day, ctx) })]
+    : [text];
 }
 
 /** Returns the axis every child's bar shares: from the earliest start to the latest end. */
@@ -310,86 +307,24 @@ function dueItem(due: ImportantDue, ctx: ViewContext): TemplateResult {
 }
 
 /**
- * Shows what is important for the first day that has some, in full, `look.max` of its notes until
- * the rest are unfolded, and a way to the later days; or that nothing is important.
+ * Shows what is important coming up: how much for when, and as a list, the next `look.max` notes,
+ * a line each with its subject and day; the whole opens all of them. Nothing where nothing is.
  */
-function importantFull(
+function importantBlock(
   item: OverviewChild,
   ctx: ViewContext,
   state: CardState,
   options: OverviewOptions,
   look: LookSettings,
-): TemplateResult {
-  const key = `important|${String(item.child.child_id)}`;
-  const unfold = `unfold|${String(item.child.child_id)}`;
+): unknown {
   const [first] = item.important;
-  if (!first)
-    return html`<p class="ov-important none">
-      ${icon("mdi:flag-outline")}<span>${ctx.t("importantNone")}</span>
-    </p>`;
-  const later = item.important.filter((due) => due.day !== first.day).length;
-  const day = item.important.filter((due) => due.day === first.day);
-  const open = state.isOpen(unfold, false);
-  const hidden = day.length - look.max;
-  return html`<section class="ov-important-full">
-    <h4 class="ov-important-head">
-      <span class="ov-important-mark">${icon("mdi:flag")}</span
-      ><span>${ctx.t("importantOn", { when: whenText(first.day, ctx) })}</span>
-      <span class="ov-important-count">${day.length}</span>
-    </h4>
-    <ul class="note-due">
-      ${(open ? day : day.slice(0, look.max)).map((due) => dueItem(due, ctx))}
-    </ul>
-    ${
-      hidden > 0
-        ? html`<button
-            class="text-button ov-important-unfold"
-            type="button"
-            aria-expanded=${open ? "true" : "false"}
-            @click=${() => {
-              state.toggle(unfold, false);
-            }}
-          >
-            ${open ? ctx.t("showLess") : ctx.t("showMoreCount", { n: hidden })}${icon(
-              open ? "mdi:chevron-up" : "mdi:chevron-down",
-            )}
-          </button>`
-        : nothing
-    }
-    ${
-      later > 0
-        ? html`<button
-            class="text-button ov-important-more"
-            type="button"
-            aria-haspopup="dialog"
-            data-detail=${key}
-            @click=${() => {
-              openImportant(item, ctx, state, options, key);
-            }}
-          >
-            ${ctx.t("importantLater", { n: later })}${icon("mdi:chevron-right")}
-          </button>`
-        : nothing
-    }
-  </section>`;
-}
-
-function importantButton(
-  item: OverviewChild,
-  ctx: ViewContext,
-  state: CardState,
-  options: OverviewOptions,
-): TemplateResult {
-  if (options.looks.rows.important === "full")
-    return importantFull(item, ctx, state, options, options.looks.rows);
+  if (!first) return nothing;
   const key = `important|${String(item.child.child_id)}`;
-  const [first] = item.important;
-  if (!first)
-    return html`<p class="ov-important none">
-      ${icon("mdi:flag-outline")}<span>${ctx.t("importantNone")}</span>
-    </p>`;
+  const list = look.important === "list";
+  const hidden = item.important.length - look.max;
+  // The summary's later day wraps onto a line that is cut off, so that it shows only with room.
   return html`<button
-    class="ov-important"
+    class="ov-important ${list ? "is-list" : "is-button"}"
     type="button"
     aria-haspopup="dialog"
     data-detail=${key}
@@ -397,7 +332,34 @@ function importantButton(
       openImportant(item, ctx, state, options, key);
     }}
   >
-    ${icon("mdi:flag-outline")}<span>${importantLine(first, item.important, ctx)}</span>${icon("mdi:chevron-right", "chevron-end")}
+    <span class="ov-important-head">
+      <span class="ov-important-mark">${icon("mdi:flag")}</span
+      ><span class="ov-important-sum"
+        >${importantParts(first, item.important, ctx).map(
+          (part, index) => html`<span>${index > 0 ? ` · ${part}` : part}</span>`,
+        )}</span
+      >${icon("mdi:chevron-right", "ov-important-go")}
+    </span>
+    ${
+      list
+        ? html`<span class="ov-important-lines">
+              ${item.important
+                .slice(0, look.max)
+                .map(
+                  (due) =>
+                    html`<span
+                      class="ov-important-line"
+                      style=${due.note.subject ? subjectColor(due.note.subject) : ""}
+                      >${due.note.subject ? subjectLabel(due.note.subject, ctx) : nothing}<span
+                        class="ov-important-text"
+                        >${aula(due.note.title ?? due.note.text.replace(/\n[\s\S]*$/, ""), ctx)}</span
+                      ><span class="ov-when">${whenText(due.day, ctx)}</span></span
+                    >`,
+                )}
+            </span>
+            ${hidden > 0 ? html`<span class="ov-more">${ctx.t("moreCount", { n: hidden })}</span>` : nothing}`
+        : nothing
+    }
   </button>`;
 }
 
@@ -557,51 +519,10 @@ function rows(
           ${bars[index] ? html`<div class="ov-bar">${renderDayBar(bars[index], ctx, axis, { state, child: item.child, key: `bar|${String(item.child.child_id)}` })}</div>` : nothing}
           ${packChips(item, ctx, true, options)}
           ${item.content ? factStack(item.content.facts, ctx) : nothing}
-          ${item.state.kind === "ready" ? importantButton(item, ctx, state, options) : nothing}
+          ${item.state.kind === "ready" ? importantBlock(item, ctx, state, options, options.looks.rows) : nothing}
         </section>`,
     )}
   </div>`;
-}
-
-function soonList(
-  item: OverviewChild,
-  ctx: ViewContext,
-  state: CardState,
-  options: OverviewOptions,
-): unknown {
-  if (options.looks.columns.important === "full")
-    return importantFull(item, ctx, state, options, options.looks.columns);
-  const shown = item.important.slice(0, options.looks.columns.max);
-  if (shown.length === 0)
-    return html`<p class="ov-important none">
-      ${icon("mdi:flag-outline")}<span>${ctx.t("importantNone")}</span>
-    </p>`;
-  const key = `important|${String(item.child.child_id)}`;
-  return html`<button
-    class="ov-soon"
-    type="button"
-    aria-haspopup="dialog"
-    data-detail=${key}
-    @click=${() => {
-      openImportant(item, ctx, state, options, key);
-    }}
-  >
-    <span class="ov-soon-head">${ctx.t("importantSoon")}</span>
-    ${shown.map(
-      (due) =>
-        html`<span
-          class="ov-soon-item"
-          style=${due.note.subject ? subjectColor(due.note.subject) : ""}
-          ><span class="ov-dot" aria-hidden="true"></span
-          ><span class="ov-soon-text"
-            ><b>${due.note.subject ? aula(due.note.subject.name, ctx) : nothing}</b>
-            ${aula(due.note.title ?? due.note.text.replace(/\n[\s\S]*$/, ""), ctx)}</span
-          >
-          <span class="ov-when">${whenText(due.day, ctx)}</span></span
-        >`,
-    )}
-    ${item.important.length > shown.length ? html`<span class="ov-more">${ctx.t("moreCount", { n: item.important.length - shown.length })}</span>` : nothing}
-  </button>`;
 }
 
 function columns(
@@ -626,7 +547,7 @@ function columns(
           ${bars[index] ? html`<div class="ov-bar">${renderDayBar(bars[index], ctx, axis, { state, child: item.child, key: `bar|${String(item.child.child_id)}` })}</div>` : nothing}
           ${packChips(item, ctx, false, options)}
           ${item.content ? factStack(item.content.facts, ctx) : nothing}
-          ${item.state.kind === "ready" ? soonList(item, ctx, state, options) : nothing}
+          ${item.state.kind === "ready" ? importantBlock(item, ctx, state, options, options.looks.columns) : nothing}
         </section>`,
     )}
   </div>`;
@@ -644,8 +565,6 @@ function panel(
     packed.items.map((thing) => ({ thing, subject: packed.subject })),
   );
   const today = item.focus.day === ctx.today;
-  const key = `important|${String(item.child.child_id)}`;
-  const [first] = item.important;
   // The name, the hours and the first heading stand in a column of their own, the clock or the
   // presence beside them, so that children side by side line up whatever stands at the right.
   return html`<section class="ov-panel">
@@ -679,26 +598,7 @@ function panel(
             }`
         : nothing
     }
-    ${
-      options.looks.board.important === "full"
-        ? importantFull(item, ctx, state, options, options.looks.board)
-        : first
-          ? html`<button
-              class="board-important"
-              type="button"
-              aria-haspopup="dialog"
-              data-detail=${key}
-              @click=${() => {
-                openImportant(item, ctx, state, options, key);
-              }}
-            >
-              ${icon("mdi:flag-outline")}<span class="board-count"
-                >${item.important.filter((due) => due.day === first.day).length}</span
-              >
-              <span>${importantLine(first, item.important, ctx).replace(/^\d+ /, "")}</span>
-            </button>`
-          : nothing
-    }
+    ${importantBlock(item, ctx, state, options, options.looks.board)}
   </section>`;
 }
 

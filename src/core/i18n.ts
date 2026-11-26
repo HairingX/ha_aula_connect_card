@@ -119,7 +119,6 @@ const TEXTS = {
   room: ["Room", "Lokale"],
   showMore: ["Show more", "Vis mere"],
   showLess: ["Show less", "Vis mindre"],
-  showMoreCount: ["Show {n} more", "Vis {n} mere"],
   packFor: ["for {subject}", "til {subject}"],
   showTimetable: ["Show full timetable", "Vis hele skemaet"],
   allDay: ["All day", "Hele dagen"],
@@ -215,12 +214,6 @@ const TEXTS = {
   presenceCame: ["came {time}", "kom {time}"],
   presenceLeft: ["left {time}", "gik {time}"],
   presenceNote: ["From the check-in in Aula.", "Fra komme/gå i Aula."],
-  importantNone: ["Nothing important", "Intet vigtigt"],
-  importantOn: ["Important for {when}", "Vigtigt til {when}"],
-  importantLater: [
-    { one: "{n} more later", other: "{n} more later" },
-    { one: "{n} mere senere", other: "{n} mere senere" },
-  ],
   importantFor: [
     { one: "{n} important thing for {when}", other: "{n} important things for {when}" },
     { one: "{n} vigtig ting til {when}", other: "{n} vigtige ting til {when}" },
@@ -235,7 +228,6 @@ const TEXTS = {
   importantTitle: ["Important for {name}", "Vigtigt for {name}"],
   importantFrom: ["From {day} on", "Fra {day} og frem"],
   importantAll: ["All that is important", "Alt vigtigt"],
-  importantSoon: ["Important soon", "Vigtigt snart"],
   moreCount: ["+ {n} more", "+ {n} mere"],
   boardToday: ["Today you have", "I dag har du"],
   boardTomorrow: ["{day} you have", "{day} har du"],
@@ -543,13 +535,13 @@ const TEXTS = {
   editorSender: ["Send as", "Send som"],
   editorImportant: ["What is important", "Det vigtige"],
   editorImportantHelper: [
-    "Compact: one line that opens it. In full: the next day's shown on the overview itself.",
-    "Samlet: én linje, der åbner det. Vis alt: næste dags vigtige står direkte på oversigten.",
+    "List: the next ones, a line each. Button: only how many for when. Either opens them all.",
+    "Liste: de næste, én linje hver. Knap: kun hvor mange til hvornår. Begge åbner det hele.",
   ],
-  editorImportantMax: ["Notes shown", "Noter vist"],
+  editorImportantMax: ["Notes listed", "Antal i listen"],
   editorImportantMaxHelper: [
-    'How many are shown before "Show more".',
-    'Hvor mange der vises før "Vis mere".',
+    "How many the list shows at most, 1 to 99.",
+    "Hvor mange listen højst viser, 1 til 99.",
   ],
   editorClock: ["School hours", "Skoletid"],
   editorClockHelper: [
@@ -559,8 +551,8 @@ const TEXTS = {
   clockDigital: ["Digital", "Digital"],
   clockAnalog: ["Analog", "Analog"],
   clockLabel: ["School {span}; it is {now}", "Skole {span}; klokken er {now}"],
-  importantCompact: ["Compact", "Samlet"],
-  importantFullLabel: ["In full", "Vis alt"],
+  importantList: ["List", "Liste"],
+  importantButton: ["Button", "Knap"],
   editorDashboardSick: ["Reporting sick", "Sygemelding"],
   editorDashboardVacation: ["Vacations and vacation requests", "Ferie og ferieanmodninger"],
   editorSenderHelper: [

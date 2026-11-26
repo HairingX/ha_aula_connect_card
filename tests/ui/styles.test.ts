@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   base,
+  family,
   blocks,
   dayStyles,
   details,
@@ -141,6 +142,13 @@ describe("the timetable", () => {
     expect(declared(blocks, '.bar-item[data-fit="none"] > span')).toContain("display: none");
   });
 
+  it("marks a changed lesson in a corner, in place of its icon, where it has no room for both", () => {
+    expect(declared(blocks, '.bar-item[data-mark="corner"] > ha-icon')).toContain("display: none");
+    expect(declared(blocks, '.bar-item.changed[data-mark="corner"]::after')).toContain(
+      "clip-path: polygon(0 0, 100% 0, 100% 100%)",
+    );
+  });
+
   it("keeps an event's icon beside its title, however long", () => {
     expect(declared(blocks, ".event-row .lesson-head")).toContain("flex-wrap: nowrap");
   });
@@ -243,5 +251,33 @@ describe("a lesson's or an event's window", () => {
       expect.arrayContaining(["width: var(--aula-target)", "height: var(--aula-target)"]),
     );
     expect(declared(details, ".detail")).toContain("overflow-y: auto");
+  });
+});
+
+describe("the overview", () => {
+  it("ends a long name in an ellipsis rather than a second line", () => {
+    expect(declared(family, ".ov-name")).toEqual(
+      expect.arrayContaining([
+        "overflow: hidden",
+        "text-overflow: ellipsis",
+        "white-space: nowrap",
+      ]),
+    );
+  });
+
+  it("puts what is important under what to bring in a wide row, beside nothing", () => {
+    const wide = "@container aula (min-width: 840px)";
+    expect(declared(family, ".look-rows .ov-rows", wide)).toContain(
+      "grid-template-columns: fit-content(calc(220px * var(--aula-scale))) minmax(0, 1fr)",
+    );
+    expect(declared(family, ".look-rows .ov-row > :not(.ov-top)", wide)).toContain(
+      "grid-column: 2",
+    );
+  });
+
+  it("shows a summary's later day only where it fits on the summary's one line", () => {
+    expect(declared(family, ".ov-important-sum")).toEqual(
+      expect.arrayContaining(["flex-wrap: wrap", "height: 1.3em", "overflow: hidden"]),
+    );
   });
 });

@@ -334,11 +334,12 @@ export function renderDayBar(
   const item = (entry: BarItem): TemplateResult =>
     entry.kind === "lesson"
       ? shell(
-          entry.row.cancelled ? "cancelled" : "",
+          [entry.row.cancelled ? "cancelled" : "", entry.row.status ? "changed" : ""].join(" "),
           `${place(entry.from, entry.to)}; ${subjectColor(entry.row.subject)}`,
-          html`${entry.row.status ? statusIcon(entry.row.status) : nothing}<span class="bar-name"
-              >${aula(entry.row.subject.name, ctx)}</span
-            ><span class="bar-short">${aula(entry.row.subject.short, ctx)}</span>`,
+          html`<span class="bar-name">${aula(entry.row.subject.name, ctx)}</span
+            ><span class="bar-short">${aula(entry.row.subject.short, ctx)}</span>${
+              entry.row.status ? statusIcon(entry.row.status) : nothing
+            }`,
           () => ({ kind: "lesson", row: entry.row }),
           entry.row.block.start,
           spoken(entry),

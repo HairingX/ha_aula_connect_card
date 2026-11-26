@@ -206,8 +206,8 @@ function lookGroup(
           select: {
             mode: "list",
             options: [
-              { value: "compact", label: t("importantCompact") },
-              { value: "full", label: t("importantFullLabel") },
+              { value: "list", label: t("importantList") },
+              { value: "button", label: t("importantButton") },
             ],
           },
         },

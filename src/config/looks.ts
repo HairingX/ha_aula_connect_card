@@ -6,9 +6,9 @@
 
 /** How one of the overview's looks shows what is important. */
 export interface LookSettings {
-  /** A line that opens it, or the first day's notes shown. */
-  readonly important: "compact" | "full";
-  /** The notes shown before "Vis mere". */
+  /** The next notes listed, or only a summary of them; either opens them all. */
+  readonly important: "list" | "button";
+  /** The notes listed at most. */
   readonly max: number;
 }
 
@@ -20,10 +20,10 @@ export interface BoardSettings extends LookSettings {
 
 /** The overview's looks as set where nothing is said of them. */
 export const LOOK_DEFAULTS = {
-  rows: { important: "compact", max: 3 },
-  columns: { important: "compact", max: 3 },
-  board: { important: "full", max: 3, clock: "digital" },
+  rows: { important: "list", max: 3 },
+  columns: { important: "list", max: 3 },
+  board: { important: "list", max: 3, clock: "digital" },
 } as const satisfies { rows: LookSettings; columns: LookSettings; board: BoardSettings };
 
-/** The notes a look shows at most before "Vis mere". */
-export const MAX_NOTES = 20;
+/** The most notes a look can be set to list. */
+export const MAX_NOTES = 99;

@@ -220,7 +220,7 @@ describe("the overview", () => {
     expect(texts(card, ".ov-title")).toEqual(["I dag torsdag 29. oktober"]);
     expect(texts(card, ".ov-name")).toEqual(["Ida", "Oskar"]);
     expect(texts(card, ".presence")).toEqual(["I skole", "Kommer 07.45"]);
-    expect(texts(card, ".ov-important")).toEqual([
+    expect(texts(card, ".ov-important-sum")).toEqual([
       "1 vigtig ting til i dag · 2 til i morgen",
       "1 vigtig ting til mandag",
     ]);
@@ -309,20 +309,21 @@ describe("the overview", () => {
     expect(location.pathname).toBe("/kiosk/uge");
   });
 
-  it("shows a column per child, with what is important soon", async () => {
+  it("shows a column per child, with the next important notes", async () => {
     setLook("columns");
     const { card } = await mount(OVERVIEW, "thu-1000", { today: todayOf });
     expect(all(card, ".ov-col")).toHaveLength(2);
-    expect(texts(card, ".ov-soon .ov-more")).toEqual(["+ 3 mere"]);
-    expect(texts(card, ".ov-soon-head")).toEqual(["Vigtigt snart", "Vigtigt snart"]);
-    await tap(card, ".ov-soon");
+    expect(all(card, ".ov-col:nth-child(1) .ov-important-line")).toHaveLength(3);
+    expect(texts(card, ".ov-col .ov-more")).toEqual(["+ 3 mere"]);
+    await tap(card, ".ov-col .ov-important");
     expect(windowText(card)).toContain("Vigtigt for Ida");
   });
 
-  it("says in a column when a child has nothing important", async () => {
+  it("leaves out what is important where a child has nothing", async () => {
     setLook("columns");
     const { card } = await mount(OVERVIEW, "no-week-plan");
-    expect(texts(card, ".ov-col .ov-important.none")).toEqual(["Intet vigtigt", "Intet vigtigt"]);
+    expect(all(card, ".ov-col")).toHaveLength(2);
+    expect(all(card, ".ov-important")).toEqual([]);
   });
 
   it("shows a board of large tiles: the subjects, what to pack, and what is important", async () => {
@@ -331,7 +332,7 @@ describe("the overview", () => {
       config: {
         packing: [{ subject: "Idræt", items: ["Idrætstøj", "Fløjte"] }],
         pack_icons: { fløjte: "mdi:whistle" },
-        board: { important: "compact" },
+        board: { important: "button" },
       },
     });
     expect(texts(card, ".board-subject")[0]).toBe("Idræt");
@@ -346,7 +347,9 @@ describe("the overview", () => {
     ]);
     expect(texts(card, ".board-head")).toEqual(["I dag har du", "Husk at pakke", "I dag har du"]);
     expect(texts(card, ".board-head")[0]).toBe("I dag har du");
-    await tap(card, ".board-important");
+    expect(all(card, ".ov-panel .ov-important.is-button")).toHaveLength(2);
+    expect(all(card, ".ov-important-lines")).toEqual([]);
+    await tap(card, ".ov-important.is-button");
     expect(windowText(card)).toContain("Vigtigt for Ida");
   });
 
@@ -413,73 +416,40 @@ describe("the overview", () => {
     expect(texts(card, ".board-head")[0]).toBe("Fredag har du");
   });
 
-  it("shows what is important in full when asked, and goes on to what comes later", async () => {
-    const { card } = await mount(OVERVIEW, "thu-1000", {
-      today: todayOf,
-      config: { rows: { important: "full" } },
-    });
-    expect(texts(card, ".ov-important-head")).toEqual([
-      "Vigtigt til i dag 1",
-      "Vigtigt til mandag 1",
-    ]);
-    expect(all(card, ".due .label.subject").map((chip) => chip.getAttribute("style"))).toEqual([
-      "--subject: #e57373",
-      "--subject: #64b5f6",
-    ]);
-    expect(texts(card, ".ov-important-full .note-text")[0]).toBe(
+  it("lists the next important notes, each with its subject and day, and opens them all", async () => {
+    const { card } = await mount(OVERVIEW, "thu-1000", { today: todayOf });
+    expect(all(card, ".ov-row:nth-child(1) .ov-important-line")).toHaveLength(3);
+    expect(texts(card, ".ov-row:nth-child(1) .ov-when")).toEqual(["i dag", "i morgen", "i morgen"]);
+    expect(texts(card, ".ov-row:nth-child(1) .ov-important-text")[0]).toBe(
       "Lektie til i dag: Læsebogen s. 38+39",
     );
-    expect(texts(card, ".ov-important-more")).toEqual(["5 mere senere", "1 mere senere"]);
-    await tap(card, ".ov-important-more");
+    expect(
+      all(card, ".ov-important-line .label.subject").map((chip) => chip.getAttribute("style")),
+    ).toContain("--subject: #e57373");
+    expect(texts(card, ".ov-row .ov-more")).toEqual(["+ 3 mere"]);
+    await tap(card, ".ov-row .ov-important");
     expect(windowText(card)).toContain("Vigtigt for Ida");
     setLook("board");
     await settled(card);
-    expect(texts(card, ".ov-important-head")).toEqual([
-      "Vigtigt til i dag 1",
-      "Vigtigt til mandag 1",
-    ]);
-    expect(all(card, ".board-important")).toEqual([]);
+    expect(all(card, ".ov-panel .ov-important.is-list")).toHaveLength(2);
   });
 
-  it("shows in full a single day's important notes without more, and says when there are none", async () => {
+  it("lists as many important notes as a look is set to, and says how many more there are", async () => {
+    setLook("columns");
     const { card } = await mount(OVERVIEW, "thu-1000", {
-      config: { rows: { important: "full" } },
+      config: { columns: { important_max: 1 } },
       week: (_child, start) => {
         const data = weekData(start);
         return { ...data, tasks: data.tasks.filter((task) => task.date === "2026-10-29") };
       },
     });
-    expect(all(card, ".ov-important-full")).toHaveLength(2);
-    expect(all(card, ".ov-important-more")).toEqual([]);
-    const { card: none } = await mount(OVERVIEW, "no-week-plan", {
-      config: { rows: { important: "full" } },
+    expect(all(card, ".ov-col:nth-child(1) .ov-important-line")).toHaveLength(1);
+    expect(texts(card, ".ov-col:nth-child(1) .ov-more")).toEqual([]);
+    unmountAll();
+    const { card: more } = await mount(OVERVIEW, "thu-1000", {
+      config: { columns: { important_max: 1 } },
     });
-    expect(texts(none, ".ov-important.none")).toEqual(["Intet vigtigt", "Intet vigtigt"]);
-  });
-
-  it("shows as many of a day's important notes as a look is set to, and unfolds the rest", async () => {
-    setLook("columns");
-    const { card } = await mount(OVERVIEW, "thu-1000", {
-      config: { columns: { important: "full", important_max: 1 } },
-      week: (_child, start) => {
-        const data = weekData(start);
-        const today = data.tasks.filter((task) => task.date === "2026-10-29");
-        return {
-          ...data,
-          tasks: [
-            ...today,
-            ...today.map((task) => ({ ...task, id: `${String(task.id)}b`, content: "Madpakke" })),
-          ],
-        };
-      },
-    });
-    expect(all(card, ".ov-col:nth-child(1) .note-due li")).toHaveLength(1);
-    expect(texts(card, ".ov-important-unfold")).toEqual(["Vis 1 mere", "Vis 1 mere"]);
-    await tap(card, ".ov-important-unfold");
-    expect(all(card, ".ov-col:nth-child(1) .note-due li")).toHaveLength(2);
-    expect(texts(card, ".ov-important-unfold")[0]).toBe("Vis mindre");
-    await tap(card, ".ov-important-unfold");
-    expect(all(card, ".ov-col:nth-child(1) .note-due li")).toHaveLength(1);
+    expect(texts(more, ".ov-col:nth-child(1) .ov-more")).toEqual(["+ 5 mere"]);
   });
 
   it("opens a lesson or an event from a child's day bar", async () => {
@@ -558,7 +528,7 @@ describe("the overview's other days", () => {
       week: (_child, start) => bare(start, false),
     });
     expect(texts(card, ".ov-coming .empty")).toEqual(["Intet i kalenderen"]);
-    expect(texts(card, ".ov-important.none")).toEqual(["Intet vigtigt", "Intet vigtigt"]);
+    expect(all(card, ".ov-important")).toEqual([]);
   });
 
   it("waits for a child's data in every look", async () => {
@@ -593,7 +563,11 @@ describe("the overview's other days", () => {
     expect(windowText(card)).toContain("Madpakke");
     setLook("columns");
     await settled(card);
-    expect(texts(card, ".ov-soon-item b")).toContain("");
+    expect(
+      all(card, ".ov-col:nth-child(1) .ov-important-line").filter(
+        (line) => !line.querySelector(".label.subject"),
+      ),
+    ).not.toEqual([]);
     expect(texts(card, ".ov-col:nth-child(2) .ov-when")).toEqual(["3. nov.", "4. nov."]);
   });
 
@@ -613,9 +587,9 @@ describe("the overview's other days", () => {
     unmountAll();
     setLook("board");
     const { card: board } = await mount(OVERVIEW, "no-week-plan", {
-      config: { board: { important: "compact" } },
+      config: { board: { important: "button" } },
     });
-    expect(all(board, ".board-important")).toEqual([]);
+    expect(all(board, ".ov-important")).toEqual([]);
     expect(texts(board, ".board-head")[0]).toBe("Fredag har du");
   });
 });
