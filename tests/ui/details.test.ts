@@ -570,3 +570,24 @@ describe("the window's content", () => {
     expect(plain.querySelector(".detail-section")).toBeNull();
   });
 });
+
+describe("the page behind a window", () => {
+  it("stays still while a window is open, and moves again once it closes", async () => {
+    const { card } = await mount(DAY, "thu-0715", { config: { children: [1001] } });
+    await unfold(card);
+    expect(document.documentElement.style.overflow).toBe("");
+    await tap(card, SUBSTITUTE);
+    expect(document.documentElement.style.overflow).toBe("hidden");
+    present(root(card).querySelector<HTMLButtonElement>(".detail-close")).click();
+    await card.updateComplete;
+    expect(document.documentElement.style.overflow).toBe("");
+  });
+
+  it("moves again when the card is taken away with its window open", async () => {
+    const { card } = await mount(DAY, "thu-0715", { config: { children: [1001] } });
+    await unfold(card);
+    await tap(card, SUBSTITUTE);
+    unmountAll();
+    expect(document.documentElement.style.overflow).toBe("");
+  });
+});

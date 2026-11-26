@@ -22,6 +22,7 @@ import { heldFocus, IDLE_RESET_MS, type Focus } from "../model/focus.ts";
 import { AulaController } from "./controller.ts";
 import { detailDialog } from "./details.ts";
 import { navigate } from "./navigate.ts";
+import { holdPage, releasePage } from "./page-hold.ts";
 import { alert, apiError, loading, refreshing } from "./primitives.ts";
 
 /** What the base element reads from every card's configuration. */
@@ -301,6 +302,7 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
   /** Stops watching, and tracking touches and sizes. */
   disconnectedCallback(): void {
     this.#connected = false;
+    this.#holdPage(false);
     this.aula.hostDisconnected();
     for (const type of INTERACTIONS) this.removeEventListener(type, this.#touched);
     this.renderRoot.removeEventListener("scroll", this.#touched, { capture: true });
@@ -401,6 +403,15 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
     this.requestUpdate();
   }
 
+  #holding = false;
+
+  #holdPage(open: boolean): void {
+    if (open === this.#holding) return;
+    this.#holding = open;
+    if (open) holdPage();
+    else releasePage();
+  }
+
   // The card takes the window away rather than closing it, which leaves the focus nowhere: the
   // button that opened it has it again, as after a dialog the browser closes itself.
   readonly #closeModal = (): void => {
@@ -421,9 +432,11 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
       this.#pending = undefined;
       if (!this.#connected) return;
       renderTemplate(this.render(), this.renderRoot);
-      // Only a modal dialog keeps the page behind it from a finger and the keyboard.
+      // Only a modal dialog keeps the page behind it from a finger and the keyboard; iOS still
+      // drags the page behind a dialog, unless the page itself is held still.
       const dialog = this.renderRoot.querySelector("dialog");
       if (dialog && !dialog.open) dialog.showModal();
+      this.#holdPage(dialog !== null);
       this.#measure();
     });
   }
