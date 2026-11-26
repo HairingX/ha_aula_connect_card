@@ -18,6 +18,8 @@ export const OVERVIEW_CARD = "aula-connect-overview-card";
 export const IMPORTANT_CARD = "aula-connect-important-card";
 /** The news feed's element. */
 export const NEWS_CARD = "aula-connect-news-card";
+/** The hours and closed days of the children's institutions. */
+export const HOURS_CARD = "aula-connect-hours-card";
 /** The card that reports a child sick. */
 export const SICK_CARD = "aula-connect-sick-card";
 /** Ferie/fri: the vacations and the vacation requests. */
@@ -350,6 +352,7 @@ export type FamilyCard =
   | typeof OVERVIEW_CARD
   | typeof IMPORTANT_CARD
   | typeof NEWS_CARD
+  | typeof HOURS_CARD
   | typeof SICK_CARD
   | typeof VACATION_CARD;
 
@@ -372,6 +375,7 @@ const FORMS: Readonly<Record<FamilyCard, readonly FieldName[]>> = {
   ],
   [IMPORTANT_CARD]: ["children", "size", "subject_names_group"],
   [NEWS_CARD]: ["children", "size"],
+  [HOURS_CARD]: ["children", "size"],
   [SICK_CARD]: ["children", "sick_write", "sick_message", "sick_threads", "sender", "size"],
   [VACATION_CARD]: ["children", "sender", "size"],
 };
@@ -381,6 +385,7 @@ const RESOLVE: Readonly<Record<FamilyCard, (config: unknown, lenient: boolean) =
   [OVERVIEW_CARD]: resolveOverviewConfig,
   [IMPORTANT_CARD]: resolveImportantConfig,
   [NEWS_CARD]: resolveImportantConfig,
+  [HOURS_CARD]: resolveImportantConfig,
   [SICK_CARD]: resolveActionConfig,
   [VACATION_CARD]: resolveActionConfig,
 };

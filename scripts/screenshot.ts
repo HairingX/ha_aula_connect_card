@@ -27,6 +27,7 @@ import { childKey, type Child, type DayRange, type WeekData } from "../src/core/
 import { extraWeeks } from "../src/model/week-view.ts";
 import { scenarioNamed, SCENARIOS, type Scenario } from "../tests/fixtures/scenarios.ts";
 import {
+  OPENING_HOURS,
   POSTS,
   REQUESTS,
   STATES,
@@ -80,6 +81,7 @@ const CARDS = {
   overview: "aula-connect-overview-card",
   important: "aula-connect-important-card",
   news: "aula-connect-news-card",
+  hours: "aula-connect-hours-card",
   sick: "aula-connect-sick-card",
   vacation: "aula-connect-vacation-card",
 } as const;
@@ -266,6 +268,7 @@ const SETS: Record<string, () => Shot[]> = {
     shot("overview", "thu-1000", 800, { children: 2, config: { look: "board" }, tag: "board" }),
     shot("important", "thu-1000", 380, { children: 2 }),
     shot("news", "thu-1000", 380, { children: 2 }),
+    shot("hours", "thu-1000", 380, { children: 2 }),
     shot("sick", "thu-1000", 380, {
       children: 2,
       dialog: SICK_ROW,
@@ -850,6 +853,7 @@ for (const item of shots) {
       "aula_connect/vacation/delete": null,
       "aula_connect/vacation_requests": REQUESTS,
       "aula_connect/posts": POSTS,
+      "aula_connect/opening_hours": OPENING_HOURS,
       "aula_connect/vacation_request/answer": null,
     },
     today: Object.fromEntries(

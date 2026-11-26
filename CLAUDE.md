@@ -10,8 +10,8 @@ how it is set up: the README.
 
 ## These cards
 
-- The school day, week plan, week, overview and important cards only show. The sick and
-  Ferie/fri cards, and the overview's presence and request windows, act in Aula only on a tap,
+- The school day, week plan, week, overview, important, news and opening hours cards only show.
+  The sick and Ferie/fri cards, and the overview's presence and request windows, act in Aula only on a tap,
   each step its own tap, showing what is sent and to whom, with nothing sent unseen; nothing is
   ever marked read. What is opened closes again by itself.
 - The dashboard's first page shows only what matters now; what needs the family comes to the
@@ -63,6 +63,11 @@ how it is set up: the README.
     the posts in Aula), `important` with `important_from` and `important_to`, `author`,
     `institution`, `groups`, `comments` and `attachments` (`name`, `url`, `thumbnail`, `media`).
     It only reads: a post is never marked seen.
+  - `aula_connect/opening_hours` with `entry_id`, `child_id`, `start` and `end` (both included, at
+    most 62 days apart) answers with the child's institution's `closed_days` (`name`, `start`,
+    `end`, both included) and its `days` from `start` to `end` (`date`, `closed`, and `open` and
+    `close` as "HH:MM", null when closed or not told); its errors are `not_found`,
+    `invalid_request` and `home_assistant_error`.
   - All-day events have days (`YYYY-MM-DD`, the end the day after the last); lessons and other
     events have ISO date-times with offset. `teachers` are full names. A lesson's `status` is
     `normal`, `substitute`, or another value shown as it is.

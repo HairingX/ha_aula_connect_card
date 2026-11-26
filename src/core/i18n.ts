@@ -67,6 +67,11 @@ const TEXTS = {
     "The newest posts of Aula's news feed, the new and the important marked.",
     "De nyeste opslag fra Aulas nyhedsfeed, de nye og de vigtige markeret.",
   ],
+  pickerHoursName: ["Aula Connect · Opening hours", "Aula Connect · Åbningstider"],
+  pickerHoursDescription: [
+    "The hours of the children's schools and institutions this week and next, and the days they are closed.",
+    "Åbningstiderne for børnenes skoler og institutioner denne og næste uge, og de dage de har lukket.",
+  ],
   pickerImportantPageName: ["Aula Connect · Important", "Aula Connect · Vigtigt"],
   pickerImportantPageDescription: [
     "What the week plan marks as important for every child, by the day it is for, a week at a time.",
@@ -253,6 +258,15 @@ const TEXTS = {
   newsAttachments: ["Attached", "Vedhæftet"],
   newsGroups: ["Shared with", "Delt med"],
   newsNone: ["No posts", "Ingen opslag"],
+  // The opening hours
+  hoursTitle: ["Opening hours", "Åbningstider"],
+  hoursClosed: ["Closed", "Lukket"],
+  hoursOpen: ["Open", "Åbent"],
+  hoursUnknown: ["Aula tells no hours", "Aula oplyser ingen tider"],
+  hoursNone: ["Aula tells no opening hours", "Aula oplyser ingen åbningstider"],
+  closedDays: ["Closed days", "Lukkedage"],
+  noClosedDays: ["No closed days ahead", "Ingen lukkedage forude"],
+  closedDaysMore: ["Later ({n})", "Senere ({n})"],
   // The Important page
   regionImportantPage: ["Important – {names}", "Vigtigt – {names}"],
   earlierInWeek: ["Earlier this week ({n})", "Tidligere i ugen ({n})"],

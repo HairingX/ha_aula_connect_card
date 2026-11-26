@@ -3309,4 +3309,98 @@ export const family = css`
       grid-template-columns: repeat(auto-fill, minmax(calc(320px * var(--aula-scale)), 1fr));
     }
   }
+  /* The opening hours: today's at the top, the two weeks side by side where there is room, and
+     the closed days as rows. */
+  .hours-only {
+    margin-inline-start: auto;
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+    font-weight: normal;
+    text-align: end;
+  }
+  .hours-place {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-3);
+  }
+  .hours-place + .hours-place {
+    padding-top: var(--aula-space-3);
+    border-top: 1px solid var(--aula-line);
+  }
+  .hours-place-head {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-3);
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+  }
+  .hours-today {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--aula-space-2);
+    margin: 0;
+    padding: var(--aula-space-2) var(--aula-space-3);
+    border-radius: var(--aula-radius);
+    background: var(--aula-fill-faint);
+    font-size: var(--aula-font-l);
+    --mdc-icon-size: calc(20px * var(--aula-scale));
+  }
+  .hours-today.is-closed {
+    background: var(--aula-warning-fill);
+  }
+  .hours-today strong {
+    font-weight: var(--aula-medium);
+  }
+  .hours-weeks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(calc(260px * var(--aula-scale)), 1fr));
+    gap: var(--aula-space-3) var(--aula-space-4);
+  }
+  .hours-week-head {
+    margin: 0 0 var(--aula-space-1);
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+    font-weight: var(--aula-medium);
+  }
+  .hours-days {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .hours-days > li {
+    display: flex;
+    gap: var(--aula-space-3);
+  }
+  .hours-when {
+    flex: 0 0 4.5em;
+    color: var(--aula-text-2);
+  }
+  .hours-days > li.is-today .hours-when {
+    color: var(--aula-accent);
+    font-weight: var(--aula-medium);
+  }
+  .hours-days > li.is-closed .hours-time {
+    color: var(--aula-text-2);
+  }
+  .hours-time {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--aula-space-2);
+    min-width: 0;
+  }
+  .hours-why {
+    min-width: 0;
+  }
+  .hours-none {
+    margin: 0;
+    color: var(--aula-text-2);
+  }
+  .hours-closed-icon {
+    color: var(--aula-text-2);
+  }
 `;

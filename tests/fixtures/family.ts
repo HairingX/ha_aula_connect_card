@@ -198,3 +198,37 @@ export const POSTS = {
     },
   ],
 };
+
+const HOURS_WEEK = [
+  ["06:30", "17:00"],
+  ["06:30", "17:00"],
+  ["06:30", "17:00"],
+  ["06:30", "17:00"],
+  ["06:30", "16:00"],
+] as const;
+
+/**
+ * The school's made-up hours for the week of Thursday 29 October 2026 and the next: open on
+ * weekdays, shorter on Fridays, closed for a planning day on Friday 6 November.
+ */
+export const OPENING_HOURS = {
+  closed_days: [
+    { name: "Efterårsferie", start: "2026-10-12", end: "2026-10-16" },
+    { name: "Juleferie", start: "2026-12-21", end: "2027-01-03" },
+    { name: "Planlægningsdag", start: "2026-11-06", end: "2026-11-06" },
+    { name: "Vinterferie", start: "2027-02-15", end: "2027-02-19" },
+    { name: "Påskeferie", start: "2027-03-25", end: "2027-03-29" },
+    { name: "Grundlovsdag", start: "2027-06-05", end: "2027-06-05" },
+  ],
+  days: Array.from({ length: 14 }, (_, n) => {
+    const date = new Date(Date.UTC(2026, 9, 26 + n)).toISOString().slice(0, 10);
+    const hours = HOURS_WEEK[n % 7];
+    const closed = !hours || date === "2026-11-06";
+    return {
+      date,
+      closed,
+      open: closed ? null : hours[0],
+      close: closed ? null : hours[1],
+    };
+  }),
+};

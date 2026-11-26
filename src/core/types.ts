@@ -434,3 +434,33 @@ export interface Post {
   /** What is attached to it. */
   attachments: PostAttachment[];
 }
+
+/** A period an institution is closed, such as a holiday, by the name it gives it. */
+export interface ClosedDays {
+  /** Its name, such as "Juleferie"; may be empty. */
+  name: string;
+  /** Its first day. */
+  start: Day;
+  /** Its last day, included. */
+  end: Day;
+}
+
+/** An institution's hours on one day. */
+export interface OpeningDay {
+  /** The day. */
+  date: Day;
+  /** Whether it is closed all day. */
+  closed: boolean;
+  /** When it opens, "HH:MM"; null when closed or not said. */
+  open: string | null;
+  /** When it closes, "HH:MM"; null when closed or not said. */
+  close: string | null;
+}
+
+/** A child's institution's closed days and hours, from `aula_connect/opening_hours`. */
+export interface OpeningHours {
+  /** The periods it is closed. */
+  closed_days: ClosedDays[];
+  /** Its hours, day by day, for the days asked. */
+  days: OpeningDay[];
+}

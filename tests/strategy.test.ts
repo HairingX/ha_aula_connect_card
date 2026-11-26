@@ -68,6 +68,7 @@ describe("the dashboard", () => {
       },
       { type: "grid", column_span: 1, cards: [{ type: "custom:aula-connect-sick-card" }] },
       { type: "grid", column_span: 1, cards: [{ type: "custom:aula-connect-vacation-card" }] },
+      { type: "grid", column_span: 1, cards: [{ type: "custom:aula-connect-hours-card" }] },
     ]);
   });
 
@@ -99,6 +100,7 @@ describe("the dashboard", () => {
     ).toEqual([
       [{ type: "custom:aula-connect-children-card", look_switch: false }],
       [{ type: "custom:aula-connect-vacation-card" }],
+      [{ type: "custom:aula-connect-hours-card" }],
     ]);
   });
 });

@@ -5,7 +5,8 @@ Home Assistant dashboard cards for the Danish school platform Aula, from the
 matters now, **the week plan** for the days ahead, and **the week** day by day; and for the family,
 **the children's bar**, **an overview** of every child's day, **what is important**, and
 **Fravær**: the cards that **report a child sick**, and that **answer vacation requests** and
-**register vacations** in one; and **the news feed**, Aula's posts read whole. They are
+**register vacations** in one, and **the opening hours** and closed days of the children's schools
+and institutions; and **the news feed**, Aula's posts read whole. They are
 made to be read on a phone in the evening and on a wall screen in the morning, in Danish or
 English. The school day cards only show; the family's cards act in Aula only on a tap, and only
 once what is sent has been seen. An [Aula dashboard](#dashboard) puts them together.
@@ -203,8 +204,8 @@ The **Aula Connect** dashboard is made from the cards, and shows on its first pa
 matters now: the children's bar and the overview, the whole width. What needs you comes to the
 overview by itself - a vacation request awaiting an answer, a child sick yesterday who may still
 be - and goes again once it is done. Under it the overview's pages are subviews, each under the
-children's bar: **Vigtigt**, **Ugeplan**, **Uge**, **Fravær**, with the sick card and the
-Ferie/fri card, and **Nyheder**, with the news feed. Make a new dashboard and choose **Aula Connect**; **Rediger betjeningspanel** in its
+children's bar: **Vigtigt**, **Ugeplan**, **Uge**, **Fravær**, with the sick card, the
+Ferie/fri card and the opening hours, and **Nyheder**, with the news feed. Make a new dashboard and choose **Aula Connect**; **Rediger betjeningspanel** in its
 menu opens its settings in Home Assistant's own form, as the cards' editors do. The settings are
 set once for the whole dashboard and given to every card that has them: the children, whether it
 has the sick card and the vacations, the [things to bring](#things-to-bring), the
@@ -369,6 +370,18 @@ marked important. A post two guardians both get is shown once. A tap opens the p
 text, when it is important until, its files, which open in Aula's own storage, and the groups it
 is shared with. The posts are read when the card is shown, and each quarter of an hour; nothing is
 marked seen. A post's text is shown as plain text, never as markup.
+
+## Opening hours card
+
+![The opening hours](docs/hours-thu-1000-380-light-blue-da-2child.png)
+
+`custom:aula-connect-hours-card` shows the hours of the schools and institutions the children the
+bar shows go to, as Aula tells them: today's at the top, then this week's and next week's, the days
+alike told once ("Man–Tors 06.30–17.00"), a day closed with the reason Aula gives, and the days
+closed from today on, such as holidays and planning days, the four soonest shown and the rest
+folded. A weekend the institution is closed is left out. Children at the same institution share
+it; where they go to more than one, each is named with its children. The hours are read once a
+day, for Monday this week to Sunday next week.
 
 ## Sick card
 
@@ -660,14 +673,16 @@ holds the day, each child's hours and what each child is to bring.
   `aula_connect/vacation/delete` with an `entry_id` and a `vacation_id`, on a tap.
 - `aula_connect/posts` with an `entry_id`, by the news card and the overview, when shown and each
   quarter of an hour.
+- `aula_connect/opening_hours` with a child's `entry_id`, `child_id`, and the `start` and `end` of
+  the days asked, both included, by the opening hours card once a day.
 - `aula_connect/vacation_requests` with a child's `entry_id` and `child_id` - by the overview only
   while some await an answer - and
   `aula_connect/vacation_request/answer` with a `request_id`, the `days` and a `comment`, on a tap.
 
 ## Privacy
 
-The school day, week plan, week, overview and important cards only show: they change nothing in
-Aula and mark nothing as read. The sick and Ferie/fri cards, and the overview's presence and
+The school day, week plan, week, overview, important, news and opening hours cards only show: they
+change nothing in Aula and mark nothing as read. The sick and Ferie/fri cards, and the overview's presence and
 request windows, act in Aula only on a tap of their buttons, each step its own tap, saying first
 what is sent for whom: a report, a message, an answer, a vacation or its deletion. Everything goes through Home Assistant's own
 connection to Aula Connect, and nothing anywhere else. The children's bar keeps the children it

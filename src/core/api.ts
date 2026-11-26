@@ -27,11 +27,15 @@ import {
   type Unsubscribe,
   type Vacation,
   type VacationDay,
+  type ClosedDays,
+  type OpeningDay,
+  type OpeningHours,
   type Post,
   type PostAttachment,
   type VacationRequest,
   type WeekData,
 } from "./types.ts";
+import { isDay } from "./dates.ts";
 
 function list(value: unknown): unknown[] {
   return Array.isArray(value) ? (value as unknown[]) : [];
@@ -616,4 +620,41 @@ export async function fetchPosts(callWS: CallWS, entryId: string): Promise<Post[
     fields(await callWS({ type: "aula_connect/posts", entry_id: entryId }))?.posts,
     post,
   );
+}
+
+function closedDays(item: Fields): ClosedDays | undefined {
+  if (!text(item.start) || !isDay(item.start) || !text(item.end) || !isDay(item.end)) {
+    return undefined;
+  }
+  return { name: or(item.name, ""), start: item.start, end: item.end };
+}
+
+function openingDay(item: Fields): OpeningDay | undefined {
+  if (!text(item.date) || !isDay(item.date)) return undefined;
+  const closed = item.closed === true;
+  return {
+    date: item.date,
+    closed,
+    open: closed ? null : time(item.open),
+    close: closed ? null : time(item.close),
+  };
+}
+
+/**
+ * Tells the days a child's institution is closed, and its hours from `start` to `end`, both
+ * included.
+ *
+ * @throws The websocket error.
+ */
+export async function fetchOpeningHours(
+  callWS: CallWS,
+  child: Child,
+  start: string,
+  end: string,
+): Promise<OpeningHours> {
+  const answer = fields(await callWS({ ...about(child, "opening_hours"), start, end }));
+  return {
+    closed_days: items(answer?.closed_days, closedDays),
+    days: items(answer?.days, openingDay),
+  };
 }

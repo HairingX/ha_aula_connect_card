@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "../../src/index.ts";
 import { AulaConnectChildrenCard } from "../../src/cards/children-card.ts";
 import { AulaConnectImportantCard } from "../../src/cards/important-card.ts";
+import { AulaConnectHoursCard } from "../../src/cards/hours-card.ts";
 import { AulaConnectNewsCard } from "../../src/cards/news-card.ts";
 import { AulaConnectOverviewCard } from "../../src/cards/overview-card.ts";
 import { AulaConnectSickCard } from "../../src/cards/sick-card.ts";
@@ -198,6 +199,11 @@ describe("the cards in a sections view", () => {
         { columns: "full", rows: "auto", min_columns: 6, min_rows: 4 },
         "aula-connect-news-card",
       ],
+      [
+        AulaConnectHoursCard,
+        { columns: "full", rows: "auto", min_columns: 4, min_rows: 3 },
+        "aula-connect-hours-card",
+      ],
     ] as const) {
       expect(new element().getGridOptions()).toEqual(grid);
       expect(element.getConfigForm().schema[0]?.name).toBe("children");
@@ -212,6 +218,7 @@ describe("the cards in a sections view", () => {
     expect(new AulaConnectSickCard().getCardSize()).toBe(3);
     expect(new AulaConnectVacationCard().getCardSize()).toBe(3);
     expect(new AulaConnectNewsCard().getCardSize()).toBe(4);
+    expect(new AulaConnectHoursCard().getCardSize()).toBe(3);
   });
 
   it("send nothing without Home Assistant", async () => {

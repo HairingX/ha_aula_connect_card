@@ -11,6 +11,7 @@ import { AulaConnectChildrenCard } from "./cards/children-card.ts";
 import { AulaConnectDayCard } from "./cards/day-card.ts";
 import { AulaConnectImportantCard } from "./cards/important-card.ts";
 import { AulaConnectNewsCard } from "./cards/news-card.ts";
+import { AulaConnectHoursCard } from "./cards/hours-card.ts";
 import { AulaConnectOverviewCard } from "./cards/overview-card.ts";
 import { registerCard } from "./cards/register.ts";
 import { AulaConnectSickCard } from "./cards/sick-card.ts";
@@ -22,6 +23,7 @@ import {
   CHILDREN_CARD,
   IMPORTANT_CARD,
   NEWS_CARD,
+  HOURS_CARD,
   OVERVIEW_CARD,
   SICK_CARD,
   VACATION_CARD,
@@ -79,6 +81,12 @@ const defined = [
     description: "pickerNewsDescription",
     preview: false,
     anchor: "#news-card",
+  }),
+  registerCard(HOURS_CARD, AulaConnectHoursCard, {
+    name: "pickerHoursName",
+    description: "pickerHoursDescription",
+    preview: false,
+    anchor: "#hours-card",
   }),
   registerCard(SICK_CARD, AulaConnectSickCard, {
     name: "pickerSickName",

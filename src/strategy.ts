@@ -14,6 +14,7 @@ import {
   ABSENCE_ICON,
   CHILDREN_CARD,
   DEFAULT_PATHS,
+  HOURS_CARD,
   IMPORTANT_CARD,
   NEWS_CARD,
   NEWS_ICON,
@@ -154,7 +155,15 @@ export function dashboard(
       ]),
       page(t("navWeek"), DEFAULT_PATHS.week, "mdi:calendar-week", [bar(false), of(WEEK_CARD)]),
       ...(acting.length > 0
-        ? [page(t("navAbsence"), DEFAULT_PATHS.absence, ABSENCE_ICON, [bar(false)], acting)]
+        ? [
+            page(
+              t("navAbsence"),
+              DEFAULT_PATHS.absence,
+              ABSENCE_ICON,
+              [bar(false)],
+              [...acting, of(HOURS_CARD)],
+            ),
+          ]
         : []),
       page(t("navNews"), DEFAULT_PATHS.news, NEWS_ICON, [bar(false), of(NEWS_CARD)]),
     ],
