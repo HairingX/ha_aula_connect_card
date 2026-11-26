@@ -54,10 +54,14 @@ describe("the dashboard", () => {
       { type: "custom:aula-connect-children-card", look_switch: false },
       { type: "custom:aula-connect-important-card" },
     ]);
-    expect(absence?.sections[0]?.cards).toEqual([
-      { type: "custom:aula-connect-children-card", look_switch: false },
-      { type: "custom:aula-connect-sick-card" },
-      { type: "custom:aula-connect-vacation-card" },
+    expect(absence?.sections).toEqual([
+      {
+        type: "grid",
+        column_span: 2,
+        cards: [{ type: "custom:aula-connect-children-card", look_switch: false }],
+      },
+      { type: "grid", column_span: 1, cards: [{ type: "custom:aula-connect-sick-card" }] },
+      { type: "grid", column_span: 1, cards: [{ type: "custom:aula-connect-vacation-card" }] },
     ]);
   });
 
@@ -83,9 +87,11 @@ describe("the dashboard", () => {
       "Week plan",
       "Week",
     ]);
-    expect(dashboard({ sick: false }, "da").views[4]?.sections[0]?.cards).toEqual([
-      { type: "custom:aula-connect-children-card", look_switch: false },
-      { type: "custom:aula-connect-vacation-card" },
+    expect(
+      dashboard({ sick: false }, "da").views[4]?.sections.map((section) => section.cards),
+    ).toEqual([
+      [{ type: "custom:aula-connect-children-card", look_switch: false }],
+      [{ type: "custom:aula-connect-vacation-card" }],
     ]);
   });
 });

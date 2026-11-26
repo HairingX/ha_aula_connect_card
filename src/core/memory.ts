@@ -6,12 +6,13 @@
  * @packageDocumentation
  */
 
-import type { Child } from "./types.ts";
+import type { Child, Thread } from "./types.ts";
 
 let children: readonly Child[] = [];
 let language: string | undefined;
 const lessonTitles = new Set<string>();
 const noteSubjects = new Set<string>();
+const threads = new Map<number, readonly Thread[]>();
 
 /** Remembers the children Aula Connect last listed. */
 export function rememberChildren(list: readonly Child[]): void {
@@ -49,10 +50,21 @@ export function knownNoteSubjects(): string[] {
   return [...noteSubjects].sort((a, b) => a.localeCompare(b, "da"));
 }
 
+/** Remembers the threads a child can be written about in. */
+export function rememberThreads(child: number, list: readonly Thread[]): void {
+  threads.set(child, [...list]);
+}
+
+/** Returns the threads each child can be written about in, by the child's id. */
+export function knownThreads(): ReadonlyMap<number, readonly Thread[]> {
+  return threads;
+}
+
 /** Forgets everything; for tests. */
 export function forget(): void {
   children = [];
   language = undefined;
   lessonTitles.clear();
   noteSubjects.clear();
+  threads.clear();
 }

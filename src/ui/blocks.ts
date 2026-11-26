@@ -264,7 +264,12 @@ export interface BarAxis {
  * Shows a day's bar; `axis`, where given, sets the minutes it runs over, so that the bars of
  * several children share their hours.
  */
-export function renderDayBar(source: DayBar, ctx: ViewContext, axis?: BarAxis): unknown {
+export function renderDayBar(
+  source: DayBar,
+  ctx: ViewContext,
+  axis?: BarAxis,
+  opens?: BarOpener,
+): unknown {
   const day = axis
     ? {
         ...source,
@@ -280,20 +285,6 @@ export function renderDayBar(source: DayBar, ctx: ViewContext, axis?: BarAxis): 
   const at = (minute: number): string => `${String(((minute - day.start) / span) * 100)}%`;
   const place = (from: number, to: number): string =>
     `left: ${at(from)}; width: calc(${String(((to - from) / span) * 100)}% - 2px)`;
-  const item = (entry: BarItem): TemplateResult =>
-    entry.kind === "lesson"
-      ? html`<span
-          class="bar-item ${entry.row.cancelled ? "cancelled" : ""}"
-          style="${place(entry.from, entry.to)}; ${subjectColor(entry.row.subject)}"
-          >${entry.row.status ? statusIcon(entry.row.status) : nothing}<span class="bar-name"
-            >${aula(entry.row.subject.name, ctx)}</span
-          ><span class="bar-short">${aula(entry.row.subject.short, ctx)}</span></span
-        >`
-      : html`<span class="bar-item ev" style=${place(entry.from, entry.to)}
-          >${icon(eventIcon(entry.event.type))}<span class="bar-name"
-            >${aula(entry.event.title, ctx)}</span
-          ></span
-        >`;
   // What the bar shows of an item, said: its subjects or title, when, and a lesson's change.
   const say = (title: string, start: string, end: string, status = ""): string =>
     `${title} ${timeText(start, ctx)}–${timeText(end, ctx)}${status && `, ${status}`}`;
@@ -306,7 +297,59 @@ export function renderDayBar(source: DayBar, ctx: ViewContext, axis?: BarAxis): 
           entry.row.block.end,
           entry.row.status?.kind === "substitute" ? ctx.t("substitute") : entry.row.status?.text,
         );
-  return html`<div class="daybar" aria-hidden="true">
+  // A bar that opens its items says each on its button; one that does not, in a list of its own.
+  const shell = (
+    cls: string,
+    style: string,
+    content: unknown,
+    target: (open: BarOpener) => DetailTarget,
+    key: string,
+    label: string,
+  ): TemplateResult =>
+    opens
+      ? html`<button
+          class="bar-item ${cls}"
+          style=${style}
+          type="button"
+          aria-haspopup="dialog"
+          aria-label=${label}
+          data-detail=${`${opens.key}|${key}`}
+          @click=${() => {
+            opens.state.showDetail(target(opens), `${opens.key}|${key}`);
+          }}
+        >
+          ${content}
+        </button>`
+      : html`<span class="bar-item ${cls}" style=${style}>${content}</span>`;
+  const eventTarget =
+    (event: CalendarEvent) =>
+    (open: BarOpener): DetailTarget => ({ kind: "event", event, child: open.child });
+  const item = (entry: BarItem): TemplateResult =>
+    entry.kind === "lesson"
+      ? shell(
+          entry.row.cancelled ? "cancelled" : "",
+          `${place(entry.from, entry.to)}; ${subjectColor(entry.row.subject)}`,
+          html`${entry.row.status ? statusIcon(entry.row.status) : nothing}<span class="bar-name"
+              >${aula(entry.row.subject.name, ctx)}</span
+            ><span class="bar-short">${aula(entry.row.subject.short, ctx)}</span>`,
+          () => ({ kind: "lesson", row: entry.row }),
+          entry.row.block.start,
+          spoken(entry),
+        )
+      : shell(
+          "ev",
+          place(entry.from, entry.to),
+          html`${icon(eventIcon(entry.event.type))}<span class="bar-name"
+              >${aula(entry.event.title, ctx)}</span
+            >`,
+          eventTarget(entry.event),
+          String(entry.event.id),
+          spoken(entry),
+        );
+  return html`<div
+      class="daybar ${opens ? "opens-items" : ""}"
+      aria-hidden=${opens ? "false" : "true"}
+    >
       <div class="bar-lanes">
         ${day.hours.map((hour) => html`<span class="hour" style="left: ${at(hour)}"></span>`)}
         ${day.now === undefined ? nothing : html`<span class="now-mark" style="left: ${at(day.now)}"></span>`}
@@ -319,9 +362,14 @@ export function renderDayBar(source: DayBar, ctx: ViewContext, axis?: BarAxis): 
         ${day.allDay.map(
           (event) =>
             html`<div class="lane thin">
-              <span class="bar-item ev all-day" style="left: 0; width: 100%"
-                ><span class="bar-name">${aula(event.title, ctx)}</span></span
-              >
+              ${shell(
+                "ev all-day",
+                "left: 0; width: 100%",
+                html`<span class="bar-name">${aula(event.title, ctx)}</span>`,
+                eventTarget(event),
+                String(event.id),
+                `${event.title}, ${ctx.t("allDay")}`,
+              )}
             </div>`,
         )}
       </div>
@@ -342,10 +390,24 @@ export function renderDayBar(source: DayBar, ctx: ViewContext, axis?: BarAxis): 
             </div>`
       }
     </div>
-    <ul class="sr">
-      ${day.allDay.map((event) => html`<li>${event.title}, ${ctx.t("allDay")}</li>`)}
-      ${day.lanes.flat().map((entry) => html`<li>${spoken(entry)}</li>`)}
-    </ul>`;
+    ${
+      opens
+        ? nothing
+        : html`<ul class="sr">
+            ${day.allDay.map((event) => html`<li>${event.title}, ${ctx.t("allDay")}</li>`)}
+            ${day.lanes.flat().map((entry) => html`<li>${spoken(entry)}</li>`)}
+          </ul>`
+    }`;
+}
+
+/** What lets a day bar's lessons and events open their windows: the card, and whose day it is. */
+export interface BarOpener {
+  /** The card the windows open in. */
+  readonly state: CardState;
+  /** The child whose day it is, whom Aula is asked for an event's details. */
+  readonly child: Child;
+  /** What the items' `data-detail` begins with. */
+  readonly key: string;
 }
 
 // Makes an event's content the button that opens its window.

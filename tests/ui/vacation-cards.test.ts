@@ -276,13 +276,15 @@ describe("a request asked of two children", () => {
   it("splits a day where the children differ, and joins it again", async () => {
     const { card, hass } = await mount(VACATION, "thu-1000", { today: todayOf, commands: both() });
     await tap(card, ".family-row", "Juleferie");
-    await tap(
-      card,
-      "dialog .answer-day:nth-child(1) .answer-split-toggle",
-      "Forskellig for børnene",
-    );
+    expect(texts(card, "dialog .field-help")).toEqual([
+      "Svaret for hver dag gælder Ida og Oskar. Har de forskellige tider, eller kommer kun den ene, så ret dagen hver for sig.",
+    ]);
+    expect(
+      texts(card, "dialog .answer-day:nth-child(1) .answer-for > span:not(.ov-minis)"),
+    ).toEqual(["Gælder Ida og Oskar"]);
+    await tap(card, "dialog .answer-day:nth-child(1) .answer-split-toggle", "Ret hver for sig");
     expect(texts(card, "dialog .answer-who span:not(.face)")).toEqual(["Ida", "Oskar"]);
-    await tap(card, "dialog .answer-day:nth-child(1) .answer-split-toggle", "Ens for børnene");
+    await tap(card, "dialog .answer-day:nth-child(1) .answer-split-toggle", "Samme svar til alle");
     expect(all(card, "dialog .answer-child")).toEqual([]);
     await tap(card, "dialog .answer-day:nth-child(1) .answer-split-toggle");
     const [idaComes, , , oskarStays] = all(card, "dialog .answer-day:nth-child(1) .choice");

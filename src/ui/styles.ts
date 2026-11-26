@@ -831,6 +831,19 @@ export const blocks = css`
   .lane.thin {
     height: calc(18px * var(--aula-scale));
   }
+  button.bar-item {
+    margin: 0;
+    border: 0;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (hover: hover) {
+    button.bar-item:hover {
+      filter: brightness(1.08);
+    }
+  }
   .bar-item {
     position: absolute;
     top: 0;
@@ -2092,6 +2105,11 @@ export const family = css`
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
+  .field-help {
+    margin: 0;
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+  }
   .field-count {
     align-self: flex-end;
     color: var(--aula-text-2);
@@ -2214,6 +2232,14 @@ export const family = css`
     align-items: center;
     gap: var(--aula-space-2);
   }
+  .answer-for {
+    display: flex;
+    flex-basis: 100%;
+    align-items: center;
+    gap: var(--aula-space-2);
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+  }
   .text-button.answer-split-toggle {
     min-height: calc(32px * var(--aula-scale));
     margin-inline-start: auto;
@@ -2270,6 +2296,7 @@ export const family = css`
   }
   .family-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--aula-space-3);
     box-sizing: border-box;
@@ -2301,12 +2328,13 @@ export const family = css`
   .family-rows > li + li {
     border-top: 1px solid var(--aula-line);
   }
+  /* A narrow card puts a row's label and chevron under its text rather than squeeze the text. */
   .family-text {
     display: flex;
-    flex: 1;
+    flex: 1 1 9em;
     flex-direction: column;
     gap: 2px;
-    min-width: 0;
+    min-width: min(9em, 100%);
   }
   .family-title {
     font-weight: var(--aula-medium);
@@ -2327,10 +2355,56 @@ export const family = css`
   }
 
   /* The overview. */
-  .overview {
+  .overview,
+  .ov-main,
+  .ov-aside {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-4);
+  }
+  /* A wide card: the children's day the whole height, the pages and what is coming beside it. */
+  @container aula (min-width: 1100px) {
+    .overview {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) calc(320px * var(--aula-scale));
+      align-items: start;
+      column-gap: var(--aula-space-6);
+    }
+    .ov-aside {
+      padding-inline-start: var(--aula-space-6);
+      border-inline-start: 1px solid var(--aula-line);
+    }
+    .ov-aside .ov-nav {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--aula-space-1);
+      padding-top: 0;
+      border-top: 0;
+    }
+    .ov-aside .ov-tile {
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: var(--aula-space-3);
+      min-height: calc(52px * var(--aula-scale));
+      padding: 0 var(--aula-space-3);
+      background: var(--aula-fill-muted);
+      font-size: var(--aula-font-m);
+    }
+    .ov-aside .ov-coming {
+      padding-top: 0;
+      border-top: 0;
+    }
+    /* In a row the count stands at the tile's end, not on its icon. */
+    .ov-aside .ov-tile-icon {
+      display: contents;
+    }
+    .ov-aside .ov-tile > span:not(.ov-tile-icon) {
+      order: 1;
+    }
+    .ov-aside .ov-badge {
+      position: static;
+      order: 2;
+      margin-inline-start: auto;
+    }
   }
   .ov-title {
     display: flex;
@@ -2572,14 +2646,14 @@ export const family = css`
     justify-content: center;
     gap: var(--aula-space-1);
     box-sizing: border-box;
-    min-width: calc(76px * var(--aula-scale));
-    min-height: calc(72px * var(--aula-scale));
-    padding: var(--aula-space-1) var(--aula-space-2);
+    min-width: calc(84px * var(--aula-scale));
+    min-height: calc(84px * var(--aula-scale));
+    padding: var(--aula-space-1);
     border-radius: calc(12px * var(--aula-scale));
     font-size: var(--aula-font-s);
     font-weight: var(--aula-medium);
     text-align: center;
-    --mdc-icon-size: calc(28px * var(--aula-scale));
+    --mdc-icon-size: calc(44px * var(--aula-scale));
   }
   .board-subject {
     background: var(--subject, var(--aula-fill-strong));
@@ -2597,6 +2671,25 @@ export const family = css`
   .board-none {
     color: var(--aula-text-2);
     font-size: var(--aula-font-l);
+  }
+  .ov-important-full {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-2);
+    padding: var(--aula-space-3);
+    border-radius: var(--aula-radius);
+    background: var(--aula-fill-muted);
+  }
+  .ov-important-head {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-2);
+    margin: 0;
+    font-size: var(--aula-font-m);
+    font-weight: var(--aula-bold);
+  }
+  .ov-important-more {
+    align-self: flex-start;
   }
   .board-important {
     width: auto;

@@ -184,12 +184,12 @@ describe("the cards in a sections view", () => {
       ],
       [
         AulaConnectSickCard,
-        { columns: 6, rows: "auto", min_columns: 4, min_rows: 2 },
+        { columns: "full", rows: "auto", min_columns: 4, min_rows: 2 },
         "aula-connect-sick-card",
       ],
       [
         AulaConnectVacationCard,
-        { columns: 6, rows: "auto", min_columns: 4, min_rows: 2 },
+        { columns: "full", rows: "auto", min_columns: 4, min_rows: 2 },
         "aula-connect-vacation-card",
       ],
     ] as const) {
@@ -349,6 +349,52 @@ describe("the overview", () => {
     setLook("board");
     const { card } = await mount(OVERVIEW, "thu-1530");
     expect(texts(card, ".board-head")[0]).toBe("Fredag har du");
+  });
+
+  it("shows what is important in full when asked, and goes on to what comes later", async () => {
+    const { card } = await mount(OVERVIEW, "thu-1000", {
+      today: todayOf,
+      config: { important: "full" },
+    });
+    expect(texts(card, ".ov-important-head")).toEqual(["Vigtigt til i dag", "Vigtigt til mandag"]);
+    expect(texts(card, ".ov-important-full .note-text")[0]).toBe(
+      "Lektie til i dag: Læsebogen s. 38+39",
+    );
+    expect(texts(card, ".ov-important-more")).toEqual(["5 mere senere", "1 mere senere"]);
+    await tap(card, ".ov-important-more");
+    expect(windowText(card)).toContain("Vigtigt for Ida");
+    setLook("board");
+    await settled(card);
+    expect(texts(card, ".ov-important-head")).toEqual(["Vigtigt til i dag", "Vigtigt til mandag"]);
+    expect(all(card, ".board-important")).toEqual([]);
+  });
+
+  it("shows in full a single day's important notes without more, and says when there are none", async () => {
+    const { card } = await mount(OVERVIEW, "thu-1000", {
+      config: { important: "full" },
+      week: (_child, start) => {
+        const data = weekData(start);
+        return { ...data, tasks: data.tasks.filter((task) => task.date === "2026-10-29") };
+      },
+    });
+    expect(all(card, ".ov-important-full")).toHaveLength(2);
+    expect(all(card, ".ov-important-more")).toEqual([]);
+    const { card: none } = await mount(OVERVIEW, "no-week-plan", {
+      config: { important: "full" },
+    });
+    expect(texts(none, ".ov-important.none")).toEqual(["Intet vigtigt", "Intet vigtigt"]);
+  });
+
+  it("opens a lesson or an event from a child's day bar", async () => {
+    const { card } = await mount(OVERVIEW, "thu-1000", { today: todayOf });
+    const items = all(card, ".ov-bar button.bar-item");
+    expect(items.length).toBeGreaterThan(0);
+    expect(items[0]?.getAttribute("aria-label")).toBe("Idræt 08.00–09.30");
+    await tap(card, ".ov-bar button.bar-item");
+    expect(windowText(card)).toContain("Idræt");
+    const { card: evening } = await mount(OVERVIEW, "thu-1930");
+    await tap(evening, ".ov-bar button.bar-item.ev", "Skolefoto");
+    expect(windowText(evening)).toContain("Skolefoto");
   });
 
   it("puts what to pack in each row, with an icon by what it is", async () => {

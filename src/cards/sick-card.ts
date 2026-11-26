@@ -14,7 +14,7 @@ import { familyForm, resolveActionConfig, SICK_CARD, type ActionConfig } from ".
 import type { ConfigForm } from "../config/form.ts";
 import { familyView, type FamilyView } from "../model/family.ts";
 import { AulaCard, stub } from "../ui/card.ts";
-import { renderSickCard } from "../ui/sick.ts";
+import { renderSickCard, sickOptions } from "../ui/sick.ts";
 import { base, blocks, details, family } from "../ui/styles.ts";
 
 /** The sick card. */
@@ -32,9 +32,9 @@ export class AulaConnectSickCard extends AulaCard<ActionConfig, FamilyView> {
     return stub(SICK_CARD, hass);
   }
 
-  /** Returns the card's size in a sections view: half the section's width, or more. */
-  getGridOptions(): { columns: number; rows: string; min_columns: number; min_rows: number } {
-    return { columns: 6, rows: "auto", min_columns: 4, min_rows: 2 };
+  /** Returns the card's size in a sections view: the section's whole width. */
+  getGridOptions(): { columns: string; rows: string; min_columns: number; min_rows: number } {
+    return { columns: "full", rows: "auto", min_columns: 4, min_rows: 2 };
   }
 
   protected override wantsToday = true;
@@ -52,7 +52,7 @@ export class AulaConnectSickCard extends AulaCard<ActionConfig, FamilyView> {
     config: ActionConfig,
     ctx: ViewContext,
   ): TemplateResult {
-    return renderSickCard(view, ctx, this, { message: config.sickMessage, sender: config.sender });
+    return renderSickCard(view, ctx, this, sickOptions(config));
   }
 
   protected override emptySize(): number {

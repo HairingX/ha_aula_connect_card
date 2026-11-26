@@ -207,7 +207,9 @@ menu opens its settings in Home Assistant's own form, as the cards' editors do. 
 set once for the whole dashboard and given to every card that has them: the children, whether it
 has the sick card and the vacations, the [things to bring](#things-to-bring), the
 [subject names](#subject-names), when the next school day takes over (`switch_time`), the people
-standing in for children, the message about an illness and the guardian to act as. In YAML:
+standing in for children, how what is important is shown on the overview, the message about an
+illness, the thread each child's is written in, whether a report goes on to it, and the guardian
+to act as. In YAML:
 
 ```yaml
 strategy:
@@ -220,6 +222,7 @@ strategy:
       items: [Idrætstøj, Idrætstaske]
   pack_icons: # YAML only, as in the overview
     idrætstaske: mdi:bag-personal-outline
+  important: compact # full shows the first day's notes whole on the overview
 ```
 
 The dashboard is made anew each time it is opened, so it follows the cards' later versions. To
@@ -280,9 +283,13 @@ plan, the week and Fravær, its badge counting the requests awaiting an answer; 
 what is coming the next seven days once, with the faces of the children it is for, a vacation
 registered among it.
 
-A tap on what is important opens it day by day; a tap on the presence opens the day's times, and
-reports the child sick from there, where Aula Connect's options allow it; a tap on a request
-answers it. An event opens its window as in the school day card.
+The overview is a snapshot of the day that matters; the week card is for browsing. A tap on a
+lesson or an event in a child's bar opens its window, as in the school day card. What is
+important is one line that opens it day by day, or with `important: full` the first day's notes
+shown whole, with the rest a tap away. A tap on the presence opens the day's times, and reports
+the child sick from there, where Aula Connect's options allow it; a tap on a request answers it.
+On a screen wide enough, the tiles and **Det sker** stand in a column at the right, apart from the
+children.
 
 Three looks, chosen in the children's bar or kept with `look`:
 
@@ -328,9 +335,12 @@ each its own tap:
    no button; where the child is reported sick today already, it says that instead. Where a
    report can be taken back, **Fortryd** takes it back the same day; where it can't, the window
    says so before you tap.
-2. **Skriv en besked?** writes a message about it: made from `sick_message`, in a thread you
-   choose, the one written in last chosen for you. **Spring over** writes nothing; it comes first
-   where the child has been ill since before today, or you wrote from here the weekday before.
+2. **Skriv en besked?** writes a message about it: made from `sick_message`, as a reply to all in
+   a thread you choose - the one `sick_threads` sets for the child, else the one written in last,
+   chosen for you. The editor offers each child's threads by their subject and staff.
+   **Spring over** writes nothing; it comes first where the child has been ill since before
+   today, or you wrote from here the weekday before. With `sick_write: false` the window ends at
+   the report, and **Skriv en besked** is a tap away.
 
 **Meld flere syge** reports the children chosen sick at once - all that can be, at first - each
 checked first and each reported once; then each can be written about on its own.
@@ -346,6 +356,10 @@ allows it.
 ```yaml
 type: custom:aula-connect-sick-card
 sick_message: "{name} er syg og bliver derfor hjemme."
+sick_threads: # the thread each child's illness is written about in, by Aula's thread id
+  - child: 1001
+    thread: 12345
+sick_write: true # false ends at the report, the message a tap away
 sender: Lise Testesen
 ```
 
@@ -363,8 +377,9 @@ and a vacation registered for several, is one row with their faces.
 
 A request is answered day by day, **Kommer** or **Kommer ikke**, with the times the child comes
 and goes where the institution asks for them, and a comment, for every child it is asked of at
-once; **Forskellig for børnene** splits a day into one answer for each child, and **Ens for
-børnene** joins it again. **Send svar** sends each child's answer once, saying first for whom;
+once: each day says whom its answer is for. Where the children's times differ, or one of them
+does not come, **Ret hver for sig** splits that day into one answer for each child, and **Samme
+svar til alle** joins it again. **Send svar** sends each child's answer once, saying first for whom;
 where one fails, the window says why, and sends again only that one. Days gone by are not
 answered, and after the deadline nothing is.
 
@@ -396,7 +411,10 @@ children whose entry does; otherwise the card says they are turned off.
 | `look`                 | overview                 | the bar's                              | `rows`, `columns` or `board`, kept whatever the children's bar chooses.                                                                                                |
 | `paths`                | overview                 | `vigtigt`, `ugeplan`, `uge`, `fravaer` | The views the tiles go to: `important`, `weekplan`, `week`, `absence`; relative to the dashboard unless they begin with `/`; `false` leaves a tile out.                |
 | `pack_icons`           | overview                 | none                                   | An mdi icon for a thing to bring, by the thing, over the built-in ones.                                                                                                |
+| `important`            | overview                 | `compact`                              | `compact`: one line that opens what is important. `full`: the first day's notes shown whole.                                                                           |
 | `sick_message`         | overview, sick           | a sentence                             | The message about the illness; `{name}` is the child's first name.                                                                                                     |
+| `sick_threads`         | overview, sick           | the one written in last                | The thread each child's illness is written about in: `child` and `thread`, Aula's ids.                                                                                 |
+| `sick_write`           | overview, sick           | `true`                                 | `false` ends a report at the report, the message a tap away.                                                                                                           |
 | `sender`               | overview, sick, vacation | the one used last                      | The guardian to act as, by the name Aula Connect gives the entry.                                                                                                      |
 
 A school day card in YAML, every option at its default but the children:

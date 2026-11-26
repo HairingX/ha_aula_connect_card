@@ -19,21 +19,41 @@ import {
 } from "../core/api.ts";
 import type { ViewContext } from "../core/context.ts";
 import { capitalize, dayOf, formatDay, formatShortDate, instant } from "../core/dates.ts";
+import { rememberThreads } from "../core/memory.ts";
 import { rememberSender } from "../core/selection.ts";
-import type { Change, Child, SickCheck, ThreadList, TodayData } from "../core/types.ts";
+import type { Change, Child, SickCheck, Thread, ThreadList, TodayData } from "../core/types.ts";
+import type { ActionConfig, SickThread } from "../config/family.ts";
 import { allowing, senderOf, type FamilyChild, type FamilyView } from "../model/family.ts";
 import type { CardState } from "./card.ts";
 import { alert, faceImage, icon, label, listOf, loading, minis, turnedOff } from "./primitives.ts";
 import { head, modal } from "./window.ts";
 
-/** What reporting a child sick is about: the child, its entries and its day as it is now. */
-export interface SickTarget {
-  /** The child, with its entries and day. */
-  readonly family: FamilyChild;
+/** How a child is reported sick and written about. */
+export interface SickOptions {
   /** The message about the illness, `{name}` standing for the child's first name. */
   readonly message: string | undefined;
   /** The guardian to act as, by the name of the entry's guardian. */
   readonly sender: string | undefined;
+  /** The thread each child is written about in, over the one last written in. */
+  readonly threads: readonly SickThread[];
+  /** Whether a report goes on to writing a message, rather than offering it. */
+  readonly write: boolean;
+}
+
+/** Returns how a card's configuration has a child reported sick and written about. */
+export function sickOptions(config: ActionConfig): SickOptions {
+  return {
+    message: config.sickMessage,
+    sender: config.sender,
+    threads: config.sickThreads,
+    write: config.sickWrite,
+  };
+}
+
+/** What reporting a child sick is about: the child, its entries and its day as it is now. */
+export interface SickTarget extends SickOptions {
+  /** The child, with its entries and day. */
+  readonly family: FamilyChild;
 }
 
 /** How far the two steps have come. */
@@ -53,6 +73,8 @@ interface Flow {
   threads: ThreadList | undefined;
   threadsError: unknown;
   thread: string | number | undefined;
+  /** Why the thread is to be chosen again: the one set is closed, or the one last used old. */
+  threadNote: "gone" | "stale" | undefined;
   text: string;
   sent: boolean;
 }
@@ -91,6 +113,7 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
     threads: undefined,
     threadsError: undefined,
     thread: undefined,
+    threadNote: undefined,
     text: "",
     sent: false,
   };
@@ -120,10 +143,18 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
     fetchThreads(state.callWS, entry).then(
       (threads) => {
         flow.threads = threads;
-        const remembered = threads.threads.find(
-          (item) => item.thread_id === threads.remembered && item.can_reply,
-        );
-        flow.thread = threads.remembered_stale ? undefined : remembered?.thread_id;
+        rememberThreads(family.child.child_id, threads.threads);
+        const set = target.threads.find((item) => item.child === family.child.child_id);
+        const open = (id: string | number | null): Thread | undefined =>
+          threads.threads.find((item) => String(item.thread_id) === String(id) && item.can_reply);
+        if (set) {
+          flow.thread = open(set.thread)?.thread_id;
+          flow.threadNote = flow.thread === undefined ? "gone" : undefined;
+        } else {
+          flow.thread = threads.remembered_stale ? undefined : open(threads.remembered)?.thread_id;
+          flow.threadNote =
+            threads.remembered_stale && threads.remembered !== null ? "stale" : undefined;
+        }
         state.requestUpdate();
       },
       (error: unknown) => {
@@ -163,7 +194,7 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
           rememberSender(family.child.child_id, entry.entry_id);
           flow.reported = true;
           flow.undone = false;
-          if (writes) toWrite(ctx);
+          if (writes && target.write) toWrite(ctx);
           else flow.step = "done";
         },
       );
@@ -281,24 +312,6 @@ function sickWindow(
     }
   </p>`;
   const faceMark = faceImage(face, "window-face");
-  if (flow.step === "done") {
-    const title = flow.sent ? t("writeTitle", { name }) : t("reportSick", { name });
-    return html`${head(title, [day], [], ctx, close, faceMark)} ${sickToday ? done : nothing}
-      ${
-        flow.sent
-          ? html`<p class="done-line">
-              ${icon("mdi:send-check-outline")}<span>${t("sent")}</span>
-            </p>`
-          : turnedOff("messages", t)
-      }
-      <div class="window-actions">
-        <button class="filled-button" type="button" @click=${close}>${t("close2")}</button>
-      </div>`;
-  }
-  if (flow.step === "write")
-    return writeStep(flow, target, ctx, close, state, actions, faceMark, done, error, sickToday);
-  // At the first step the child is not reported sick: a child reported sick opens at the second.
-  const top = head(t("reportSick", { name }), [day], [], ctx, close, faceMark);
   const writes = may(family, "messages");
   const write = writes
     ? html`<button
@@ -312,6 +325,27 @@ function sickWindow(
         ${t("writeMessage")}
       </button>`
     : nothing;
+  if (flow.step === "done") {
+    const title = flow.sent ? t("writeTitle", { name }) : t("reportSick", { name });
+    return html`${head(title, [day], [], ctx, close, faceMark)} ${sickToday ? done : nothing}
+      ${
+        flow.sent
+          ? html`<p class="done-line">
+              ${icon("mdi:send-check-outline")}<span>${t("sent")}</span>
+            </p>`
+          : writes
+            ? nothing
+            : turnedOff("messages", t)
+      }
+      <div class="window-actions">
+        ${flow.sent ? nothing : write}
+        <button class="filled-button" type="button" @click=${close}>${t("close2")}</button>
+      </div>`;
+  }
+  if (flow.step === "write")
+    return writeStep(flow, target, ctx, close, state, actions, faceMark, done, error, sickToday);
+  // At the first step the child is not reported sick: a child reported sick opens at the second.
+  const top = head(t("reportSick", { name }), [day], [], ctx, close, faceMark);
   const writeOff = writes ? nothing : turnedOff("messages", t);
   if (!may(family, "sick_reports"))
     return html`${top}${turnedOff("sick_reports", t)}${writeOff}
@@ -413,9 +447,9 @@ function writeStep(
   else if (threads.threads.length === 0) picker = alert("info", t("noThreads", { name }));
   else
     picker = html`${
-        threads.remembered_stale && threads.remembered !== null
-          ? alert("warning", t("threadStale"))
-          : nothing
+        flow.threadNote === undefined
+          ? nothing
+          : alert("warning", t(flow.threadNote === "gone" ? "threadConfiguredGone" : "threadStale"))
       }
       <div class="threads" role="radiogroup" aria-label=${t("threadLabel")}>
         ${threads.threads.map((item) => {
@@ -487,14 +521,6 @@ export function sickLabel(
     : nothing;
 }
 
-/** What the sick card shows. */
-export interface SickCardOptions {
-  /** The message about the illness, `{name}` standing for the child's first name. */
-  readonly message: string | undefined;
-  /** The guardian to act as. */
-  readonly sender: string | undefined;
-}
-
 /** A child of the window that reports several sick: whether it can be, and how it went. */
 interface SeveralChild {
   readonly family: FamilyChild;
@@ -527,7 +553,7 @@ function reportable(item: SeveralChild): boolean {
 export function openSickSeveral(
   state: CardState,
   families: readonly FamilyChild[],
-  options: SickCardOptions,
+  options: SickOptions,
   key: string,
 ): void {
   const items: SeveralChild[] = families.map((family) => ({
@@ -709,7 +735,7 @@ export function renderSickCard(
   view: FamilyView,
   ctx: ViewContext,
   state: CardState,
-  options: SickCardOptions,
+  options: SickOptions,
 ): TemplateResult {
   const { t } = ctx;
   const several = view.children.filter(

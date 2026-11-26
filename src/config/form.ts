@@ -10,9 +10,11 @@ import {
   knownChildren,
   knownLessonTitles,
   knownNoteSubjects,
+  knownThreads,
   rememberedLanguage,
 } from "../core/memory.ts";
 import { translator, type TextKey, type Translate } from "../core/i18n.ts";
+import type { Child, Thread } from "../core/types.ts";
 import { BLOCKS, ORDERED, type BlockId } from "../model/blocks.ts";
 import { subjectNamer } from "../model/subjects.ts";
 import { configRecord } from "./common.ts";
@@ -90,8 +92,11 @@ const LABELS: Readonly<Record<string, TextKey>> = {
   expand_abbreviations: "editorExpand",
   people: "editorPeople",
   look: "editorLook",
+  important: "editorImportant",
   look_switch: "editorLookSwitch",
   sick_message: "editorSickMessage",
+  sick_write: "editorSickWrite",
+  sick_threads: "editorSickThreads",
   sender: "editorSender",
   sick: "editorDashboardSick",
   vacation: "editorDashboardVacation",
@@ -111,7 +116,10 @@ const HELPERS: Readonly<Record<string, TextKey>> = {
   subject_names_group: "editorSubjectNamesHelper",
   people: "editorPeopleHelper",
   look: "editorLookHelper",
+  important: "editorImportantHelper",
   sick_message: "editorSickMessageHelper",
+  sick_write: "editorSickWriteHelper",
+  sick_threads: "editorSickThreadsHelper",
   sender: "editorSenderHelper",
 };
 
@@ -137,11 +145,34 @@ export type FieldName =
   | "subject_names_group"
   | "people"
   | "look"
+  | "important"
   | "look_switch"
   | "sick_message"
+  | "sick_write"
+  | "sick_threads"
   | "sender"
   | "sick"
   | "vacation";
+
+// The threads the children can be written about in that can be replied in, each named by its
+// children, its subject and the first of its staff.
+function threadChoices(children: readonly Child[]): { value: string; label: string }[] {
+  const found = new Map<string, { names: string[]; thread: Thread }>();
+  for (const child of children)
+    for (const thread of knownThreads().get(child.child_id) ?? []) {
+      if (!thread.can_reply) continue;
+      const id = String(thread.thread_id);
+      const known = found.get(id) ?? { names: [], thread };
+      if (!known.names.includes(child.first_name)) known.names.push(child.first_name);
+      found.set(id, known);
+    }
+  return [...found].map(([value, { names, thread }]) => ({
+    value,
+    label: [names.join(", "), thread.subject, ...thread.employees.slice(0, 2)]
+      .filter(Boolean)
+      .join(" · "),
+  }));
+}
 
 function fields(t: Translate): Record<FieldName, FormSchema> {
   const children = knownChildren();
@@ -337,10 +368,59 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
         },
       },
     },
+    important: {
+      name: "important",
+      selector: {
+        select: {
+          mode: "list",
+          options: [
+            { value: "compact", label: t("importantCompact") },
+            { value: "full", label: t("importantFullLabel") },
+          ],
+        },
+      },
+    },
     look_switch: { name: "look_switch", default: true, selector: { boolean: {} } },
     sick: { name: "sick", default: true, selector: { boolean: {} } },
     vacation: { name: "vacation", default: true, selector: { boolean: {} } },
     sick_message: { name: "sick_message", selector: { text: { multiline: true } } },
+    sick_write: { name: "sick_write", default: true, selector: { boolean: {} } },
+    sick_threads: {
+      name: "sick_threads",
+      selector: {
+        object: {
+          multiple: true,
+          label_field: "thread",
+          fields: {
+            child: {
+              label: t("editorPeopleChild"),
+              required: true,
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  options: children.map((child) => ({
+                    value: String(child.child_id),
+                    label: child.first_name,
+                  })),
+                },
+              },
+            },
+            thread: {
+              label: t("editorSickThread"),
+              required: true,
+              selector: {
+                select: {
+                  mode: "dropdown",
+                  custom_value: true,
+                  // Text, as the choice comes back so; a thread about several children once.
+                  options: threadChoices(children),
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     sender: {
       name: "sender",
       selector: {

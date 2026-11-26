@@ -7,9 +7,9 @@
 
 import { dashboardForm } from "../config/dashboard.ts";
 import type { ConfigForm } from "../config/form.ts";
-import { fetchChildren } from "../core/api.ts";
-import { rememberChildren, rememberLanguage } from "../core/memory.ts";
-import type { HomeAssistant } from "../core/types.ts";
+import { fetchChildren, fetchThreads } from "../core/api.ts";
+import { rememberChildren, rememberLanguage, rememberThreads } from "../core/memory.ts";
+import type { Child, HomeAssistant } from "../core/types.ts";
 
 /** The editor's element. */
 export const DASHBOARD_EDITOR = "aula-connect-dashboard-editor";
@@ -44,19 +44,44 @@ export class AulaConnectDashboardEditor extends HTMLElement {
     this.#render(false);
   }
 
-  /** Home Assistant; the first one given lists the children, in its language. */
+  /**
+   * Home Assistant; the first one given lists the children, in its language, and the threads each
+   * can be written about in, to choose from.
+   */
   set hass(hass: HomeAssistant) {
     this.#hass = hass;
     if (!this.#listing) {
       this.#listing = true;
       rememberLanguage(hass.language);
       void fetchChildren(hass.callWS)
-        .then(rememberChildren, () => undefined)
+        .then(
+          async (children) => {
+            rememberChildren(children);
+            this.#render(true);
+            await this.#listThreads(hass, children);
+          },
+          () => undefined,
+        )
         .then(() => {
           this.#render(true);
         });
     }
     this.#render(false);
+  }
+
+  // A child seen through several entries is asked about once; one that cannot be is left out.
+  async #listThreads(hass: HomeAssistant, children: readonly Child[]): Promise<void> {
+    const once = new Map(children.map((child) => [child.child_id, child]));
+    await Promise.all(
+      [...once.values()].map((child) =>
+        fetchThreads(hass.callWS, child).then(
+          (list) => {
+            rememberThreads(child.child_id, list.threads);
+          },
+          () => undefined,
+        ),
+      ),
+    );
   }
 
   #render(rebuild: boolean): void {

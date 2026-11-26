@@ -214,6 +214,11 @@ const TEXTS = {
   presenceLeft: ["left {time}", "gik {time}"],
   presenceNote: ["From the check-in in Aula.", "Fra komme/gå i Aula."],
   importantNone: ["Nothing important", "Intet vigtigt"],
+  importantOn: ["Important for {when}", "Vigtigt til {when}"],
+  importantLater: [
+    { one: "{n} more later", other: "{n} more later" },
+    { one: "{n} mere senere", other: "{n} mere senere" },
+  ],
   importantFor: [
     { one: "{n} important thing for {when}", other: "{n} important things for {when}" },
     { one: "{n} vigtig ting til {when}", other: "{n} vigtige ting til {when}" },
@@ -284,6 +289,10 @@ const TEXTS = {
     "The thread used last is from an earlier year, or closed. Choose one.",
     "Tråden, I brugte sidst, er fra et tidligere år eller lukket. Vælg en.",
   ],
+  threadConfiguredGone: [
+    "The thread chosen in the settings can no longer be replied in. Choose one.",
+    "Tråden, der er valgt i indstillingerne, kan ikke længere svares i. Vælg en.",
+  ],
   noThreads: [
     "No thread about {name} to write in. Write the first message in Aula.",
     "Ingen tråd om {name} at skrive i. Skriv den første besked i Aula.",
@@ -328,8 +337,13 @@ const TEXTS = {
   answerSentFor: ["The answer is sent for {names}", "Svaret er sendt for {names}"],
   answerFailedFor: ["{name}: {error}", "{name}: {error}"],
   answerGoesTo: ["The answer is sent for {names}", "Svaret sendes for {names}"],
-  answerSplit: ["Different for the children", "Forskellig for børnene"],
-  answerJoin: ["The same for the children", "Ens for børnene"],
+  answerSplit: ["Set for each child", "Ret hver for sig"],
+  answerJoin: ["One answer for all", "Samme svar til alle"],
+  answerFor: ["For {names}", "Gælder {names}"],
+  answerHowTo: [
+    "Each day's answer is for {names}. Where their times differ, or one of them does not come, set that day for each child.",
+    "Svaret for hver dag gælder {names}. Har de forskellige tider, eller kommer kun den ene, så ret dagen hver for sig.",
+  ],
   requestsUnread: [
     "The vacation requests could not be read",
     "Ferieanmodningerne kunne ikke hentes",
@@ -505,7 +519,28 @@ const TEXTS = {
     "{name} is the child's first name. Empty: the standard message.",
     "{name} er barnets fornavn. Tomt felt: standardbeskeden.",
   ],
+  editorSickWrite: [
+    "Write to the school after a sick report",
+    "Skriv til skolen efter en sygemelding",
+  ],
+  editorSickWriteHelper: [
+    "On: the report goes on to the message, which can be skipped. Off: it ends at the report, and the message is a tap away.",
+    "Til: sygemeldingen går videre til beskeden, som kan springes over. Fra: den slutter ved sygemeldingen, og beskeden er et tryk væk.",
+  ],
+  editorSickThreads: ["Thread for each child", "Tråd for hvert barn"],
+  editorSickThreadsHelper: [
+    "The thread the message is a reply in, to all in it, chosen ahead. Without one: the thread written in last.",
+    "Tråden beskeden svarer i, til alle i den, valgt på forhånd. Uden: tråden, der sidst blev skrevet i.",
+  ],
+  editorSickThread: ["Thread", "Tråd"],
   editorSender: ["Send as", "Send som"],
+  editorImportant: ["What is important", "Det vigtige"],
+  editorImportantHelper: [
+    "Compact: one line that opens it. In full: the next day's shown on the overview itself.",
+    "Samlet: én linje, der åbner det. Vis alt: næste dags vigtige står direkte på oversigten.",
+  ],
+  importantCompact: ["Compact", "Samlet"],
+  importantFullLabel: ["In full", "Vis alt"],
   editorDashboardSick: ["Reporting sick", "Sygemelding"],
   editorDashboardVacation: ["Vacations and vacation requests", "Ferie og ferieanmodninger"],
   editorSenderHelper: [

@@ -146,6 +146,54 @@ describe("the sick card", () => {
     expect(windowText(card)).toBe("");
   });
 
+  it("writes in the thread set for the child, over the one used last", async () => {
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      today: day({}),
+      config: { sick_threads: [{ child: 1001, thread: "501" }] },
+      commands: commands({
+        "aula_connect/threads": () => ({ ...THREADS, remembered: "502" }),
+      }),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    await tap(card, "dialog .filled-button", "Meld syg");
+    const radios = [...root(card).querySelectorAll<HTMLInputElement>("dialog .thread input")];
+    expect(radios.map((radio) => radio.checked)).toEqual([true, false]);
+    expect(all(card, "dialog .alert")).toEqual([]);
+    await tap(card, "dialog .filled-button", "Send");
+    expect(sent(hass.callWS.mock.calls, "message/reply")).toMatchObject([{ thread_id: 501 }]);
+  });
+
+  it("asks for a thread again where the one set can no longer be replied in", async () => {
+    const { card } = await mount(SICK, "thu-1000", {
+      today: day({}),
+      config: { sick_threads: [{ child: 1001, thread: 502 }] },
+      commands: commands(),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    await tap(card, "dialog .filled-button", "Meld syg");
+    expect(windowText(card)).toContain(
+      "Tråden, der er valgt i indstillingerne, kan ikke længere svares i. Vælg en.",
+    );
+    expect(find(card, "dialog .filled-button", "Send").disabled).toBe(true);
+  });
+
+  it("ends at the report when writing is not asked for, with the message a tap away", async () => {
+    const { card, hass } = await mount(SICK, "thu-1000", {
+      today: day({}),
+      config: { sick_write: false },
+      commands: commands(),
+    });
+    await tap(card, ".family-row", "Meld Ida syg");
+    await tap(card, "dialog .filled-button", "Meld syg");
+    expect(windowText(card)).toContain("Ida er meldt syg i dag");
+    expect(all(card, "dialog textarea")).toEqual([]);
+    expect(sent(hass.callWS.mock.calls, "threads")).toEqual([]);
+    expect(windowText(card)).not.toContain("slået fra");
+    await tap(card, "dialog .window-actions .text-button", "Skriv en besked");
+    expect(windowText(card)).toContain("Skriv en besked?");
+    expect(sent(hass.callWS.mock.calls, "threads")).toHaveLength(1);
+  });
+
   it("takes a report back, today", async () => {
     const { card, hass } = await mount(SICK, "thu-1000", { today: day({}), commands: commands() });
     await tap(card, ".family-row", "Meld Ida syg");

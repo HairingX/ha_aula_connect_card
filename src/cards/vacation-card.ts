@@ -47,9 +47,9 @@ export class AulaConnectVacationCard extends AulaCard<ActionConfig, FamilyView> 
     return stub(VACATION_CARD, hass);
   }
 
-  /** Returns the card's size in a sections view: half the section's width, or more. */
-  getGridOptions(): { columns: number; rows: string; min_columns: number; min_rows: number } {
-    return { columns: 6, rows: "auto", min_columns: 4, min_rows: 2 };
+  /** Returns the card's size in a sections view: the section's whole width. */
+  getGridOptions(): { columns: string; rows: string; min_columns: number; min_rows: number } {
+    return { columns: "full", rows: "auto", min_columns: 4, min_rows: 2 };
   }
 
   protected override wantsToday = true;

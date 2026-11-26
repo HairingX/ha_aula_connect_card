@@ -70,12 +70,26 @@ export interface OverviewConfig extends ActionConfig {
   readonly paths: Paths;
   /** Icons for things to bring, by the thing, over the built-in ones. */
   readonly packIcons: Readonly<Record<string, string>>;
+  /** Whether what is important is said in a line that opens it, or shown for its first day in full. */
+  readonly important: "compact" | "full";
+}
+
+/** The thread a child's illness is written about in. */
+export interface SickThread {
+  /** The child's id. */
+  readonly child: number;
+  /** Aula's id of the thread. */
+  readonly thread: number;
 }
 
 /** The configuration of the cards that act on Aula: the sick, vacation and requests cards. */
 export interface ActionConfig extends CommonConfig {
   /** The message about the illness, `{name}` standing for the child's first name. */
   readonly sickMessage: string | undefined;
+  /** The thread each child's illness is written about in, over the one last written in. */
+  readonly sickThreads: readonly SickThread[];
+  /** Whether a report goes on to writing a message, rather than offering it. */
+  readonly sickWrite: boolean;
   /** The guardian to act as, by the name Aula Connect gives the entry; undefined for the last used. */
   readonly sender: string | undefined;
 }
@@ -107,6 +121,32 @@ export function parsePeople(value: unknown, lenient = false): PersonFor[] {
       );
     }
     return [{ child, person }];
+  });
+}
+
+/** Reads `sick_threads`: the thread each child's illness is written about in. */
+export function parseSickThreads(value: unknown, lenient = false): SickThread[] {
+  if (absent(value)) return [];
+  if (!Array.isArray(value))
+    throw new Error("sick_threads: must be a list of children and threads");
+  return (value as unknown[]).flatMap((item, index) => {
+    const name = `sick_threads[${String(index)}]`;
+    if (!isRecord(item)) throw new Error(`${name}: must be a mapping of child and thread`);
+    // The editor's choices are text; YAML has numbers.
+    const [child, thread] = [item.child, item.thread].map((id) =>
+      typeof id === "string" && id.trim() !== "" ? Number(id) : id,
+    );
+    const valid = (id: unknown): id is number =>
+      typeof id === "number" && Number.isSafeInteger(id) && id > 0;
+    if (!valid(child) || !valid(thread)) {
+      if (lenient) return [];
+      throw new Error(
+        valid(child)
+          ? `${name}.thread: must be a thread's id, such as 12345`
+          : `${name}.child: must be a child id, such as 1001`,
+      );
+    }
+    return [{ child, thread }];
   });
 }
 
@@ -143,6 +183,14 @@ export function parsePaths(value: unknown): Paths {
     else paths[key as keyof Paths] = path.trim();
   }
   return paths;
+}
+
+/** Reads `important`: how the overview shows what is important, `compact` by default. */
+export function parseImportant(value: unknown): "compact" | "full" {
+  if (absent(value)) return "compact";
+  if (value !== "compact" && value !== "full")
+    throw new Error("important: must be compact or full");
+  return value;
 }
 
 /** Reads `pack_icons`: things to bring and their mdi icons. */
@@ -191,6 +239,7 @@ export function resolveOverviewConfig(config: unknown, lenient = false): Overvie
     look: parseLook(raw.look),
     paths: parsePaths(raw.paths),
     packIcons: parsePackIcons(raw.pack_icons),
+    important: parseImportant(raw.important),
   };
 }
 
@@ -213,6 +262,8 @@ export function resolveActionConfig(config: unknown, lenient = false): ActionCon
   return {
     ...resolveCommon(raw, lenient),
     sickMessage: parseText(raw.sick_message, "sick_message"),
+    sickThreads: parseSickThreads(raw.sick_threads, lenient),
+    sickWrite: parseFlag(raw.sick_write, "sick_write"),
     sender: parseText(raw.sender, "sender"),
   };
 }
@@ -230,15 +281,18 @@ const FORMS: Readonly<Record<FamilyCard, readonly FieldName[]>> = {
   [OVERVIEW_CARD]: [
     "children",
     "look",
+    "important",
     "switch_time",
     "size",
+    "sick_write",
     "sick_message",
+    "sick_threads",
     "sender",
     "packing_group",
     "subject_names_group",
   ],
   [IMPORTANT_CARD]: ["children", "size", "subject_names_group"],
-  [SICK_CARD]: ["children", "sick_message", "sender", "size"],
+  [SICK_CARD]: ["children", "sick_write", "sick_message", "sick_threads", "sender", "size"],
   [VACATION_CARD]: ["children", "sender", "size"],
 };
 

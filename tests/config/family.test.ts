@@ -7,10 +7,12 @@ import {
   IMPORTANT_CARD,
   OVERVIEW_CARD,
   parseFlag,
+  parseImportant,
   parseLook,
   parsePackIcons,
   parsePaths,
   parsePeople,
+  parseSickThreads,
   parseText,
   resolveActionConfig,
   resolveChildrenConfig,
@@ -21,8 +23,14 @@ import {
   type FamilyCard,
 } from "../../src/config/family.ts";
 import type { FormSchema } from "../../src/config/form.ts";
-import { forget, rememberChildren, rememberLanguage } from "../../src/core/memory.ts";
-import { SECOND_ENTRY } from "../fixtures/family.ts";
+import type { Thread } from "../../src/core/types.ts";
+import {
+  forget,
+  rememberChildren,
+  rememberLanguage,
+  rememberThreads,
+} from "../../src/core/memory.ts";
+import { SECOND_ENTRY, THREADS } from "../fixtures/family.ts";
 import { CHILDREN } from "../fixtures/week.ts";
 
 afterEach(() => {
@@ -95,6 +103,22 @@ describe("the family's cards' configuration", () => {
       "people[0].person: must be a person, such as person.ida",
     ],
     [() => parseLook("grid"), "look: must be rows, columns or board"],
+    [() => parseImportant("all"), "important: must be compact or full"],
+    [() => parseSickThreads("501"), "sick_threads: must be a list of children and threads"],
+    [() => parseSickThreads([501]), "sick_threads[0]: must be a mapping of child and thread"],
+    [
+      () => parseSickThreads([{ child: "Ida", thread: 501 }]),
+      "sick_threads[0].child: must be a child id, such as 1001",
+    ],
+    [
+      () => parseSickThreads([{ child: 1001, thread: "Sygdom" }]),
+      "sick_threads[0].thread: must be a thread's id, such as 12345",
+    ],
+    [
+      () => parseSickThreads([{ child: 1001, thread: 0 }]),
+      "sick_threads[0].thread: must be a thread's id, such as 12345",
+    ],
+    [() => parseFlag("no", "sick_write"), "sick_write: must be true or false"],
     [() => parseFlag("yes", "look_switch"), "look_switch: must be true or false"],
     [
       () => parsePaths("vigtigt"),
@@ -122,6 +146,30 @@ describe("the family's cards' configuration", () => {
     expect(parse).toThrow(message);
   });
 
+  it("shows what is important compact unless asked for in full", () => {
+    expect(parseImportant(undefined)).toBe("compact");
+    expect(parseImportant("full")).toBe("full");
+    expect(resolveOverviewConfig({ important: "full" }).important).toBe("full");
+  });
+
+  it("reads each child's thread as numbers, whether written as text or not", () => {
+    expect(parseSickThreads(null)).toEqual([]);
+    expect(
+      parseSickThreads([
+        { child: "1001", thread: "501" },
+        { child: 1002, thread: 77 },
+      ]),
+    ).toEqual([
+      { child: 1001, thread: 501 },
+      { child: 1002, thread: 77 },
+    ]);
+    expect(parseSickThreads([{ child: "1001" }, { child: 1002, thread: 77 }], true)).toEqual([
+      { child: 1002, thread: 77 },
+    ]);
+    expect(resolveActionConfig({}).sickWrite).toBe(true);
+    expect(resolveActionConfig({ sick_write: false }).sickWrite).toBe(false);
+  });
+
   it("leaves out a person the editor is still filling in", () => {
     expect(parsePeople([{ child: "1001" }, { child: 1002, person: "person.oskar" }], true)).toEqual(
       [{ child: 1002, person: "person.oskar" }],
@@ -139,16 +187,19 @@ describe("the family's cards' editor", () => {
       [
         "children",
         "look",
+        "important",
         "switch_time",
         "size",
+        "sick_write",
         "sick_message",
+        "sick_threads",
         "sender",
         "packing_group",
         "subject_names_group",
       ],
     ],
     [IMPORTANT_CARD, ["children", "size", "subject_names_group"]],
-    [SICK_CARD, ["children", "sick_message", "sender", "size"]],
+    [SICK_CARD, ["children", "sick_write", "sick_message", "sick_threads", "sender", "size"]],
     [VACATION_CARD, ["children", "sender", "size"]],
   ])("shows %s's fields, each labelled", (card, fields) => {
     rememberChildren(CHILDREN);
@@ -159,6 +210,29 @@ describe("the family's cards' editor", () => {
     for (const field of fieldsOf(form.schema)) {
       expect(form.computeLabel(field), field.name).toBeTruthy();
     }
+  });
+
+  it("offers each child's threads that can be replied in, a shared one once", () => {
+    rememberChildren(CHILDREN);
+    const [open, closed] = THREADS.threads as [Thread, Thread];
+    rememberThreads(1001, THREADS.threads);
+    rememberThreads(1002, [
+      open,
+      closed,
+      { ...open, thread_id: 9, subject: "Klassen", employees: [] },
+    ]);
+    const field = familyForm(SICK_CARD).schema.find((item) => item.name === "sick_threads");
+    const options = (
+      field as unknown as {
+        selector: {
+          object: { fields: { thread: { selector: { select: { options: unknown } } } } };
+        };
+      }
+    ).selector.object.fields.thread.selector.select.options;
+    expect(options).toEqual([
+      { value: "501", label: "Ida, Oskar · Sygdom 3.B · Karen Lund" },
+      { value: "9", label: "Oskar · Klassen" },
+    ]);
   });
 
   it("offers the children and the guardians the integration lists", () => {

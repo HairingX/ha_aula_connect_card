@@ -12,8 +12,10 @@ import {
   IMPORTANT_CARD,
   OVERVIEW_CARD,
   parseFlag,
+  parseImportant,
   parsePackIcons,
   parsePeople,
+  parseSickThreads,
   parseText,
   SICK_CARD,
   VACATION_CARD,
@@ -29,8 +31,11 @@ export type SharedKey =
   | "subject_names"
   | "expand_abbreviations"
   | "people"
+  | "sick_write"
   | "sick_message"
-  | "sender";
+  | "sick_threads"
+  | "sender"
+  | "important";
 
 /** The keys each card of the dashboard takes from the dashboard's configuration. */
 export const SHARED: Readonly<Record<string, readonly SharedKey[]>> = {
@@ -41,13 +46,16 @@ export const SHARED: Readonly<Record<string, readonly SharedKey[]>> = {
     "pack_icons",
     "subject_names",
     "expand_abbreviations",
+    "sick_write",
     "sick_message",
+    "sick_threads",
     "sender",
+    "important",
   ],
   [IMPORTANT_CARD]: ["switch_time", "subject_names", "expand_abbreviations"],
   [WEEKPLAN_CARD]: ["switch_time", "subject_names", "expand_abbreviations"],
   [WEEK_CARD]: ["switch_time", "packing", "subject_names", "expand_abbreviations"],
-  [SICK_CARD]: ["sick_message", "sender"],
+  [SICK_CARD]: ["sick_write", "sick_message", "sick_threads", "sender"],
   [VACATION_CARD]: ["sender"],
 };
 
@@ -72,7 +80,10 @@ export function assertDashboardConfig(config: unknown, lenient = false): void {
   parsePeople(raw.people, lenient);
   parsePackIcons(raw.pack_icons);
   parseText(raw.sick_message, "sick_message");
+  parseSickThreads(raw.sick_threads, lenient);
+  parseFlag(raw.sick_write, "sick_write");
   parseText(raw.sender, "sender");
+  parseImportant(raw.important);
 }
 
 /** Returns the dashboard's form for the visual editor: the parts it has, then the cards' settings. */
@@ -82,11 +93,14 @@ export function dashboardForm(): ConfigForm {
       "children",
       "sick",
       "vacation",
+      "important",
       "packing_group",
       "subject_names_group",
       "switch_time",
       "people",
+      "sick_write",
       "sick_message",
+      "sick_threads",
       "sender",
     ],
     assertDashboardConfig,

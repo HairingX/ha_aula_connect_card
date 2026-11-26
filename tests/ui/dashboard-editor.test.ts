@@ -2,9 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import "../../src/index.ts";
 import { assertDashboardConfig, dashboardForm, sharedWith } from "../../src/config/dashboard.ts";
-import { forget } from "../../src/core/memory.ts";
+import { forget, knownThreads } from "../../src/core/memory.ts";
 import { AulaConnectDashboardEditor, DASHBOARD_EDITOR } from "../../src/ui/dashboard-editor.ts";
 import { fakeHass, present, settle } from "../fake-hass.ts";
+import { THREADS } from "../fixtures/family.ts";
 import { CHILDREN } from "../fixtures/week.ts";
 
 interface Form extends HTMLElement {
@@ -44,15 +45,36 @@ describe("the dashboard's editor", () => {
       "children",
       "sick",
       "vacation",
+      "important",
       "packing_group",
       "subject_names_group",
       "switch_time",
       "people",
+      "sick_write",
       "sick_message",
+      "sick_threads",
       "sender",
     ]);
     expect(shown.schema?.[0]?.selector?.select?.options).toHaveLength(CHILDREN.length);
     expect(shown.computeLabel?.({ name: "sick" })).toBe("Sygemelding");
+  });
+
+  it("offers the threads each child can be written about in, asking once for a child", async () => {
+    const element = editor();
+    const threads = vi.fn((message: Record<string, unknown>) => {
+      if (message.child_id === 1002) throw new Error("not reachable");
+      return THREADS;
+    });
+    const hass = fakeHass({
+      children: [...CHILDREN, { ...present(CHILDREN[0]), entry_id: "entry-b" }],
+      commands: { "aula_connect/threads": threads },
+    });
+    element.hass = hass;
+    element.setConfig({ type: "custom:aula-connect" });
+    await settle();
+    expect(threads).toHaveBeenCalledTimes(2);
+    expect(knownThreads().get(1001)).toEqual(THREADS.threads);
+    expect(knownThreads().has(1002)).toBe(false);
   });
 
   it("tells Home Assistant each change as the whole configuration", () => {

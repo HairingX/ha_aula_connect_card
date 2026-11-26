@@ -33,6 +33,7 @@ import { AHEAD_DAYS, overviewView, type OverviewView } from "../model/overview.t
 import { AulaCard, stub } from "../ui/card.ts";
 import { Loads } from "../ui/loads.ts";
 import { renderOverview, type AbsenceView } from "../ui/overview.ts";
+import { sickOptions } from "../ui/sick.ts";
 import { base, blocks, details, family } from "../ui/styles.ts";
 
 /** The overview. */
@@ -85,9 +86,9 @@ export class AulaConnectOverviewCard extends AulaCard<OverviewConfig, OverviewVi
       look: config.look ?? selection().look,
       paths: config.paths,
       packIcons: config.packIcons,
-      message: config.sickMessage,
-      sender: config.sender,
+      sick: sickOptions(config),
       absence: this.#absence(view, config, ctx),
+      important: config.important,
     });
   }
 

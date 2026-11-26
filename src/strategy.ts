@@ -87,7 +87,15 @@ function card(
   };
 }
 
-function page(title: string, path: string, icon: string, cards: readonly CardConfig[]): ViewConfig {
+// A page of the overview: its first section the whole width, the others side by side where the
+// screen has room for two columns.
+function page(
+  title: string,
+  path: string,
+  icon: string,
+  cards: readonly CardConfig[],
+  beside: readonly CardConfig[] = [],
+): ViewConfig {
   return {
     title,
     path,
@@ -95,7 +103,10 @@ function page(title: string, path: string, icon: string, cards: readonly CardCon
     subview: true,
     type: "sections",
     max_columns: 2,
-    sections: [{ type: "grid", column_span: 2, cards }],
+    sections: [
+      { type: "grid", column_span: 2, cards },
+      ...beside.map((item): SectionConfig => ({ type: "grid", column_span: 1, cards: [item] })),
+    ],
   };
 }
 
@@ -141,7 +152,7 @@ export function dashboard(
       ]),
       page(t("navWeek"), DEFAULT_PATHS.week, "mdi:calendar-week", [bar(false), of(WEEK_CARD)]),
       ...(acting.length > 0
-        ? [page(t("navAbsence"), DEFAULT_PATHS.absence, ABSENCE_ICON, [bar(false), ...acting])]
+        ? [page(t("navAbsence"), DEFAULT_PATHS.absence, ABSENCE_ICON, [bar(false)], acting)]
         : []),
     ],
   };

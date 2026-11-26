@@ -239,9 +239,25 @@ function dayRow(
     }
     ${
       items.length > 1 && !locked
-        ? html`<button class="text-button answer-split-toggle" type="button" @click=${toggle}>
-            ${split === undefined ? t("answerSplit") : t("answerJoin")}
-          </button>`
+        ? html`<span class="answer-for">
+            ${
+              split === undefined
+                ? html`<span class="ov-minis answer-faces" aria-hidden="true"
+                      >${items.map((item) => faceImage(state.face(item.child), "mini"))}</span
+                    ><span
+                      >${t("answerFor", {
+                        names: listOf(
+                          items.map((item) => state.face(item.child).name),
+                          ctx,
+                        ),
+                      })}</span
+                    >`
+                : nothing
+            }
+            <button class="text-button answer-split-toggle" type="button" @click=${toggle}>
+              ${split === undefined ? t("answerSplit") : t("answerJoin")}
+            </button>
+          </span>`
         : nothing
     }
   </li>`;
@@ -315,6 +331,13 @@ function requestWindow(
     }
     <div class="field">
       <span class="field-label">${t("answerEveryDay")}</span>
+      ${
+        waiting.length > 1 && !locked
+          ? html`<p class="field-help">
+              ${t("answerHowTo", { names: listOf(waiting.map(nameOf), ctx) })}
+            </p>`
+          : nothing
+      }
       <ul class="answer-days">
         ${answer.days.map((day) =>
           dayRow(day, waiting, times, locked || day.date < ctx.today, ctx, state),

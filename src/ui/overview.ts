@@ -51,7 +51,7 @@ import {
   turnedOff,
   weekdayWord,
 } from "./primitives.ts";
-import { openSick, sickLabel } from "./sick.ts";
+import { openSick, sickLabel, type SickOptions } from "./sick.ts";
 import { requestRow } from "./vacation-requests.ts";
 import { head, modal, row, section, ticket } from "./window.ts";
 
@@ -80,12 +80,12 @@ export interface OverviewOptions {
   readonly paths: Paths;
   /** Icons for things to bring, by the thing in lower case, over the built-in ones. */
   readonly packIcons: Readonly<Record<string, string>>;
-  /** The message about the illness, `{name}` standing for the child's first name. */
-  readonly message: string | undefined;
-  /** The guardian to act as. */
-  readonly sender: string | undefined;
+  /** How a child is reported sick and written about. */
+  readonly sick: SickOptions;
   /** What it knows of Fravær. */
   readonly absence: AbsenceView;
+  /** Whether what is important is said in a line that opens it, or shown for its first day in full. */
+  readonly important: "compact" | "full";
 }
 
 /** A subject's icon on the board, by its key; a book for a subject not in it. */
@@ -279,12 +279,67 @@ function packChips(
   </p>`;
 }
 
+function dueItem(due: ImportantDue, ctx: ViewContext): TemplateResult {
+  return html`<li>
+    <span class="note-head"
+      >${due.note.subject ? label(aula(due.note.subject.name, ctx), "subject") : nothing}
+      ${due.note.title ? html`<span class="note-title">${aula(due.note.title, ctx)}</span>` : nothing}</span
+    >
+    ${due.note.text ? html`<p class="note-text">${aula(due.note.text, ctx)}</p>` : nothing}
+  </li>`;
+}
+
+/**
+ * Shows what is important for the first day that has some, in full, and a way to the rest; or
+ * that nothing is important.
+ */
+function importantFull(
+  item: OverviewChild,
+  ctx: ViewContext,
+  state: CardState,
+  options: OverviewOptions,
+): TemplateResult {
+  const key = `important|${String(item.child.child_id)}`;
+  const [first] = item.important;
+  if (!first)
+    return html`<p class="ov-important none">
+      ${icon("mdi:flag-outline")}<span>${ctx.t("importantNone")}</span>
+    </p>`;
+  const later = item.important.filter((due) => due.day !== first.day).length;
+  return html`<section class="ov-important-full">
+    <h4 class="ov-important-head">
+      ${icon("mdi:flag-outline")}<span
+        >${ctx.t("importantOn", { when: whenText(first.day, ctx) })}</span
+      >
+    </h4>
+    <ul class="note-due">
+      ${item.important.filter((due) => due.day === first.day).map((due) => dueItem(due, ctx))}
+    </ul>
+    ${
+      later > 0
+        ? html`<button
+            class="text-button ov-important-more"
+            type="button"
+            aria-haspopup="dialog"
+            data-detail=${key}
+            @click=${() => {
+              openImportant(item, ctx, state, options, key);
+            }}
+          >
+            ${ctx.t("importantLater", { n: later })}${icon("mdi:chevron-right")}
+          </button>`
+        : nothing
+    }
+  </section>`;
+}
+
 function importantButton(
   item: OverviewChild,
   ctx: ViewContext,
   state: CardState,
   options: OverviewOptions,
 ): TemplateResult {
+  if (options.important === "full") return importantFull(item, ctx, state, options);
   const key = `important|${String(item.child.child_id)}`;
   const [first] = item.important;
   if (!first)
@@ -361,7 +416,7 @@ function rows(
             ${endsBig(item, ctx)} ${sickLabel(item, ctx)} ${presencePill(item, ctx, state, options)}
           </div>
           ${waiting(item, ctx)}
-          ${bars[index] ? html`<div class="ov-bar">${renderDayBar(bars[index], ctx, axis)}</div>` : nothing}
+          ${bars[index] ? html`<div class="ov-bar">${renderDayBar(bars[index], ctx, axis, { state, child: item.child, key: `bar|${String(item.child.child_id)}` })}</div>` : nothing}
           ${packChips(item, ctx, true, options)}
           ${item.content ? factStack(item.content.facts, ctx) : nothing}
           ${item.state.kind === "ready" ? importantButton(item, ctx, state, options) : nothing}
@@ -428,7 +483,7 @@ function columns(
             >${dayLine(item, ctx, view.sameDay !== undefined)}${hoursOf(item, ctx)}</span
           >
           ${waiting(item, ctx)}
-          ${bars[index] ? html`<div class="ov-bar">${renderDayBar(bars[index], ctx, axis)}</div>` : nothing}
+          ${bars[index] ? html`<div class="ov-bar">${renderDayBar(bars[index], ctx, axis, { state, child: item.child, key: `bar|${String(item.child.child_id)}` })}</div>` : nothing}
           ${packChips(item, ctx, false, options)}
           ${item.content ? factStack(item.content.facts, ctx) : nothing}
           ${item.state.kind === "ready" ? soonList(item, ctx, state, options) : nothing}
@@ -478,22 +533,24 @@ function panel(
         : nothing
     }
     ${
-      first
-        ? html`<button
-            class="board-important"
-            type="button"
-            aria-haspopup="dialog"
-            data-detail=${key}
-            @click=${() => {
-              openImportant(item, ctx, state, options, key);
-            }}
-          >
-            ${icon("mdi:flag-outline")}<span class="board-count"
-              >${item.important.filter((due) => due.day === first.day).length}</span
+      options.important === "full"
+        ? importantFull(item, ctx, state, options)
+        : first
+          ? html`<button
+              class="board-important"
+              type="button"
+              aria-haspopup="dialog"
+              data-detail=${key}
+              @click=${() => {
+                openImportant(item, ctx, state, options, key);
+              }}
             >
-            <span>${importantLine(first, item.important, ctx).replace(/^\d+ /, "")}</span>
-          </button>`
-        : nothing
+              ${icon("mdi:flag-outline")}<span class="board-count"
+                >${item.important.filter((due) => due.day === first.day).length}</span
+              >
+              <span>${importantLine(first, item.important, ctx).replace(/^\d+ /, "")}</span>
+            </button>`
+          : nothing
     }
   </section>`;
 }
@@ -682,19 +739,25 @@ export function renderOverview(
     ),
   });
   const shared = view.sameDay;
+  // The children's day, and what needs the family, are the overview's own; the pages and what
+  // is coming lead elsewhere, beside it where the card is wide.
   return html`<section class="overview look-${options.look}" aria-label=${label}>
-    ${shared ? html`<h2 class="ov-title">${sharedTitle(shared, ctx)}</h2>` : nothing}
-    ${
-      options.look === "rows"
-        ? rows(view, ctx, state, options, axis, bars)
-        : options.look === "columns"
-          ? columns(view, ctx, state, options, axis, bars)
-          : html`<div class="ov-board n-${String(Math.min(view.children.length, 3))}">
-              ${view.children.map((item) => panel(item, ctx, state, options))}
-            </div>`
-    }
-    ${requestBand(ctx, state, options)} ${nav(view, ctx, state, options)}
-    ${comingList(view, ctx, state, options)}
+    <div class="ov-main">
+      ${shared ? html`<h2 class="ov-title">${sharedTitle(shared, ctx)}</h2>` : nothing}
+      ${
+        options.look === "rows"
+          ? rows(view, ctx, state, options, axis, bars)
+          : options.look === "columns"
+            ? columns(view, ctx, state, options, axis, bars)
+            : html`<div class="ov-board n-${String(Math.min(view.children.length, 3))}">
+                ${view.children.map((item) => panel(item, ctx, state, options))}
+              </div>`
+      }
+      ${requestBand(ctx, state, options)}
+    </div>
+    <div class="ov-aside">
+      ${nav(view, ctx, state, options)} ${comingList(view, ctx, state, options)}
+    </div>
   </section>`;
 }
 
@@ -718,18 +781,7 @@ export function openImportant(
           `${capitalize(daysBetween(ctx.today, day) < 7 ? whenText(day, ctx) : formatWeekday(day, ctx.language), ctx.language)} · ${formatShortDate(day, ctx.language)}`,
           [],
           html`<ul class="note-due">
-            ${item.important
-              .filter((due) => due.day === day)
-              .map(
-                (due) =>
-                  html`<li>
-                    <span class="note-head"
-                      >${due.note.subject ? label(aula(due.note.subject.name, ctx), "subject") : nothing}
-                      ${due.note.title ? html`<span class="note-title">${aula(due.note.title, ctx)}</span>` : nothing}</span
-                    >
-                    ${due.note.text ? html`<p class="note-text">${aula(due.note.text, ctx)}</p>` : nothing}
-                  </li>`,
-              )}
+            ${item.important.filter((due) => due.day === day).map((due) => dueItem(due, ctx))}
           </ul>`,
         ),
       )}
@@ -807,7 +859,7 @@ export function openPresence(
         : []),
     ];
     const sick = () => {
-      openSick(state, { family, message: options.message, sender: options.sender }, key);
+      openSick(state, { family, ...options.sick }, key);
     };
     return modal(
       html`${head(t("presenceTitle", { name: face.name }), [t("presenceMeta", { day: formatDay(ctx.today, ctx.language) })], [], ctx, close, faceImage(face, "window-face"))}
@@ -824,12 +876,7 @@ export function openPresence(
                     class="filled-button"
                     type="button"
                     @click=${() => {
-                      openSick(
-                        state,
-                        { family, message: options.message, sender: options.sender },
-                        key,
-                        true,
-                      );
+                      openSick(state, { family, ...options.sick }, key, true);
                     }}
                   >
                     ${t("writeMessage")}
