@@ -646,15 +646,26 @@ function panel(
   const today = item.focus.day === ctx.today;
   const key = `important|${String(item.child.child_id)}`;
   const [first] = item.important;
+  // The name, the hours and the first heading stand in a column of their own, the clock or the
+  // presence beside them, so that children side by side line up whatever stands at the right.
   return html`<section class="ov-panel">
-    <div class="ov-col-head">${who(item, state)} ${boardClock(item, ctx, state, options)}</div>
-    ${hoursBig(item, ctx)} ${sickLabel(item, ctx)} ${waiting(item, ctx)}
+    <div class="ov-panel-top">
+      <div class="ov-panel-main">
+        ${who(item, state)} ${hoursBig(item, ctx)} ${sickLabel(item, ctx)}
+        ${
+          content
+            ? html`<span class="board-head"
+                >${today ? ctx.t("boardToday") : ctx.t("boardTomorrow", { day: capitalize(formatWeekday(content.view.day, ctx.language), ctx.language) })}</span
+              >`
+            : nothing
+        }
+      </div>
+      <div class="ov-panel-side">${boardClock(item, ctx, state, options)}</div>
+    </div>
+    ${waiting(item, ctx)}
     ${
       content
-        ? html`<span class="board-head"
-              >${today ? ctx.t("boardToday") : ctx.t("boardTomorrow", { day: capitalize(formatWeekday(content.view.day, ctx.language), ctx.language) })}</span
-            >
-            <ul class="board-tiles">
+        ? html`<ul class="board-tiles">
               ${lessons.map((lesson) => subjectTile(item, lesson, ctx, state))}
             </ul>
             ${

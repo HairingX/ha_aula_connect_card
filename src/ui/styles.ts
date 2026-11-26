@@ -2727,7 +2727,23 @@ export const family = css`
   .ov-panel {
     gap: var(--aula-space-3);
   }
-  .ov-panel .ov-col-head .face {
+  .ov-panel-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--aula-space-3);
+    align-items: start;
+  }
+  .ov-panel-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-3);
+    min-width: 0;
+  }
+  /* A presence beside the face stands level with the name. */
+  .ov-panel-side > .presence {
+    margin-top: calc(16px * var(--aula-scale));
+  }
+  .ov-panel .ov-who .face {
     --aula-face: calc(64px * var(--aula-scale));
   }
   .ov-panel .ov-name {
