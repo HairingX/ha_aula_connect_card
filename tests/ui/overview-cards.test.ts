@@ -6,7 +6,6 @@ import { AulaConnectImportantCard } from "../../src/cards/important-card.ts";
 import { AulaConnectOverviewCard } from "../../src/cards/overview-card.ts";
 import { AulaConnectSickCard } from "../../src/cards/sick-card.ts";
 import { AulaConnectVacationCard } from "../../src/cards/vacation-card.ts";
-import { AulaConnectVacationRequestsCard } from "../../src/cards/vacation-requests-card.ts";
 import { forget } from "../../src/core/memory.ts";
 import { reloadSelection, selection, setLook } from "../../src/core/selection.ts";
 import type { Change, Child } from "../../src/core/types.ts";
@@ -14,8 +13,8 @@ import { IDLE_RESET_MS } from "../../src/model/focus.ts";
 import { subjectNamer } from "../../src/model/subjects.ts";
 import { childrenBarView } from "../../src/ui/children-bar.ts";
 import { packIcon, subjectIcon } from "../../src/ui/overview.ts";
-import { fakeHass } from "../fake-hass.ts";
-import { STATES, todayOf } from "../fixtures/family.ts";
+import { fakeHass, present, wsError } from "../fake-hass.ts";
+import { REQUESTS, STATES, todayOf } from "../fixtures/family.ts";
 import { all, mount, text, unmountAll } from "../fixtures/mount.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
 import { snapshotOf } from "../fixtures/snapshot.ts";
@@ -189,11 +188,6 @@ describe("the cards in a sections view", () => {
         "aula-connect-sick-card",
       ],
       [
-        AulaConnectVacationRequestsCard,
-        { columns: 6, rows: "auto", min_columns: 4, min_rows: 2 },
-        "aula-connect-vacation-requests-card",
-      ],
-      [
         AulaConnectVacationCard,
         { columns: 6, rows: "auto", min_columns: 4, min_rows: 2 },
         "aula-connect-vacation-card",
@@ -211,7 +205,6 @@ describe("the cards in a sections view", () => {
     expect(new AulaConnectImportantCard().getCardSize()).toBe(6);
     expect(new AulaConnectSickCard().getCardSize()).toBe(3);
     expect(new AulaConnectVacationCard().getCardSize()).toBe(3);
-    expect(new AulaConnectVacationRequestsCard().getCardSize()).toBe(3);
   });
 
   it("send nothing without Home Assistant", async () => {
@@ -231,7 +224,7 @@ describe("the overview", () => {
       "1 vigtig ting til i dag · 2 til i morgen",
       "1 vigtig ting til mandag",
     ]);
-    expect(texts(card, ".ov-tile")).toEqual(["8 Vigtigt", "Ugeplan", "Uge"]);
+    expect(texts(card, ".ov-tile")).toEqual(["8 Vigtigt", "Ugeplan", "Uge", "Fravær"]);
     expect(texts(card, ".ov-coming-text")).toEqual([
       "Skolefoto",
       "Alma har fødselsdag",
@@ -537,5 +530,163 @@ describe("a child's presence window", () => {
     await tap(card, ".presence");
     expect(windowText(card)).not.toContain("Tider");
     expect(windowText(card)).toContain("Nu Syg");
+  });
+});
+
+describe("Fravær on the overview", () => {
+  const pending = (child: Child): Record<string, unknown> => ({
+    ...todayOf(child),
+    vacation_requests_pending: 1,
+  });
+  const quiet = { "aula_connect/vacations": () => ({ vacations: [] }) };
+
+  it("shows a request awaiting an answer once for both children, and answers it for both", async () => {
+    const { card, hass } = await mount(OVERVIEW, "thu-1000", {
+      today: pending,
+      commands: {
+        ...quiet,
+        "aula_connect/vacation_requests": () => REQUESTS,
+        "aula_connect/vacation_request/answer": () => null,
+      },
+    });
+    expect(texts(card, ".ov-band .family-title")).toEqual(["Juleferie"]);
+    expect(all(card, ".ov-band .face")).toHaveLength(2);
+    expect(texts(card, ".ov-tile")).toContain("1 Fravær");
+    await tap(card, ".ov-band .family-row", "Juleferie");
+    expect(windowText(card)).toContain("Ida og Oskar");
+    for (const row of [1, 2, 3]) {
+      present(
+        all(card, `dialog .answer-day:nth-child(${String(row)}) .choice`)[1] as
+          HTMLButtonElement | undefined,
+      ).click();
+      await settled(card);
+    }
+    const asked = hass.callWS.mock.calls.length;
+    await tap(card, "dialog .filled-button", "Send svar");
+    const sent = hass.callWS.mock.calls
+      .map(([message]) => message)
+      .filter((message) => message.type === "aula_connect/vacation_request/answer");
+    expect(sent.map((message) => message.child_id)).toEqual([1001, 1002]);
+    expect(hass.callWS.mock.calls.length).toBeGreaterThan(asked + 2);
+  });
+
+  it("shows two requests, and a way to Fravær for the rest", async () => {
+    const request = present(REQUESTS.requests[0]);
+    const three = {
+      requests: ["Juleferie", "Vinterferie", "Påskeferie"].map((title, index) => ({
+        ...request,
+        id: 100 + index,
+        title,
+      })),
+    };
+    const { card } = await mount(OVERVIEW, "thu-1000", {
+      today: pending,
+      commands: { ...quiet, "aula_connect/vacation_requests": () => three },
+    });
+    expect(texts(card, ".ov-band .family-title")).toEqual(["Juleferie", "Påskeferie"]);
+    await tap(card, ".ov-band-more", "+ 1 mere");
+    expect(location.pathname).toBe("/aula/fravaer");
+  });
+
+  it("says the requests awaiting an answer could not be read, and asks for none without them", async () => {
+    const { card } = await mount(OVERVIEW, "thu-1000", {
+      today: pending,
+      commands: {
+        ...quiet,
+        "aula_connect/vacation_requests": () => {
+          throw wsError("home_assistant_error", "Aula is down");
+        },
+      },
+    });
+    expect(texts(card, ".ov-band-note")).toEqual(["Ferieanmodningerne kunne ikke hentes"]);
+    expect(all(card, ".ov-band")).toEqual([]);
+    unmountAll();
+    const { card: none, hass } = await mount(OVERVIEW, "thu-1000", {
+      today: (child) => ({ ...todayOf(child), vacation_requests_pending: 0 }),
+      commands: quiet,
+    });
+    expect(all(none, ".ov-band, .ov-band-note")).toEqual([]);
+    expect(
+      hass.callWS.mock.calls.filter(
+        ([message]) => (message as { type: string }).type === "aula_connect/vacation_requests",
+      ),
+    ).toEqual([]);
+  });
+
+  it("shows a vacation on the child's chip, and one coming in Det sker", async () => {
+    const vacation = (id: number, start: string, end: string) => ({
+      id,
+      start,
+      end,
+      comment: "",
+      editable: true,
+    });
+    const { card } = await mount(OVERVIEW, "thu-1000", {
+      today: todayOf,
+      commands: {
+        "aula_connect/vacations": (message) =>
+          message.child_id === 1002
+            ? {
+                vacations: [
+                  vacation(1, "2026-10-28", "2026-10-29"),
+                  vacation(2, "2026-10-29", "2026-10-30"),
+                  vacation(3, "2026-11-02", "2026-11-04"),
+                  vacation(4, "2026-11-03", "2026-11-03"),
+                ],
+              }
+            : { vacations: [vacation(5, "2026-10-29", "2026-10-29")] },
+      },
+    });
+    expect(texts(card, ".presence")).toEqual(["Ferie/fri i dag", "Ferie/fri til fre. 30. okt."]);
+    expect(texts(card, ".ov-coming-text")).toContain("Ferie/fri til ons. 4. nov.");
+    expect(texts(card, ".ov-coming-text")).toContain("Ferie/fri");
+  });
+
+  it("asks about a child sick the school day before, until it is checked in or the day switches", async () => {
+    // Ida came in this morning; Oskar's institution registers no presence.
+    const yesterday = (child: Child): Record<string, unknown> => ({
+      ...todayOf(child),
+      ...(child.child_id === 1002 ? { presence: null } : {}),
+      sick: { route: "aula", today: false, since: "2026-10-28", wrote_yesterday: false },
+    });
+    const { card } = await mount(OVERVIEW, "thu-1000", { today: yesterday, commands: quiet });
+    expect(texts(card, ".presence")).toEqual(["I skole til 12.55", "Syg i går – stadig syg?"]);
+    await tap(card, ".presence.ask");
+    expect(windowText(card)).toContain("Meld Oskar syg");
+    unmountAll();
+    const { card: switched } = await mount(OVERVIEW, "thu-1000", {
+      today: yesterday,
+      commands: quiet,
+      config: { switch_time: "09:00" },
+    });
+    expect(all(switched, ".presence.ask")).toEqual([]);
+  });
+
+  it("shows a child reported sick as sick, though on a vacation", async () => {
+    const { card } = await mount(OVERVIEW, "thu-1000", {
+      today: sickToday,
+      commands: {
+        "aula_connect/vacations": () => ({
+          vacations: [
+            { id: 1, start: "2026-10-29", end: "2026-10-30", comment: "", editable: true },
+          ],
+        }),
+      },
+    });
+    expect(texts(card, ".presence")).toEqual(["Syg", "Syg"]);
+  });
+
+  it("leaves out the tiles set to false, and the window's way to the Important page", async () => {
+    const { card } = await mount(OVERVIEW, "thu-1000", {
+      config: { paths: { important: false, absence: false } },
+    });
+    expect(texts(card, ".ov-tile")).toEqual(["Ugeplan", "Uge"]);
+    await tap(card, ".ov-important");
+    expect(all(card, "dialog .window-actions")).toEqual([]);
+    unmountAll();
+    const { card: bare } = await mount(OVERVIEW, "thu-1000", {
+      config: { paths: { important: false, weekplan: false, week: false, absence: false } },
+    });
+    expect(all(bare, ".ov-nav")).toEqual([]);
   });
 });

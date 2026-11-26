@@ -18,7 +18,6 @@ import {
   resolveOverviewConfig,
   SICK_CARD,
   VACATION_CARD,
-  VACATION_REQUESTS_CARD,
   type FamilyCard,
 } from "../../src/config/family.ts";
 import type { FormSchema } from "../../src/config/form.ts";
@@ -66,14 +65,14 @@ describe("the family's cards' configuration", () => {
     expect(
       resolveOverviewConfig({
         look: "board",
-        paths: { important: " /aula/vigtigt ", week: null },
+        paths: { important: " /aula/vigtigt ", week: null, absence: false },
         pack_icons: { " Fløjte ": " mdi:music-note " },
         sick_message: " {name} er syg. ",
         sender: "Peter Testesen",
       }),
     ).toMatchObject({
       look: "board",
-      paths: { important: "/aula/vigtigt", weekplan: "ugeplan", week: "uge" },
+      paths: { important: "/aula/vigtigt", weekplan: "ugeplan", week: "uge", absence: null },
       packIcons: { fløjte: "mdi:music-note" },
       sickMessage: "{name} er syg.",
       sender: "Peter Testesen",
@@ -97,12 +96,18 @@ describe("the family's cards' configuration", () => {
     ],
     [() => parseLook("grid"), "look: must be rows, columns or board"],
     [() => parseFlag("yes", "look_switch"), "look_switch: must be true or false"],
-    [() => parsePaths("vigtigt"), "paths: must be a mapping of important, weekplan and week"],
+    [
+      () => parsePaths("vigtigt"),
+      "paths: must be a mapping of important, weekplan, week and absence",
+    ],
     [
       () => parsePaths({ events: "x" }),
-      'paths: unknown key "events"; the keys are important, weekplan and week',
+      'paths: unknown key "events"; the keys are important, weekplan, week and absence',
     ],
-    [() => parsePaths({ week: 3 }), "paths.week: must be a view's path"],
+    [
+      () => parsePaths({ week: 3 }),
+      "paths.week: must be a view's path, or false to leave the tile out",
+    ],
     [() => parsePackIcons(["x"]), "pack_icons: must be a mapping of things to icons"],
     [
       () => parsePackIcons({ fløjte: "music" }),
@@ -144,7 +149,6 @@ describe("the family's cards' editor", () => {
     ],
     [IMPORTANT_CARD, ["children", "size", "subject_names_group"]],
     [SICK_CARD, ["children", "sick_message", "sender", "size"]],
-    [VACATION_REQUESTS_CARD, ["children", "sender", "size"]],
     [VACATION_CARD, ["children", "sender", "size"]],
   ])("shows %s's fields, each labelled", (card, fields) => {
     rememberChildren(CHILDREN);

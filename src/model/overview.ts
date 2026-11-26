@@ -26,7 +26,8 @@ import { schoolHours } from "./lessons.ts";
 import { isImportant, noteView, type NoteView } from "./notes.ts";
 
 /** How a child's presence is shown. */
-export type PresenceKind = "sick" | "school" | "here" | "coming" | "home" | "away";
+/** `ask` is a child sick the school day before, not yet checked in: perhaps still sick. */
+export type PresenceKind = "sick" | "ask" | "school" | "here" | "coming" | "home" | "away";
 
 /** A child's presence today, in a word or two. */
 export interface PresenceView {
@@ -130,13 +131,15 @@ function minutes(clock: string): number {
 }
 
 /**
- * Returns a child's presence in a word or two. A child reported sick is sick; while the school
- * day goes on a child present is at school; otherwise the institution's own status says.
+ * Returns a child's presence in a word or two. A child reported sick is sick; one sick the school
+ * day before is asked about until it is checked in or the day switches at `switchAt`; while the
+ * school day goes on a child present is at school; otherwise the institution's own status says.
  */
 export function presenceOf(
   data: TodayData | undefined,
   hours: { readonly start: string; readonly end: string } | undefined,
   ctx: ViewContext,
+  switchAt: number | null = null,
 ): PresenceView | undefined {
   if (data === undefined) return undefined;
   const view = (kind: PresenceKind, key: TextKey, time?: string | null): PresenceView => ({
@@ -147,6 +150,13 @@ export function presenceOf(
   });
   if (data.sick.today) return view("sick", "presenceSick");
   const presence = data.presence;
+  if (
+    data.sick.since !== null &&
+    !presence?.check_in &&
+    (presence?.status ?? 0) === 0 &&
+    (switchAt === null || ctx.minute < switchAt)
+  )
+    return view("ask", "presenceSickYesterday");
   const status = presence?.status ?? null;
   if (presence === null || status === null) return undefined;
   const span = hours && {
@@ -201,6 +211,7 @@ function childOf(
   list: readonly Child[],
   ctx: ViewContext,
   showsInstitution: boolean,
+  switchAt: number | null,
 ): OverviewChild {
   const view = dayIn(basis, basis.focus.day);
   const content =
@@ -219,7 +230,7 @@ function childOf(
     important: importantFrom(basis, from),
     importantFrom: from,
     today,
-    presence: presenceOf(today, hoursToday, ctx),
+    presence: presenceOf(today, hoursToday, ctx, switchAt),
     hoursToday,
     entries: entriesOf(list, basis.child.child_id),
     showsInstitution,
@@ -270,7 +281,9 @@ export function overviewView(
   const { bases, missing } = childBases(snapshot, options, ctx, hold);
   const list = snapshot.children.list ?? [];
   const several = new Set(bases.map((basis) => basis.child.institution_name)).size > 1;
-  const children = bases.map((basis) => childOf(basis, snapshot, list, ctx, several));
+  const children = bases.map((basis) =>
+    childOf(basis, snapshot, list, ctx, several, options.switchAt),
+  );
   const days = new Set(children.map((item) => item.focus.day));
   const [shared] = days;
   const last = addDays(ctx.today, AHEAD_DAYS - 1);

@@ -19,8 +19,9 @@ import {
   formatWeekdayShort,
 } from "../core/dates.ts";
 import type { Look } from "../core/selection.ts";
-import type { Child, Day } from "../core/types.ts";
-import type { Paths } from "../config/family.ts";
+import type { Child, Day, Vacation } from "../core/types.ts";
+import { ABSENCE_ICON, type Paths } from "../config/family.ts";
+import type { RequestGroup, VacationGroup } from "../model/absence.ts";
 import { isHolidayEvent } from "../model/days.ts";
 import { allowing } from "../model/family.ts";
 import { dayBar, type DayBar } from "../model/daybar.ts";
@@ -42,15 +43,34 @@ import {
   factStack,
   icon,
   label,
-  listOf,
+  minis,
   names,
   segments,
   timeSpan,
   timeText,
   turnedOff,
+  weekdayWord,
 } from "./primitives.ts";
 import { openSick, sickLabel } from "./sick.ts";
+import { requestRow } from "./vacation-requests.ts";
 import { head, modal, row, section, ticket } from "./window.ts";
+
+/** What the overview knows of Fravær, besides each child's day. */
+export interface AbsenceView {
+  /** The requests awaiting an answer, once for every child they are asked of. */
+  readonly requests: readonly RequestGroup[];
+  /** Whether a child has requests awaiting an answer that could not be read. */
+  readonly unread: boolean;
+  /** The vacation each child is on today, by child id; none for a child on none. */
+  readonly ongoing: ReadonlyMap<number, Vacation>;
+  /** The vacations starting within the overview's week, once for every child they are for. */
+  readonly coming: readonly VacationGroup[];
+  /** Called once a request is answered, so that the requests are read again. */
+  readonly answered: () => void;
+}
+
+/** The request rows the overview shows before it sends to Fravær for the rest. */
+export const BAND_ROWS = 2;
 
 /** How the overview is shown. */
 export interface OverviewOptions {
@@ -64,6 +84,8 @@ export interface OverviewOptions {
   readonly message: string | undefined;
   /** The guardian to act as. */
   readonly sender: string | undefined;
+  /** What it knows of Fravær. */
+  readonly absence: AbsenceView;
 }
 
 /** A subject's icon on the board, by its key; a book for a subject not in it. */
@@ -199,11 +221,24 @@ function presencePill(
   options: OverviewOptions,
 ): unknown {
   const { presence } = item;
+  // A child on a vacation is on it, unless it is reported sick.
+  const vacation =
+    presence?.key === "presenceSick" ? undefined : options.absence.ongoing.get(item.child.child_id);
+  if (vacation) {
+    const text =
+      vacation.end === ctx.today
+        ? ctx.t("vacationToday")
+        : ctx.t("vacationUntil", {
+            day: `${weekdayWord(vacation.end, ctx)} ${formatShortDate(vacation.end, ctx.language)}`,
+          });
+    return html`<span class="presence away">${icon("mdi:beach")}<span>${text}</span></span>`;
+  }
   if (!presence) return nothing;
   const text = presenceText(presence, item, ctx);
   const key = `presence|${String(item.child.child_id)}`;
   const marks = {
     sick: "mdi:thermometer",
+    ask: "mdi:thermometer-alert",
     school: "mdi:school-outline",
     here: "mdi:account-check-outline",
     coming: "mdi:clock-outline",
@@ -468,14 +503,19 @@ function nav(
   ctx: ViewContext,
   state: CardState,
   options: OverviewOptions,
-): TemplateResult {
-  const tiles: readonly [string, string, string, number][] = [
+): unknown {
+  const tiles: readonly [string | null, string, string, number][] = [
     [options.paths.important, "mdi:flag-outline", ctx.t("navImportant"), view.importantSoon],
     [options.paths.weekplan, "mdi:calendar-text-outline", ctx.t("navWeekPlan"), 0],
     [options.paths.week, "mdi:calendar-week", ctx.t("navWeek"), 0],
+    [options.paths.absence, ABSENCE_ICON, ctx.t("navAbsence"), options.absence.requests.length],
   ];
-  return html`<nav class="ov-nav" aria-label=${ctx.t("pages")}>
-    ${tiles.map(
+  const shown = tiles.flatMap(([path, ...rest]) =>
+    path === null ? [] : [[path, ...rest] as const],
+  );
+  if (shown.length === 0) return nothing;
+  return html`<nav class="ov-nav n-${String(shown.length)}" aria-label=${ctx.t("pages")}>
+    ${shown.map(
       ([path, mark, text, count]) =>
         html`<button
           class="ov-tile"
@@ -506,16 +546,11 @@ function comingDay(day: Day, ctx: ViewContext): TemplateResult {
   >`;
 }
 
-function minis(children: readonly Child[], state: CardState, ctx: ViewContext): TemplateResult {
-  const faces = children.map((child) => state.face(child));
-  return html`<span class="ov-minis"
-    >${faces.map((face) => faceImage(face, "mini"))}<span class="sr"
-      >${listOf(
-        faces.map((face) => face.name),
-        ctx,
-      )}</span
-    ></span
-  >`;
+function facesOf(children: readonly Child[], state: CardState, ctx: ViewContext): TemplateResult {
+  return minis(
+    children.map((child) => state.face(child)),
+    ctx,
+  );
 }
 
 function comingRow(item: ComingItem, ctx: ViewContext, state: CardState): TemplateResult {
@@ -523,7 +558,7 @@ function comingRow(item: ComingItem, ctx: ViewContext, state: CardState): Templa
     return html`<li class="ov-coming-row">
       ${comingDay(item.day, ctx)} ${icon("mdi:cake-variant-outline")}<span class="ov-coming-text"
         >${ctx.t("birthdayOf", { n: 1, names: item.name })}</span
-      >${minis(item.children, state, ctx)}
+      >${facesOf(item.children, state, ctx)}
     </li>`;
   }
   const { event } = item;
@@ -541,23 +576,83 @@ function comingRow(item: ComingItem, ctx: ViewContext, state: CardState): Templa
     >
       ${comingDay(item.day, ctx)} ${icon(eventIcon(event.type))}<span class="ov-coming-text"
         >${aula(event.title, ctx)}</span
-      >${minis(item.children, state, ctx)}
+      >${facesOf(item.children, state, ctx)}
     </button>
   </li>`;
 }
 
-function comingList(view: OverviewView, ctx: ViewContext, state: CardState): TemplateResult {
+function vacationRow(group: VacationGroup, ctx: ViewContext, state: CardState): TemplateResult {
+  const until = `${weekdayWord(group.end, ctx)} ${formatShortDate(group.end, ctx.language)}`;
+  return html`<li class="ov-coming-row">
+    ${comingDay(group.start, ctx)} ${icon("mdi:beach")}<span class="ov-coming-text"
+      >${group.start === group.end ? ctx.t("vacationDay") : ctx.t("vacationUntilDay", { day: until })}</span
+    >${facesOf(
+      group.items.map((item) => item.child),
+      state,
+      ctx,
+    )}
+  </li>`;
+}
+
+function comingList(
+  view: OverviewView,
+  ctx: ViewContext,
+  state: CardState,
+  options: OverviewOptions,
+): TemplateResult {
+  const rows = [
+    ...view.coming.map((item) => ({ day: item.day, row: comingRow(item, ctx, state) })),
+    ...options.absence.coming.map((group) => ({
+      day: group.start,
+      row: vacationRow(group, ctx, state),
+    })),
+  ].sort((a, b) => a.day.localeCompare(b.day));
   return html`<section class="ov-coming">
     <h3 class="block-head">
       ${icon("mdi:calendar-star-outline")}<span>${ctx.t("coming")}</span>
       <span class="quiet">${ctx.t("comingRange")}</span>
     </h3>
     ${
-      view.coming.length === 0
+      rows.length === 0
         ? html`<p class="empty">${ctx.t("comingNone")}</p>`
         : html`<ul class="ov-coming-list">
-            ${view.coming.map((item) => comingRow(item, ctx, state))}
+            ${rows.map((item) => item.row)}
           </ul>`
+    }
+  </section>`;
+}
+
+/**
+ * Shows the vacation requests awaiting an answer, once for every child they are asked of, the
+ * first few and a way to Fravær for the rest; nothing where none awaits one.
+ */
+function requestBand(ctx: ViewContext, state: CardState, options: OverviewOptions): unknown {
+  const { requests, unread, answered } = options.absence;
+  const { t } = ctx;
+  if (requests.length === 0)
+    return unread
+      ? html`<p class="ov-band-note">
+          ${icon("mdi:alert-circle-outline")}<span>${t("requestsUnread")}</span>
+        </p>`
+      : nothing;
+  const rest = requests.length - BAND_ROWS;
+  const path = options.paths.absence;
+  return html`<section class="ov-band" aria-label=${t("vacationRequests")}>
+    <ul class="family-rows">
+      ${requests.slice(0, BAND_ROWS).map((group) => requestRow(group, ctx, state, answered))}
+    </ul>
+    ${
+      rest > 0 && path !== null
+        ? html`<button
+            class="text-button ov-band-more"
+            type="button"
+            @click=${() => {
+              state.navigate(path);
+            }}
+          >
+            ${t("moreCount", { n: rest })}${icon("mdi:chevron-right")}
+          </button>`
+        : nothing
     }
   </section>`;
 }
@@ -598,7 +693,8 @@ export function renderOverview(
               ${view.children.map((item) => panel(item, ctx, state, options))}
             </div>`
     }
-    ${nav(view, ctx, state, options)} ${comingList(view, ctx, state)}
+    ${requestBand(ctx, state, options)} ${nav(view, ctx, state, options)}
+    ${comingList(view, ctx, state, options)}
   </section>`;
 }
 
@@ -610,44 +706,49 @@ export function openImportant(
   options: OverviewOptions,
   key: string,
 ): void {
+  const important = options.paths.important;
   state.openModal(key, (ctx, close) => {
     const face = state.face(item.child);
     const days = [...new Set(item.important.map((due) => due.day))];
     const from = item.importantFrom;
     return modal(
       html`${head(ctx.t("importantTitle", { name: face.name }), [ctx.t("importantFrom", { day: whenText(from, ctx) })], [], ctx, close, faceImage(face, "window-face"))}
-        ${days.map((day) =>
-          section(
-            `${capitalize(daysBetween(ctx.today, day) < 7 ? whenText(day, ctx) : formatWeekday(day, ctx.language), ctx.language)} · ${formatShortDate(day, ctx.language)}`,
-            [],
-            html`<ul class="note-due">
-              ${item.important
-                .filter((due) => due.day === day)
-                .map(
-                  (due) =>
-                    html`<li>
-                      <span class="note-head"
-                        >${due.note.subject ? label(aula(due.note.subject.name, ctx), "subject") : nothing}
-                        ${due.note.title ? html`<span class="note-title">${aula(due.note.title, ctx)}</span>` : nothing}</span
-                      >
-                      ${due.note.text ? html`<p class="note-text">${aula(due.note.text, ctx)}</p>` : nothing}
-                    </li>`,
-                )}
-            </ul>`,
-          ),
-        )}
-        <div class="window-actions">
-          <button
-            class="filled-button"
-            type="button"
-            @click=${() => {
-              close();
-              state.navigate(options.paths.important);
-            }}
-          >
-            ${ctx.t("importantAll")}
-          </button>
-        </div>`,
+      ${days.map((day) =>
+        section(
+          `${capitalize(daysBetween(ctx.today, day) < 7 ? whenText(day, ctx) : formatWeekday(day, ctx.language), ctx.language)} · ${formatShortDate(day, ctx.language)}`,
+          [],
+          html`<ul class="note-due">
+            ${item.important
+              .filter((due) => due.day === day)
+              .map(
+                (due) =>
+                  html`<li>
+                    <span class="note-head"
+                      >${due.note.subject ? label(aula(due.note.subject.name, ctx), "subject") : nothing}
+                      ${due.note.title ? html`<span class="note-title">${aula(due.note.title, ctx)}</span>` : nothing}</span
+                    >
+                    ${due.note.text ? html`<p class="note-text">${aula(due.note.text, ctx)}</p>` : nothing}
+                  </li>`,
+              )}
+          </ul>`,
+        ),
+      )}
+      ${
+        important === null
+          ? nothing
+          : html`<div class="window-actions">
+              <button
+                class="filled-button"
+                type="button"
+                @click=${() => {
+                  close();
+                  state.navigate(important);
+                }}
+              >
+                ${ctx.t("importantAll")}
+              </button>
+            </div>`
+      }`,
       close,
     );
   });

@@ -2196,6 +2196,32 @@ export const family = css`
     flex-basis: 100%;
     gap: var(--aula-space-3);
   }
+  .answer-split {
+    display: flex;
+    flex-basis: 100%;
+    flex-direction: column;
+    gap: var(--aula-space-2);
+  }
+  .answer-child {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--aula-space-2) var(--aula-space-3);
+  }
+  .answer-who {
+    display: inline-flex;
+    flex: 1 1 6em;
+    align-items: center;
+    gap: var(--aula-space-2);
+  }
+  .text-button.answer-split-toggle {
+    min-height: calc(32px * var(--aula-scale));
+    margin-inline-start: auto;
+    padding: 0 var(--aula-space-2);
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+    font-weight: var(--aula-normal);
+  }
   .answer-time {
     display: flex;
     flex: 1;
@@ -2215,6 +2241,32 @@ export const family = css`
     display: flex;
     flex-direction: column;
     margin: 0 calc(-1 * var(--aula-space-2));
+  }
+  .family-head {
+    margin: 0;
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+    font-weight: var(--aula-medium);
+  }
+  .label.count {
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--aula-line);
+    color: var(--aula-text-2);
+  }
+  .family-fold > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: calc(44px * var(--aula-scale));
+    color: var(--aula-text-2);
+    list-style: none;
+    cursor: pointer;
+  }
+  .family-fold > summary::-webkit-details-marker {
+    display: none;
+  }
+  .family-fold[open] > summary .chevron {
+    transform: rotate(180deg);
   }
   .family-row {
     display: flex;
@@ -2428,10 +2480,10 @@ export const family = css`
     box-shadow: inset 0 0 0 1px var(--aula-line);
     color: var(--aula-text-2);
   }
-  .presence.sick {
+  .presence:is(.sick, .ask) {
     background: var(--aula-warning-fill);
   }
-  .presence.sick ha-icon {
+  .presence:is(.sick, .ask) ha-icon {
     color: var(--aula-warning);
   }
   .ov-cols,
@@ -2565,7 +2617,7 @@ export const family = css`
   }
   .ov-nav {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--tiles, 3), minmax(0, 1fr));
     gap: var(--aula-space-2);
     padding-top: var(--aula-space-3);
     border-top: 1px solid var(--aula-line);
@@ -2660,6 +2712,47 @@ export const family = css`
   .ov-minis .face + .face {
     margin-inline-start: -6px;
   }
+  .ov-nav.n-1 {
+    --tiles: 1;
+  }
+  .ov-nav.n-2 {
+    --tiles: 2;
+  }
+  .ov-nav.n-4 {
+    --tiles: 4;
+  }
+  /* What awaits an answer, between the children and the pages: Aula's request, said once. */
+  .ov-band {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-1);
+    padding-top: var(--aula-space-2);
+    border-top: 1px solid var(--aula-line);
+  }
+  .ov-band-more {
+    align-self: flex-start;
+  }
+  .ov-band-note {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-2);
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+  }
+  span.presence {
+    cursor: default;
+  }
+  .family-faces .face.mini,
+  .window-faces .face.mini {
+    --aula-face: calc(40px * var(--aula-scale));
+  }
+  .window-faces .face.mini {
+    --aula-face: calc(48px * var(--aula-scale));
+  }
+  .family-faces .face + .face,
+  .window-faces .face + .face {
+    margin-inline-start: calc(-14px * var(--aula-scale));
+  }
   .note-due {
     display: flex;
     flex-direction: column;
@@ -2700,7 +2793,7 @@ export const family = css`
       grid-column: 3;
     }
     .ov-nav {
-      grid-template-columns: repeat(3, minmax(0, calc(200px * var(--aula-scale))));
+      grid-template-columns: repeat(var(--tiles, 3), minmax(0, calc(200px * var(--aula-scale))));
       justify-content: space-around;
     }
   }

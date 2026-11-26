@@ -79,7 +79,6 @@ const CARDS = {
   overview: "aula-connect-overview-card",
   important: "aula-connect-important-card",
   sick: "aula-connect-sick-card",
-  requests: "aula-connect-vacation-requests-card",
   vacation: "aula-connect-vacation-card",
 } as const;
 
@@ -157,7 +156,8 @@ const ALL_CARDS: Shot["card"][] = ["day", "weekplan", "week"];
 // What the family's cards act on: the overview's looks, the steps of reporting a child sick,
 // and the vacations.
 const SICK_ROW = '.family-row[data-detail="sick|1001"]';
-const REQUEST_ROW = '.family-row[data-detail="request|1002|91"]';
+const REQUEST_ROW = '.family-row[data-detail="request|1001|91"]';
+const SICK_SEVERAL = '[data-detail="sick-several"]';
 const ADD_VACATION = '[data-detail="vacation-add"]';
 const PRESENCE = '.presence[data-detail="presence|1001"]';
 const IMPORTANT = '[data-detail="important|1001"]';
@@ -197,9 +197,36 @@ function family(width: number, large = false): Shot[] {
       then: ["dialog .window-actions .filled-button", "dialog .window-actions .filled-button"],
       tag: "sent",
     }),
-    shot("requests", "thu-1000", width, look),
-    shot("requests", "thu-1000", width, { ...look, dialog: REQUEST_ROW, tag: "answer" }),
+    shot("sick", "thu-1000", width, { ...look, dialog: SICK_SEVERAL, tag: "several" }),
+    shot("overview", "thu-1000", width, {
+      ...look,
+      today: (child) => ({ ...familyToday(child), vacation_requests_pending: 1 }),
+      tag: "request",
+    }),
+    shot("overview", "thu-1000", width, {
+      ...look,
+      today: (child) => ({ ...familyToday(child), vacation_requests_pending: 1 }),
+      dialog: REQUEST_ROW,
+      tag: "request-answer",
+    }),
+    shot("overview", "thu-1000", width, {
+      ...look,
+      today: (child) => ({
+        ...familyToday(child),
+        presence: {
+          status: 0,
+          check_in: null,
+          check_out: null,
+          planned_in: null,
+          planned_out: null,
+          exit_with: null,
+        },
+        sick: { route: "aula", today: false, since: "2026-10-28", wrote_yesterday: false },
+      }),
+      tag: "sick-yesterday",
+    }),
     shot("vacation", "thu-1000", width, look),
+    shot("vacation", "thu-1000", width, { ...look, dialog: REQUEST_ROW, tag: "answer" }),
     shot("vacation", "thu-1000", width, { ...look, dialog: ADD_VACATION, tag: "add" }),
   ];
 }
@@ -226,6 +253,11 @@ const SETS: Record<string, () => Shot[]> = {
     shot("day", "thu-1930-meeting", 380, { click: UNFOLD, dialog: MEETING, tag: "event" }),
     shot("children", "thu-1000", 380, { children: 2 }),
     shot("overview", "thu-1000", 380, { children: 2, tag: "rows" }),
+    shot("overview", "thu-1000", 380, {
+      children: 2,
+      today: (child) => ({ ...familyToday(child), vacation_requests_pending: 1 }),
+      tag: "request",
+    }),
     shot("overview", "thu-1000", 1216, { children: 2, large: true, tag: "rows" }),
     shot("overview", "thu-1000", 800, { children: 2, config: { look: "board" }, tag: "board" }),
     shot("important", "thu-1000", 380, { children: 2 }),
@@ -235,7 +267,7 @@ const SETS: Record<string, () => Shot[]> = {
       then: ["dialog .window-actions .filled-button"],
       tag: "step-2",
     }),
-    shot("requests", "thu-1000", 380, { children: 2, dialog: REQUEST_ROW, tag: "answer" }),
+    shot("vacation", "thu-1000", 380, { children: 2, dialog: REQUEST_ROW, tag: "answer" }),
     shot("vacation", "thu-1000", 380, { children: 2 }),
   ],
   family: () => [...family(380), ...family(800), ...family(1216, true)],
@@ -493,7 +525,7 @@ interface Mount {
   extra: Record<string, WeekData>;
   /** What `aula_connect/event` answers, by the event's id. */
   events: Readonly<Record<number, unknown>>;
-  /** What the other commands answer, by their type. */
+  /** What the other commands answer, by their type, or by their type and `#` a child's id. */
   answers: Readonly<Record<string, unknown>>;
   /** Each child's day as it is now, by its key. */
   today: Readonly<Record<string, unknown>>;
@@ -519,14 +551,18 @@ function mount(arg: Mount): void {
     },
     config: { time_zone: arg.zone },
     states: arg.states,
-    callWS: (message: { type: string; event_id?: number }) =>
-      message.type === "aula_connect/children"
+    callWS: (message: { type: string; event_id?: number; child_id?: number }) => {
+      const own = `${message.type}#${String(message.child_id)}`;
+      return message.type === "aula_connect/children"
         ? Promise.resolve({ children: arg.children })
         : message.type === "aula_connect/event" && arg.events[Number(message.event_id)]
           ? Promise.resolve(arg.events[Number(message.event_id)])
-          : message.type in arg.answers
-            ? Promise.resolve(arg.answers[message.type])
-            : Promise.reject(new Error(`unexpected ${JSON.stringify(message)}`)),
+          : own in arg.answers
+            ? Promise.resolve(arg.answers[own])
+            : message.type in arg.answers
+              ? Promise.resolve(arg.answers[message.type])
+              : Promise.reject(new Error(`unexpected ${JSON.stringify(message)}`));
+    },
     connection: {
       subscribeMessage: (
         callback: (message: unknown) => void,
@@ -802,6 +838,8 @@ for (const item of shots) {
       "aula_connect/sick/report": { route: "aula" },
       "aula_connect/sick/undo": { route: "aula" },
       "aula_connect/vacations": VACATIONS,
+      // Ida has no vacation: she is at school while Oskar is on his.
+      "aula_connect/vacations#1001": { vacations: [] },
       "aula_connect/vacation/add": null,
       "aula_connect/vacation/delete": null,
       "aula_connect/vacation_requests": REQUESTS,

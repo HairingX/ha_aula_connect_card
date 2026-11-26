@@ -11,13 +11,13 @@ import { translator } from "./core/i18n.ts";
 import type { HomeAssistant } from "./core/types.ts";
 import { DAY_CARD } from "./config/day.ts";
 import {
+  ABSENCE_ICON,
   CHILDREN_CARD,
   DEFAULT_PATHS,
   IMPORTANT_CARD,
   OVERVIEW_CARD,
   SICK_CARD,
   VACATION_CARD,
-  VACATION_REQUESTS_CARD,
 } from "./config/family.ts";
 import { WEEK_CARD } from "./config/week.ts";
 import { WEEKPLAN_CARD } from "./config/weekplan.ts";
@@ -100,9 +100,10 @@ function page(title: string, path: string, icon: string, cards: readonly CardCon
 }
 
 /**
- * Builds the dashboard: the overview's view, with the children's bar over it and the cards that
- * act beside it, unless `sick` or `vacation` is false; and its pages, each under the bar. Each card
- * is given the settings of `config` it has.
+ * Builds the dashboard: the overview's view, the children's bar over it, the whole width; and its
+ * pages, each under the bar: Vigtigt, Ugeplan, Uge, and Fravær with the sick card and the Ferie/fri
+ * card, unless `sick` and `vacation` leave both out. Each card is given the settings of `config` it
+ * has.
  */
 export function dashboard(
   config: DashboardOptions,
@@ -116,8 +117,9 @@ export function dashboard(
     of(CHILDREN_CARD, looks ? {} : { look_switch: false });
   const acting = [
     ...(config.sick === false ? [] : [of(SICK_CARD)]),
-    ...(config.vacation === false ? [] : [of(VACATION_REQUESTS_CARD), of(VACATION_CARD)]),
+    ...(config.vacation === false ? [] : [of(VACATION_CARD)]),
   ];
+  const overview = of(OVERVIEW_CARD, acting.length > 0 ? {} : { paths: { absence: false } });
   return {
     title: "Aula",
     views: [
@@ -127,10 +129,7 @@ export function dashboard(
         icon: ICON,
         type: "sections",
         max_columns: 3,
-        sections: [
-          { type: "grid", column_span: 2, cards: [bar(true), of(OVERVIEW_CARD)] },
-          ...(acting.length > 0 ? [{ type: "grid" as const, cards: acting }] : []),
-        ],
+        sections: [{ type: "grid", column_span: 3, cards: [bar(true), overview] }],
       },
       page(t("navImportant"), DEFAULT_PATHS.important, "mdi:flag-outline", [
         bar(false),
@@ -141,6 +140,9 @@ export function dashboard(
         of(WEEKPLAN_CARD),
       ]),
       page(t("navWeek"), DEFAULT_PATHS.week, "mdi:calendar-week", [bar(false), of(WEEK_CARD)]),
+      ...(acting.length > 0
+        ? [page(t("navAbsence"), DEFAULT_PATHS.absence, ABSENCE_ICON, [bar(false), ...acting])]
+        : []),
     ],
   };
 }

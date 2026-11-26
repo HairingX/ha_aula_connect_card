@@ -7,18 +7,15 @@
 
 import { html, nothing, type TemplateResult } from "lit/html.js";
 
-import { actionErrorText, addVacation, deleteVacation } from "../core/api.ts";
+import { actionErrorText, addVacation, deleteVacation, errorText } from "../core/api.ts";
 import type { ViewContext } from "../core/context.ts";
 import { addDays, formatDayRange } from "../core/dates.ts";
 import { rememberSender } from "../core/selection.ts";
 import type { Child, Vacation } from "../core/types.ts";
+import type { RequestGroup, VacationFor, VacationGroup } from "../model/absence.ts";
+import { vacationGroups } from "../model/absence.ts";
 import type { FamilyChild } from "../model/family.ts";
-import {
-  COMMENT_MAX,
-  comingVacations,
-  VACATION_AHEAD_DAYS,
-  vacationValid,
-} from "../model/vacation.ts";
+import { COMMENT_MAX, VACATION_AHEAD_DAYS, vacationValid } from "../model/vacation.ts";
 import type { CardState } from "./card.ts";
 import type { Load } from "./loads.ts";
 import {
@@ -29,8 +26,10 @@ import {
   label,
   listOf,
   loading,
+  minis,
   turnedOff,
 } from "./primitives.ts";
+import { requestRow } from "./vacation-requests.ts";
 import { head, modal } from "./window.ts";
 
 /** A child's vacations, and the entry they are asked and registered from. */
@@ -91,19 +90,21 @@ function finished(
 }
 
 /**
- * Opens the window that registers a vacation for the children chosen, all of them at first; `key`
- * is the opening button's `data-detail`, and `changed` is called once it is registered.
+ * Opens the window that registers a vacation for the children chosen, all of them at first, from
+ * `day` to `day` where one is given; `key` is the opening button's `data-detail`, and `changed` is
+ * called once it is registered.
  */
 export function openAddVacation(
   state: CardState,
   children: readonly ChildVacations[],
   key: string,
   changed: () => void,
+  day = "",
 ): void {
   const draft: Draft = {
     chosen: new Set(children.map((item) => item.family.child.child_id)),
-    start: "",
-    end: "",
+    start: day,
+    end: day,
     comment: "",
     busy: false,
     error: undefined,
@@ -258,49 +259,92 @@ function addWindow(
 }
 
 /**
- * Opens the window that deletes a vacation, once confirmed; `key` is the opening button's
- * `data-detail`, and `changed` is called once it is deleted.
+ * Opens the window that deletes a vacation for the children chosen of those it is registered for,
+ * all of them at first, once confirmed; `key` is the opening button's `data-detail`, and `changed`
+ * is called once it is deleted.
  */
 export function openDeleteVacation(
   state: CardState,
-  target: ChildVacations,
-  vacation: Vacation,
+  group: VacationGroup,
   key: string,
   changed: () => void,
 ): void {
+  const items = group.items.filter(
+    (item) => item.vacation.editable && item.entry.allowed.includes("vacations"),
+  );
+  const chosen = new Set(items.map((item) => item.child.child_id));
   const step: Step = { busy: false, error: undefined, done: false };
   const remove = (): void => {
+    // A vacation registered for several children may be one in Aula: it is deleted once.
+    const ids = new Map<string, VacationFor>();
+    for (const item of items.filter((found) => chosen.has(found.child.child_id))) {
+      ids.set(`${item.entry.entry_id}|${String(item.vacation.id)}`, item);
+    }
     run(
       state,
       step,
-      () => deleteVacation(state.callWS, target.entry.entry_id, vacation.id),
+      async () => {
+        for (const item of ids.values()) {
+          await deleteVacation(state.callWS, item.entry.entry_id, item.vacation.id);
+        }
+      },
       changed,
     );
   };
   state.openModal(key, (ctx, close) => {
     const { t } = ctx;
-    const face = state.face(target.family.child);
-    const days = formatDayRange(vacation.start, vacation.end, ctx.language, "long");
+    const faces = items.map((item) => state.face(item.child));
+    const days = formatDayRange(group.start, group.end, ctx.language, "long");
     const top = head(
-      t("deleteVacationTitle", { name: face.name }),
+      t("deleteVacationTitle", {
+        name: listOf(
+          faces.map((face) => face.name),
+          ctx,
+        ),
+      }),
       [days],
       [],
       ctx,
       close,
-      faceImage(face, "window-face"),
+      minis(faces, ctx, "window-faces"),
     );
     return modal(
       step.done
         ? finished(top, t("vacationDeleted"), close, ctx)
         : html`${top}
-            ${vacation.comment ? html`<p class="window-note">${icon("mdi:comment-text-outline")}<span>${vacation.comment}</span></p>` : nothing}
+            ${group.comment ? html`<p class="window-note">${icon("mdi:comment-text-outline")}<span>${group.comment}</span></p>` : nothing}
+            ${
+              items.length > 1
+                ? html`<div class="field">
+                    <span class="field-label" id="delete-for">${t("vacationFor")}</span>
+                    <div class="choices" role="group" aria-labelledby="delete-for">
+                      ${items.map((item) => {
+                        const id = item.child.child_id;
+                        const face = state.face(item.child);
+                        return html`<button
+                          class="choice face-choice"
+                          type="button"
+                          aria-pressed=${chosen.has(id) ? "true" : "false"}
+                          ?disabled=${step.busy}
+                          @click=${() => {
+                            if (!chosen.delete(id)) chosen.add(id);
+                            state.requestUpdate();
+                          }}
+                        >
+                          ${faceImage(face, "mini")}<span>${face.name}</span>
+                        </button>`;
+                      })}
+                    </div>
+                  </div>`
+                : nothing
+            }
             ${step.error === undefined ? nothing : alert("error", actionErrorText(step.error, t))}
             <div class="window-actions">
               <button class="text-button" type="button" @click=${close}>${t("cancel")}</button>
               <button
                 class="filled-button danger"
                 type="button"
-                ?disabled=${step.busy}
+                ?disabled=${step.busy || chosen.size === 0}
                 @click=${remove}
               >
                 ${step.busy ? t("sending") : t("deleteVacation")}
@@ -311,76 +355,137 @@ export function openDeleteVacation(
   });
 }
 
-/** Renders the vacation card; `changed` is called once a vacation is registered or deleted. */
-export function renderVacations(
-  children: readonly ChildVacations[],
+function vacationRow(
+  group: VacationGroup,
   ctx: ViewContext,
   state: CardState,
   changed: () => void,
 ): TemplateResult {
   const { t } = ctx;
+  const faces = group.items.map((item) => state.face(item.child));
+  const days = formatDayRange(group.start, group.end, ctx.language, "long");
+  const deletable = group.items.some(
+    (item) => item.vacation.editable && item.entry.allowed.includes("vacations"),
+  );
+  const key = `vacation|${group.key}`;
+  return html`<li class="family-row">
+    ${minis(faces, ctx, "family-faces")}
+    <span class="family-text">
+      <span class="family-title">${days}</span>
+      <span class="family-sub"
+        >${[
+          listOf(
+            faces.map((face) => face.name),
+            ctx,
+          ),
+          group.comment,
+        ]
+          .filter(Boolean)
+          .join(" · ")}</span
+      >
+    </span>
+    ${group.start <= ctx.today ? label(t("vacationOngoing")) : nothing}
+    ${
+      deletable
+        ? html`<button
+            class="icon-button"
+            type="button"
+            aria-haspopup="dialog"
+            aria-label=${`${t("deleteVacation")}: ${days}`}
+            data-detail=${key}
+            @click=${() => {
+              openDeleteVacation(state, group, key, changed);
+            }}
+          >
+            ${icon("mdi:delete-outline")}
+          </button>`
+        : nothing
+    }
+  </li>`;
+}
+
+/** What the Ferie/fri card shows besides the vacations. */
+export interface VacationCardParts {
+  /** The vacation requests that can still be answered, once for every child they are asked of. */
+  readonly requests: readonly RequestGroup[];
+  /** Why a child's requests could not be had, where they could not. */
+  readonly requestErrors: readonly unknown[];
+  /** Called once a vacation is registered or deleted. */
+  readonly changed: () => void;
+  /** Called once a request is answered. */
+  readonly answered: () => void;
+}
+
+/**
+ * Renders the Ferie/fri card: the requests awaiting an answer, the vacations registered, the
+ * buttons that register one, and the requests answered, folded.
+ */
+export function renderVacations(
+  children: readonly ChildVacations[],
+  ctx: ViewContext,
+  state: CardState,
+  parts: VacationCardParts,
+): TemplateResult {
+  const { t } = ctx;
+  const { changed, answered } = parts;
   const waiting = children.some(({ load }) => load.data === undefined && load.error === undefined);
   const allowed = children.filter(({ entry }) => entry.allowed.includes("vacations"));
-  const rows = children.flatMap((target) => {
-    const { load, family } = target;
-    if (load.error !== undefined && load.data === undefined)
-      return [html`<li>${apiError(load.error, t)}</li>`];
-    if (load.data === undefined) return [];
-    const face = state.face(family.child);
-    return comingVacations(load.data, ctx.today).map((vacation) => {
-      const key = `vacation|${String(family.child.child_id)}|${String(vacation.id)}`;
-      return html`<li class="family-row">
-        ${faceImage(face)}
-        <span class="family-text">
-          <span class="family-title"
-            >${formatDayRange(vacation.start, vacation.end, ctx.language, "long")}</span
-          >
-          <span class="family-sub"
-            >${[face.name, vacation.comment].filter(Boolean).join(" · ")}</span
-          >
-        </span>
-        ${vacation.start <= ctx.today ? label(t("today")) : nothing}
-        ${
-          vacation.editable && target.entry.allowed.includes("vacations")
-            ? html`<button
-                class="icon-button"
-                type="button"
-                aria-haspopup="dialog"
-                aria-label=${`${t("deleteVacation")}: ${face.name}, ${formatDayRange(vacation.start, vacation.end, ctx.language, "long")}`}
-                data-detail=${key}
-                @click=${() => {
-                  openDeleteVacation(state, target, vacation, key, changed);
-                }}
-              >
-                ${icon("mdi:delete-outline")}
-              </button>`
-            : nothing
-        }
-      </li>`;
-    });
-  });
+  const groups = vacationGroups(
+    children.map(({ family, entry, load }) => ({ child: family.child, entry, data: load.data })),
+    ctx.today,
+  );
+  const failed = children.flatMap(({ load }) =>
+    load.error !== undefined && load.data === undefined ? [load.error] : [],
+  );
+  // The requests and the vacations come the same way: an error both meet is said once.
+  const errors = new Map(
+    [...parts.requestErrors, ...failed].map((error) => [errorText(error, t), error] as const),
+  );
+  const missing = parts.requests.filter((group) => group.missing);
+  const answeredGroups = parts.requests.filter((group) => !group.missing);
   return html`<section class="family-card" aria-label=${t("vacations")}>
-    <h2 class="block-head">${icon("mdi:island")}<span>${t("vacations")}</span></h2>
+    <h2 class="block-head">
+      ${icon("mdi:island")}<span>${t("vacations")}</span>
+      ${groups.length > 0 ? label(t("vacationsCount", { n: groups.length }), "count") : nothing}
+    </h2>
+    ${[...errors.values()].map((error) => apiError(error, t))}
     ${
-      rows.length > 0
-        ? html`<ul class="family-rows">
-            ${rows}
-          </ul>`
+      missing.length > 0
+        ? html`<h3 class="family-head">${t("missingAnswer")}</h3>
+            <ul class="family-rows">
+              ${missing.map((group) => requestRow(group, ctx, state, answered))}
+            </ul>`
         : nothing
     }
     ${
-      rows.length > 0
-        ? nothing
+      groups.length > 0
+        ? html`<h3 class="family-head">${t("vacationsRegistered")}</h3>
+            <ul class="family-rows">
+              ${groups.map((group) => vacationRow(group, ctx, state, changed))}
+            </ul>`
         : waiting
           ? loading(t)
-          : html`<p class="empty-line">
-              ${icon("mdi:calendar-blank-outline")}<span>${t("noVacations")}</span>
-            </p>`
+          : missing.length > 0
+            ? nothing
+            : html`<p class="empty-line">
+                ${icon("mdi:calendar-blank-outline")}<span>${t("noVacations")}</span>
+              </p>`
     }
     ${
       allowed.length === 0
         ? turnedOff("vacations", t)
         : html`<div class="window-actions">
+            <button
+              class="text-button"
+              type="button"
+              aria-haspopup="dialog"
+              data-detail="vacation-today"
+              @click=${() => {
+                openAddVacation(state, allowed, "vacation-today", changed, ctx.today);
+              }}
+            >
+              ${t("dayOffToday")}
+            </button>
             <button
               class="filled-button"
               type="button"
@@ -393,6 +498,19 @@ export function renderVacations(
               ${icon("mdi:plus")}<span>${t("addVacation")}</span>
             </button>
           </div>`
+    }
+    ${
+      answeredGroups.length > 0
+        ? html`<details class="family-fold">
+            <summary>
+              <span>${t("requestsAnswered", { n: answeredGroups.length })}</span
+              >${icon("mdi:chevron-down", "chevron")}
+            </summary>
+            <ul class="family-rows">
+              ${answeredGroups.map((group) => requestRow(group, ctx, state, answered))}
+            </ul>
+          </details>`
+        : nothing
     }
   </section>`;
 }

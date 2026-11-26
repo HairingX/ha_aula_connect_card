@@ -17,12 +17,11 @@ import { clockOf, overviewView, presenceOf } from "../../src/model/overview.ts";
 import {
   answerableDays,
   answerReady,
-  comingVacations,
   deadlinePassed,
   openRequests,
   vacationValid,
 } from "../../src/model/vacation.ts";
-import { REQUESTS, SECOND_ENTRY, todayOf, VACATIONS } from "../fixtures/family.ts";
+import { REQUESTS, SECOND_ENTRY, todayOf } from "../fixtures/family.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
 import { contextOf, noHold, snapshotOf } from "../fixtures/snapshot.ts";
 import { allDay, CHILDREN, local, weekData } from "../fixtures/week.ts";
@@ -474,11 +473,5 @@ describe("vacations and vacation requests", () => {
     expect(vacationValid("2026-11-02", "2027-10-30", "2026-10-29")).toBe(false);
     expect(vacationValid("", "2026-11-01", "2026-10-29")).toBe(false);
     expect(vacationValid("2026-11-02", "2026-11-31", "2026-10-29")).toBe(false);
-  });
-
-  it("keeps the vacations not over yet, by their first day", () => {
-    expect(
-      comingVacations(VACATIONS.vacations, "2026-10-29").map((vacation) => vacation.id),
-    ).toEqual([73, 71]);
   });
 });

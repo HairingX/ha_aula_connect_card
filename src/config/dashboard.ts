@@ -17,7 +17,6 @@ import {
   parseText,
   SICK_CARD,
   VACATION_CARD,
-  VACATION_REQUESTS_CARD,
 } from "./family.ts";
 import { WEEK_CARD } from "./week.ts";
 import { WEEKPLAN_CARD } from "./weekplan.ts";
@@ -49,7 +48,6 @@ export const SHARED: Readonly<Record<string, readonly SharedKey[]>> = {
   [WEEKPLAN_CARD]: ["switch_time", "subject_names", "expand_abbreviations"],
   [WEEK_CARD]: ["switch_time", "packing", "subject_names", "expand_abbreviations"],
   [SICK_CARD]: ["sick_message", "sender"],
-  [VACATION_REQUESTS_CARD]: ["sender"],
   [VACATION_CARD]: ["sender"],
 };
 

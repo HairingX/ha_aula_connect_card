@@ -37,23 +37,16 @@ describe("the dashboard", () => {
       ["vigtigt", "Vigtigt", true],
       ["ugeplan", "Ugeplan", true],
       ["uge", "Uge", true],
+      ["fravaer", "Fravær", true],
     ]);
-    const [main, important] = generated.views;
+    const [main, important, , , absence] = generated.views;
     expect(main?.sections).toEqual([
       {
         type: "grid",
-        column_span: 2,
+        column_span: 3,
         cards: [
           { type: "custom:aula-connect-children-card" },
           { type: "custom:aula-connect-overview-card" },
-        ],
-      },
-      {
-        type: "grid",
-        cards: [
-          { type: "custom:aula-connect-sick-card" },
-          { type: "custom:aula-connect-vacation-requests-card" },
-          { type: "custom:aula-connect-vacation-card" },
         ],
       },
     ]);
@@ -61,22 +54,39 @@ describe("the dashboard", () => {
       { type: "custom:aula-connect-children-card", look_switch: false },
       { type: "custom:aula-connect-important-card" },
     ]);
+    expect(absence?.sections[0]?.cards).toEqual([
+      { type: "custom:aula-connect-children-card", look_switch: false },
+      { type: "custom:aula-connect-sick-card" },
+      { type: "custom:aula-connect-vacation-card" },
+    ]);
   });
 
-  it("shows the children chosen, without the cards that act when told", () => {
+  it("shows the children chosen, and no Fravær without its parts", () => {
     const generated = dashboard({ children: [1002], sick: false, vacation: false }, "en");
     expect(generated.views[0]?.sections).toEqual([
       {
         type: "grid",
-        column_span: 2,
+        column_span: 3,
         cards: [
           { type: "custom:aula-connect-children-card", children: [1002] },
-          { type: "custom:aula-connect-overview-card", children: [1002] },
+          {
+            type: "custom:aula-connect-overview-card",
+            children: [1002],
+            paths: { absence: false },
+          },
         ],
       },
     ]);
-    expect(generated.views[1]?.title).toBe("Important");
-    expect(dashboard({ sick: false }, "da").views[0]?.sections[1]?.cards).toHaveLength(2);
+    expect(generated.views.map((view) => view.title)).toEqual([
+      "Aula",
+      "Important",
+      "Week plan",
+      "Week",
+    ]);
+    expect(dashboard({ sick: false }, "da").views[4]?.sections[0]?.cards).toEqual([
+      { type: "custom:aula-connect-children-card", look_switch: false },
+      { type: "custom:aula-connect-vacation-card" },
+    ]);
   });
 });
 

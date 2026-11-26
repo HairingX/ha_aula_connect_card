@@ -7,10 +7,12 @@
 
 import type { TemplateResult } from "lit/html.js";
 
+import { fetchVacationRequests, fetchVacations } from "../core/api.ts";
 import type { ViewContext } from "../core/context.ts";
+import { addDays } from "../core/dates.ts";
 import { selection } from "../core/selection.ts";
 import type { StoreSnapshot } from "../core/store.ts";
-import type { HomeAssistant } from "../core/types.ts";
+import type { HomeAssistant, Vacation, VacationRequest } from "../core/types.ts";
 import {
   familyForm,
   OVERVIEW_CARD,
@@ -18,16 +20,25 @@ import {
   type OverviewConfig,
 } from "../config/family.ts";
 import type { ConfigForm } from "../config/form.ts";
+import { requestGroups, vacationGroups, vacationOn, type ChildReads } from "../model/absence.ts";
 import type { Hold } from "../model/child.ts";
-import { overviewView, type OverviewView } from "../model/overview.ts";
+import { senderOf } from "../model/family.ts";
+import { AHEAD_DAYS, overviewView, type OverviewView } from "../model/overview.ts";
 import { AulaCard, stub } from "../ui/card.ts";
-import { renderOverview } from "../ui/overview.ts";
+import { Loads } from "../ui/loads.ts";
+import { renderOverview, type AbsenceView } from "../ui/overview.ts";
 import { base, blocks, details, family } from "../ui/styles.ts";
 
 /** The overview. */
 export class AulaConnectOverviewCard extends AulaCard<OverviewConfig, OverviewView> {
   /** The card's styles. */
   static override styles = base + blocks + details + family;
+  readonly #requests = new Loads<VacationRequest[]>(() => {
+    this.requestUpdate();
+  });
+  readonly #vacations = new Loads<Vacation[]>(() => {
+    this.requestUpdate();
+  });
 
   /** Returns the form of the visual editor. */
   static getConfigForm(): ConfigForm {
@@ -70,7 +81,52 @@ export class AulaConnectOverviewCard extends AulaCard<OverviewConfig, OverviewVi
       packIcons: config.packIcons,
       message: config.sickMessage,
       sender: config.sender,
+      absence: this.#absence(view, config, ctx),
     });
+  }
+
+  // The requests are read only while some await an answer, and again when that number changes;
+  // the vacations once a day, as a wall screen stays for days.
+  #absence(view: OverviewView, config: OverviewConfig, ctx: ViewContext): AbsenceView {
+    const requests: ChildReads<VacationRequest>[] = [];
+    const vacations: ChildReads<Vacation>[] = [];
+    let unread = false;
+    for (const item of view.children) {
+      const id = String(item.child.child_id);
+      const pending = item.today?.vacation_requests_pending ?? 0;
+      if (pending > 0) {
+        const entry = senderOf(item, config.sender, "vacation_requests");
+        const load = this.#requests.get(
+          `${entry.entry_id}|${id}`,
+          `${String(pending)}|${ctx.today}`,
+          () => fetchVacationRequests(this.callWS, entry),
+        );
+        unread ||= load.data === undefined && load.error !== undefined;
+        requests.push({ child: item.child, entry, data: load.data });
+      }
+      const entry = senderOf(item, config.sender, "vacations");
+      const load = this.#vacations.get(`${entry.entry_id}|${id}`, ctx.today, () =>
+        fetchVacations(this.callWS, entry),
+      );
+      vacations.push({ child: item.child, entry, data: load.data });
+    }
+    const last = addDays(ctx.today, AHEAD_DAYS - 1);
+    return {
+      requests: requestGroups(requests, ctx.today).filter((group) => group.missing),
+      unread,
+      ongoing: new Map(
+        vacations.flatMap((read) => {
+          const vacation = vacationOn(read.data ?? [], ctx.today);
+          return vacation ? [[read.child.child_id, vacation] as const] : [];
+        }),
+      ),
+      coming: vacationGroups(vacations, ctx.today).filter(
+        (group) => group.start > ctx.today && group.start <= last,
+      ),
+      answered: () => {
+        this.#requests.refresh();
+      },
+    };
   }
 
   protected override emptySize(): number {

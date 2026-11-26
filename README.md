@@ -3,8 +3,9 @@
 Home Assistant dashboard cards for the Danish school platform Aula, from the
 [Aula Connect](https://github.com/HairingX/ha_aula_connect) integration: **the school day** that
 matters now, **the week plan** for the days ahead, and **the week** day by day; and for the family,
-**the children's bar**, **an overview** of every child's day, **what is important**, and the cards
-that **report a child sick**, **answer vacation requests** and **register vacations**. They are
+**the children's bar**, **an overview** of every child's day, **what is important**, and
+**Fravær**: the cards that **report a child sick**, and that **answer vacation requests** and
+**register vacations** in one. They are
 made to be read on a phone in the evening and on a wall screen in the morning, in Danish or
 English. The school day cards only show; the family's cards act in Aula only on a tap, and only
 once what is sent has been seen. An [Aula dashboard](#dashboard) puts them together.
@@ -192,10 +193,12 @@ above the children.
 
 ## Dashboard
 
-The **Aula Connect** dashboard is made from the cards: a sections view with the children's bar
-and the overview, and beside them the sick card, the vacation requests and the vacations; under
-it the overview's pages as subviews, each under the children's bar: **Vigtigt**, **Ugeplan** and
-**Uge**. Make a new dashboard and choose **Aula Connect**; **Rediger betjeningspanel** in its
+The **Aula Connect** dashboard is made from the cards, and shows on its first page only what
+matters now: the children's bar and the overview, the whole width. What needs you comes to the
+overview by itself - a vacation request awaiting an answer, a child sick yesterday who may still
+be - and goes again once it is done. Under it the overview's pages are subviews, each under the
+children's bar: **Vigtigt**, **Ugeplan**, **Uge** and **Fravær**, with the sick card and the
+Ferie/fri card. Make a new dashboard and choose **Aula Connect**; **Rediger betjeningspanel** in its
 menu opens its settings in Home Assistant's own form, as the cards' editors do. The settings are
 set once for the whole dashboard and given to every card that has them: the children, whether it
 has the sick card and the vacations, the [things to bring](#things-to-bring), the
@@ -207,7 +210,7 @@ strategy:
   type: custom:aula-connect
   children: [1001, 1002] # every child when left out
   sick: true # false leaves the sick card out
-  vacation: true # false leaves the vacation requests and the vacations out
+  vacation: true # false leaves the Ferie/fri card out; both false leave Fravær out
   packing:
     - subject: Idræt
       items: [Idrætstøj, Idrætstaske]
@@ -258,15 +261,24 @@ look_switch: true
 
 `custom:aula-connect-overview-card` shows each child's day that matters now at a glance: its
 hours, its day as a bar on one axis for all the children, what to bring with an icon for each
-thing, and what the week plan marks as important from that day on. Beside the name, the child's presence today as the
-institution registers it: at school until the day ends, here since a time, coming, gone home,
-or sick; after `switch_time` it says that it is today's. Under the children, tiles go to
-what is important, the week plan and the week, and **Det sker** lists what is coming the next seven days
-once, with the faces of the children it is for.
+thing, and what the week plan marks as important from that day on. Beside the name, the child's
+presence today as the institution registers it: at school until the day ends, here since a time,
+coming, gone home, or sick; **Ferie/fri til fre. 30. okt.** on a vacation registered; and
+**Syg i går – stadig syg?** for a child sick the school day before, until it is checked in or
+`switch_time` comes, as Aula takes a report back by itself the next day. After `switch_time` it
+says that it is today's.
+
+![A vacation request awaiting an answer, on the overview](docs/overview-thu-1000-380-light-blue-da-2child-request.png)
+
+Under the children, a vacation request awaiting an answer is a row, once for every child it is
+asked of: two at most, and a way to Fravær for the rest. Tiles go to what is important, the week
+plan, the week and Fravær, its badge counting the requests awaiting an answer; **Det sker** lists
+what is coming the next seven days once, with the faces of the children it is for, a vacation
+registered among it.
 
 A tap on what is important opens it day by day; a tap on the presence opens the day's times, and
-reports the child sick from there, where Aula Connect's options allow it. An event opens its
-window as in the school day card.
+reports the child sick from there, where Aula Connect's options allow it; a tap on a request
+answers it. An event opens its window as in the school day card.
 
 Three looks, chosen in the children's bar or kept with `look`:
 
@@ -279,10 +291,11 @@ Three looks, chosen in the children's bar or kept with `look`:
 ```yaml
 type: custom:aula-connect-overview-card
 look: board # rows, columns or board; the children's bar's when left out
-paths: # the views the tiles go to
+paths: # the views the tiles go to; false leaves a tile out
   important: vigtigt
   weekplan: ugeplan
   week: uge
+  absence: fravaer
 pack_icons: # over the built-in icons, by the thing
   blokfløjte: mdi:music
 ```
@@ -315,6 +328,9 @@ each its own tap:
    choose, the one written in last chosen for you. **Spring over** writes nothing; it comes first
    where the child has been ill since before today, or you wrote from here the weekday before.
 
+**Meld flere syge** reports the children chosen sick at once - all that can be, at first - each
+checked first and each reported once; then each can be written about on its own.
+
 A child two guardians each have in Aula Connect is reported as the guardian in `sender`, else as
 the one used last for the child, else the first; the window lets you choose.
 
@@ -329,50 +345,55 @@ sick_message: "{name} er syg og bliver derfor hjemme."
 sender: Lise Testesen
 ```
 
-## Vacation requests card
+## Ferie/fri card
 
-![Answering a vacation request](docs/requests-thu-1000-380-light-blue-da-2child-answer.png)
+![The Ferie/fri card](docs/vacation-thu-1000-380-light-blue-da-2child.png)
 
-`custom:aula-connect-vacation-requests-card` lists the institution's vacation requests that can
-still be answered, those awaiting an answer first. A request is answered day by day, **Kommer**
-or **Kommer ikke**, with the times the child comes and goes where the institution asks for them,
-and a comment; days gone by are not answered, and after the deadline nothing is. Answering shows
-only where Aula Connect's options allow it; otherwise the request's window says it is turned off.
+`custom:aula-connect-vacation-card` holds a family's vacations in one: first the institution's
+requests **Mangler svar**, then the vacations registered and not over yet under **Meldt**, their
+number beside the title, a vacation that has begun marked **I gang**; then **Holder fri i dag** and
+**Meld ferie/fri**, and last the requests answered, folded. A request asked of several children,
+and a vacation registered for several, is one row with their faces.
 
-## Vacation card
+![Answering a vacation request for two children](docs/vacation-thu-1000-380-light-blue-da-2child-answer.png)
 
-![The vacation card](docs/vacation-thu-1000-380-light-blue-da-2child.png)
+A request is answered day by day, **Kommer** or **Kommer ikke**, with the times the child comes
+and goes where the institution asks for them, and a comment, for every child it is asked of at
+once; **Forskellig for børnene** splits a day into one answer for each child, and **Ens for
+børnene** joins it again. **Send svar** sends each child's answer once, saying first for whom;
+where one fails, the window says why, and sends again only that one. Days gone by are not
+answered, and after the deadline nothing is.
 
-`custom:aula-connect-vacation-card` lists the vacations registered for the children and not over
-yet. **Meld ferie** registers one for the children chosen, from a first day from today to a last
-day within a year, with a comment of up to 250 characters; a vacation is deleted once confirmed.
-Registering and deleting show only where Aula Connect's options allow them, for the children whose
-entry does; otherwise the card says they are turned off.
+**Meld ferie/fri** registers a vacation for the children chosen, from a first day from today to
+a last day within a year, with a comment of up to 250 characters; **Holder fri i dag** opens it
+for today. A vacation is deleted once confirmed, for the children chosen of those it is for.
+Answering, registering and deleting show only where Aula Connect's options allow them, for the
+children whose entry does; otherwise the card says they are turned off.
 
 ## Configuration
 
-| Option                 | Cards                    | Default                     | What it does                                                                                                                                                           |
-| ---------------------- | ------------------------ | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `children`             | all                      | every child                 | The children to show, by Aula's child id, in this order.                                                                                                               |
-| `group_by`             | school day, week plan    | `child`                     | `child`: each child's own in a [column of its own](#several-children). `block` (school day) or `day` (week plan): the children lined up, block by block or day by day. |
-| `switch_time`          | all                      | `"12:00"`                   | When the next school day takes over from today. `"00:00"` keeps today all day.                                                                                         |
-| `size`                 | all                      | `normal`                    | `large` for a wall screen: text 1.5 times as large, and the wall's sizes from a 480 px card.                                                                           |
-| `subject_names`        | all                      | none                        | [Names, colours and merging](#subject-names) for lesson titles, over the built-in ones.                                                                                |
-| `expand_abbreviations` | all                      | `true`                      | `false` shows the subjects' abbreviations as Aula has them, in place of the [built-in names](#subject-names).                                                          |
-| `info_lines`           | all                      | `6`                         | The lines of a note shown before "Vis mere", 0 to 50; `0` shows every note whole.                                                                                      |
-| `notes`                | week plan                | `tasks`                     | `tasks`, `comments` or `all`: what the card shows of the week plan.                                                                                                    |
-| `order`                | school day, week         | none; week: `[timetable]`   | The blocks to put first, in this order: `task`, `timetable`, `comment`. The rest follow the standard order: Vigtigt with Husk in it, Skema, Noter.                     |
-| `show`                 | school day, week         | everything shown            | Hide a block with `false`: `task`, `timetable`, `comment`; `pack: false` leaves Husk out of Vigtigt, `events: false` the events, `birthdays: false` the birthdays.     |
-| `timetable`            | school day, week         | `compact`                   | `compact` shows the timetable as a bar; `full` opens it whole, still to be folded.                                                                                     |
-| `packing`              | school day, week         | none                        | [Things to bring](#things-to-bring) when a subject is on the timetable.                                                                                                |
-| `weeks`                | week                     | `2`                         | `1` shows the week of the day that matters now, `2` this week and next.                                                                                                |
-| `people`               | children's bar           | none                        | A `person` whose name and picture stand in for a child's, on every card of the page.                                                                                   |
-| `look_switch`          | children's bar           | `true`                      | `false` leaves out the switch between the overview's looks.                                                                                                            |
-| `look`                 | overview                 | the bar's                   | `rows`, `columns` or `board`, kept whatever the children's bar chooses.                                                                                                |
-| `paths`                | overview                 | `vigtigt`, `ugeplan`, `uge` | The views the tiles go to: `important`, `weekplan`, `week`; relative to the dashboard unless they begin with `/`.                                                      |
-| `pack_icons`           | overview                 | none                        | An mdi icon for a thing to bring, by the thing, over the built-in ones.                                                                                                |
-| `sick_message`         | overview, sick           | a sentence                  | The message about the illness; `{name}` is the child's first name.                                                                                                     |
-| `sender`               | overview, sick, vacation | the one used last           | The guardian to act as, by the name Aula Connect gives the entry.                                                                                                      |
+| Option                 | Cards                    | Default                                | What it does                                                                                                                                                           |
+| ---------------------- | ------------------------ | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `children`             | all                      | every child                            | The children to show, by Aula's child id, in this order.                                                                                                               |
+| `group_by`             | school day, week plan    | `child`                                | `child`: each child's own in a [column of its own](#several-children). `block` (school day) or `day` (week plan): the children lined up, block by block or day by day. |
+| `switch_time`          | all                      | `"12:00"`                              | When the next school day takes over from today. `"00:00"` keeps today all day.                                                                                         |
+| `size`                 | all                      | `normal`                               | `large` for a wall screen: text 1.5 times as large, and the wall's sizes from a 480 px card.                                                                           |
+| `subject_names`        | all                      | none                                   | [Names, colours and merging](#subject-names) for lesson titles, over the built-in ones.                                                                                |
+| `expand_abbreviations` | all                      | `true`                                 | `false` shows the subjects' abbreviations as Aula has them, in place of the [built-in names](#subject-names).                                                          |
+| `info_lines`           | all                      | `6`                                    | The lines of a note shown before "Vis mere", 0 to 50; `0` shows every note whole.                                                                                      |
+| `notes`                | week plan                | `tasks`                                | `tasks`, `comments` or `all`: what the card shows of the week plan.                                                                                                    |
+| `order`                | school day, week         | none; week: `[timetable]`              | The blocks to put first, in this order: `task`, `timetable`, `comment`. The rest follow the standard order: Vigtigt with Husk in it, Skema, Noter.                     |
+| `show`                 | school day, week         | everything shown                       | Hide a block with `false`: `task`, `timetable`, `comment`; `pack: false` leaves Husk out of Vigtigt, `events: false` the events, `birthdays: false` the birthdays.     |
+| `timetable`            | school day, week         | `compact`                              | `compact` shows the timetable as a bar; `full` opens it whole, still to be folded.                                                                                     |
+| `packing`              | school day, week         | none                                   | [Things to bring](#things-to-bring) when a subject is on the timetable.                                                                                                |
+| `weeks`                | week                     | `2`                                    | `1` shows the week of the day that matters now, `2` this week and next.                                                                                                |
+| `people`               | children's bar           | none                                   | A `person` whose name and picture stand in for a child's, on every card of the page.                                                                                   |
+| `look_switch`          | children's bar           | `true`                                 | `false` leaves out the switch between the overview's looks.                                                                                                            |
+| `look`                 | overview                 | the bar's                              | `rows`, `columns` or `board`, kept whatever the children's bar chooses.                                                                                                |
+| `paths`                | overview                 | `vigtigt`, `ugeplan`, `uge`, `fravaer` | The views the tiles go to: `important`, `weekplan`, `week`, `absence`; relative to the dashboard unless they begin with `/`; `false` leaves a tile out.                |
+| `pack_icons`           | overview                 | none                                   | An mdi icon for a thing to bring, by the thing, over the built-in ones.                                                                                                |
+| `sick_message`         | overview, sick           | a sentence                             | The message about the illness; `{name}` is the child's first name.                                                                                                     |
+| `sender`               | overview, sick, vacation | the one used last                      | The guardian to act as, by the name Aula Connect gives the entry.                                                                                                      |
 
 A school day card in YAML, every option at its default but the children:
 
@@ -565,15 +586,16 @@ holds the day, each child's hours and what each child is to bring.
 - `aula_connect/vacations` with a child's `entry_id` and `child_id`;
   `aula_connect/vacation/add` with an `entry_id`, `child_ids`, `start`, `end` and a `comment`, and
   `aula_connect/vacation/delete` with an `entry_id` and a `vacation_id`, on a tap.
-- `aula_connect/vacation_requests` with a child's `entry_id` and `child_id`, and
+- `aula_connect/vacation_requests` with a child's `entry_id` and `child_id` - by the overview only
+  while some await an answer - and
   `aula_connect/vacation_request/answer` with a `request_id`, the `days` and a `comment`, on a tap.
 
 ## Privacy
 
 The school day, week plan, week, overview and important cards only show: they change nothing in
-Aula and mark nothing as read. The sick, vacation requests and vacation cards, and the overview's
-presence window, act in Aula only on a tap of their buttons, each step its own tap: a report, a
-message, an answer, a vacation or its deletion. Everything goes through Home Assistant's own
+Aula and mark nothing as read. The sick and Ferie/fri cards, and the overview's presence and
+request windows, act in Aula only on a tap of their buttons, each step its own tap, saying first
+what is sent for whom: a report, a message, an answer, a vacation or its deletion. Everything goes through Home Assistant's own
 connection to Aula Connect, and nothing anywhere else. The children's bar keeps the children it
 hides, the look and the guardian last acted as in the browser's storage on that device: ids and
 words, never a child's data.

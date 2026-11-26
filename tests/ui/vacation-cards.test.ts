@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "../../src/index.ts";
 import { forget } from "../../src/core/memory.ts";
 import { reloadSelection, rememberSender } from "../../src/core/selection.ts";
-import type { Change, Child, VacationRequest } from "../../src/core/types.ts";
-import { requestState } from "../../src/ui/vacation-requests.ts";
+import type { Change, Child } from "../../src/core/types.ts";
+import { requestGroups } from "../../src/model/absence.ts";
+import { requestLine } from "../../src/ui/vacation-requests.ts";
 import { present, wsError } from "../fake-hass.ts";
 import { REQUESTS, SECOND_ENTRY, todayOf, VACATIONS } from "../fixtures/family.ts";
 import { all, mount, text, unmountAll, type Card } from "../fixtures/mount.ts";
@@ -13,9 +14,8 @@ import { contextOf } from "../fixtures/snapshot.ts";
 import { CHILDREN } from "../fixtures/week.ts";
 import { find, settled, tap, texts, type, windowText } from "./family-helpers.ts";
 
-const REQUESTS_CARD = "aula-connect-vacation-requests-card";
 const VACATION = "aula-connect-vacation-card";
-const [, OSKAR] = CHILDREN as [Child, Child];
+const [IDA, OSKAR] = CHILDREN as [Child, Child];
 
 type Commands = Record<string, (message: Record<string, unknown>) => unknown>;
 
@@ -69,23 +69,25 @@ afterEach(async () => {
   await new Promise((resolve) => setImmediate(resolve));
 });
 
-describe("the vacation requests card", () => {
-  it("lists the requests to answer first, once the children's day has come", async () => {
-    const { card } = await mount(REQUESTS_CARD, "thu-1000", { commands: commands() });
-    expect(text(card)).toContain("Henter");
-    unmountAll();
-    const { card: shown } = await mount(REQUESTS_CARD, "thu-1000", {
-      today: todayOf,
-      commands: commands(),
-    });
-    expect(texts(shown, ".family-title")).toEqual(["Juleferie", "Ferien: 15.–16. feb."]);
-    expect(texts(shown, ".family-sub")).toEqual([
-      "Oskar · 21.–23. dec.",
-      "Svar senest 20. nov.",
-      "Oskar · 15.–16. feb.",
+describe("the vacation requests in the Ferie/fri card", () => {
+  it("lists the requests awaiting an answer first, the vacations, and those answered folded", async () => {
+    const { card } = await mount(VACATION, "thu-1000", { today: todayOf, commands: commands() });
+    expect(texts(card, ".family-head")).toEqual(["Mangler svar", "Meldt"]);
+    expect(texts(card, ".block-head .label.count")).toEqual(["2 meldt"]);
+    expect(texts(card, ".family-title")).toEqual([
+      "Juleferie",
+      "29.–30. oktober",
+      "21.–23. december",
+      "Ferien: 15.–16. feb.",
     ]);
-    expect(texts(shown, ".family-row .label.warning")).toEqual(["Mangler svar"]);
-    const ends = all(shown, ".family-row > ha-icon").map((mark) => [
+    expect(texts(card, ".family-sub")).toEqual([
+      "21.–23. dec. · Svar senest 20. nov.",
+      "Oskar",
+      "Oskar · Til bedsteforældre",
+      "15.–16. feb.",
+    ]);
+    expect(texts(card, ".family-fold summary")).toEqual(["Besvarede (1)"]);
+    const ends = all(card, ".family-row > ha-icon").map((mark) => [
       mark.getAttribute("icon"),
       mark.getAttribute("aria-label"),
     ]);
@@ -95,14 +97,8 @@ describe("the vacation requests card", () => {
     ]);
   });
 
-  it("says when there is no request, or why the requests cannot be had", async () => {
-    const { card } = await mount(REQUESTS_CARD, "thu-1000", {
-      today: todayOf,
-      commands: commands({ "aula_connect/vacation_requests": () => ({ requests: [] }) }),
-    });
-    expect(texts(card, ".empty-line")).toEqual(["Ingen ferieanmodninger"]);
-    unmountAll();
-    const { card: failing } = await mount(REQUESTS_CARD, "thu-1000", {
+  it("says why the requests cannot be had, and still shows the vacations", async () => {
+    const { card } = await mount(VACATION, "thu-1000", {
       today: todayOf,
       commands: commands({
         "aula_connect/vacation_requests": () => {
@@ -110,18 +106,33 @@ describe("the vacation requests card", () => {
         },
       }),
     });
-    expect(text(failing)).toContain("Aula");
-    expect(all(failing, ".empty-line")).toEqual([]);
+    expect(texts(card, ".alert")).toEqual(["Kunne ikke hente fra Aula: Aula is down"]);
+    expect(texts(card, ".family-head")).toEqual(["Meldt"]);
+  });
+
+  it("says an error the requests and the vacations both meet once", async () => {
+    const old = (): never => {
+      throw wsError("unknown_command", "Unknown command.");
+    };
+    const { card } = await mount(VACATION, "thu-1000", {
+      today: todayOf,
+      commands: commands({
+        "aula_connect/vacation_requests": old,
+        "aula_connect/vacations": old,
+      }),
+    });
+    expect(all(card, ".alert")).toHaveLength(1);
   });
 
   it("answers a request day by day, with times on the days the child comes", async () => {
-    const { card, hass } = await mount(REQUESTS_CARD, "thu-1000", {
+    const { card, hass } = await mount(VACATION, "thu-1000", {
       today: todayOf,
       commands: commands(),
     });
     await tap(card, ".family-row", "Juleferie");
     expect(windowText(card)).toContain("Giv besked om, hvilke dage jeres barn kommer i SFO.");
     expect(windowText(card)).toContain("Svar senest 20. nov.");
+    expect(all(card, "dialog .answer-split-toggle")).toEqual([]);
     const send = (): HTMLButtonElement => find(card, "dialog .filled-button", "Send svar");
     expect(send().disabled).toBe(true);
     await day(card, 1, "Kommer");
@@ -133,6 +144,7 @@ describe("the vacation requests card", () => {
     await type(card, "dialog .answer-day:nth-child(1) .answer-time:nth-child(2) input", "15:00");
     await type(card, "dialog textarea", "Tak");
     expect(send().disabled).toBe(false);
+    expect(windowText(card)).toContain("Svaret sendes for Oskar");
     await type(card, "dialog .answer-day:nth-child(1) .answer-time:nth-child(2) input", "");
     expect(send().disabled).toBe(true);
     await type(card, "dialog .answer-day:nth-child(1) .answer-time:nth-child(2) input", "15:00");
@@ -153,7 +165,7 @@ describe("the vacation requests card", () => {
         comment: "Tak",
       },
     ]);
-    expect(windowText(card)).toContain("Svaret er sendt");
+    expect(windowText(card)).toContain("Svaret er sendt for Oskar");
     expect(sent(hass.callWS.mock, "vacation_requests").length).toBeGreaterThan(before);
     await tap(card, "dialog .filled-button", "Færdig");
     expect(windowText(card)).toBe("");
@@ -174,7 +186,7 @@ describe("the vacation requests card", () => {
       })),
     };
     const late = { ...present(REQUESTS.requests[0]), deadline: "2026-10-28" };
-    const { card, hass } = await mount(REQUESTS_CARD, "thu-1000", {
+    const { card, hass } = await mount(VACATION, "thu-1000", {
       today: todayOf,
       commands: commands({
         "aula_connect/vacation_requests": (message) =>
@@ -200,8 +212,8 @@ describe("the vacation requests card", () => {
     ]);
   });
 
-  it("says why an answer was not sent", async () => {
-    const { card } = await mount(REQUESTS_CARD, "thu-1000", {
+  it("says why an answer was not sent, naming the child", async () => {
+    const { card } = await mount(VACATION, "thu-1000", {
       today: todayOf,
       commands: commands({
         "aula_connect/vacation_request/answer": () => {
@@ -209,13 +221,14 @@ describe("the vacation requests card", () => {
         },
       }),
     });
+    await tap(card, ".family-fold summary");
     await tap(card, ".family-row", "Ferien");
     await tap(card, "dialog .filled-button", "Send svar");
-    expect(windowText(card)).toContain("Aula kender det ikke længere.");
+    expect(windowText(card)).toContain("Oskar: Aula kender det ikke længere.");
   });
 
   it("asks again when the number awaiting an answer changes", async () => {
-    const { card, hass } = await mount(REQUESTS_CARD, "thu-1000", {
+    const { card, hass } = await mount(VACATION, "thu-1000", {
       today: todayOf,
       commands: commands(),
     });
@@ -230,9 +243,140 @@ describe("the vacation requests card", () => {
   });
 });
 
+describe("a request asked of two children", () => {
+  const both = (): Commands => commands({ "aula_connect/vacation_requests": () => REQUESTS });
+
+  it("is one row, and one answer sent for each child", async () => {
+    const { card, hass } = await mount(VACATION, "thu-1000", { today: todayOf, commands: both() });
+    expect(texts(card, ".family-title")[0]).toBe("Juleferie");
+    expect(all(card, ".family-row .face")).toHaveLength(2 + 2 + 2);
+    await tap(card, ".family-row", "Juleferie");
+    expect(windowText(card)).toContain("Ida og Oskar");
+    for (const index of [1, 2, 3]) await day(card, index, "Kommer ikke");
+    expect(windowText(card)).toContain("Svaret sendes for Ida og Oskar");
+    await tap(card, "dialog .filled-button", "Send svar");
+    expect(
+      sent(hass.callWS.mock, "vacation_request/answer").map((message) => [
+        message.child_id,
+        message.days,
+      ]),
+    ).toEqual(
+      [IDA, OSKAR].map((child) => [
+        child.child_id,
+        ["2026-12-21", "2026-12-22", "2026-12-23"].map((date) => ({ date, is_coming: false })),
+      ]),
+    );
+    expect(windowText(card)).toContain("Svaret er sendt for Ida og Oskar");
+  });
+
+  it("splits a day where the children differ, and joins it again", async () => {
+    const { card, hass } = await mount(VACATION, "thu-1000", { today: todayOf, commands: both() });
+    await tap(card, ".family-row", "Juleferie");
+    await tap(
+      card,
+      "dialog .answer-day:nth-child(1) .answer-split-toggle",
+      "Forskellig for børnene",
+    );
+    expect(texts(card, "dialog .answer-who span:not(.face)")).toEqual(["Ida", "Oskar"]);
+    await tap(card, "dialog .answer-day:nth-child(1) .answer-split-toggle", "Ens for børnene");
+    expect(all(card, "dialog .answer-child")).toEqual([]);
+    await tap(card, "dialog .answer-day:nth-child(1) .answer-split-toggle");
+    const [idaComes, , , oskarStays] = all(card, "dialog .answer-day:nth-child(1) .choice");
+    present(idaComes as HTMLButtonElement | undefined).click();
+    present(oskarStays as HTMLButtonElement | undefined).click();
+    await settled(card);
+    await type(card, "dialog .answer-child:nth-child(1) .answer-time:nth-child(1) input", "08:00");
+    await type(card, "dialog .answer-child:nth-child(1) .answer-time:nth-child(2) input", "12:00");
+    await day(card, 2, "Kommer ikke");
+    await day(card, 3, "Kommer ikke");
+    await tap(card, "dialog .filled-button", "Send svar");
+    expect(
+      sent(hass.callWS.mock, "vacation_request/answer").map((message) => [
+        message.child_id,
+        (message.days as unknown[])[0],
+      ]),
+    ).toEqual([
+      [1001, { date: "2026-12-21", is_coming: true, entry_time: "08:00", exit_time: "12:00" }],
+      [1002, { date: "2026-12-21", is_coming: false }],
+    ]);
+  });
+
+  it("starts split on a day the children were answered differently", async () => {
+    const answered = (coming: boolean) => ({
+      requests: [
+        {
+          ...present(REQUESTS.requests[1]),
+          days: [
+            { date: "2027-02-15", is_coming: coming, entry_time: null, exit_time: null },
+            { date: "2027-02-16", is_coming: false, entry_time: null, exit_time: null },
+          ],
+        },
+      ],
+    });
+    const { card } = await mount(VACATION, "thu-1000", {
+      today: todayOf,
+      commands: commands({
+        "aula_connect/vacation_requests": (message) =>
+          answered(message.child_id === OSKAR.child_id),
+      }),
+    });
+    expect(texts(card, ".family-fold summary")).toEqual(["Besvarede (1)"]);
+    await tap(card, ".family-fold summary");
+    await tap(card, ".family-row", "Ferien");
+    expect(all(card, "dialog .answer-day:nth-child(1) .answer-child")).toHaveLength(2);
+    expect(all(card, "dialog .answer-day:nth-child(2) .answer-child")).toEqual([]);
+  });
+
+  it("starts a day a child's request lacks unanswered for that child", async () => {
+    const staying = present(REQUESTS.requests[0]).days.map((date) => ({
+      ...date,
+      is_coming: false,
+    }));
+    const full = { requests: [{ ...present(REQUESTS.requests[0]), days: staying }] };
+    const short = { requests: [{ ...present(REQUESTS.requests[0]), days: staying.slice(0, 2) }] };
+    const { card } = await mount(VACATION, "thu-1000", {
+      today: todayOf,
+      commands: commands({
+        "aula_connect/vacation_requests": (message) =>
+          message.child_id === OSKAR.child_id ? short : full,
+      }),
+    });
+    await tap(card, ".family-row", "Juleferie");
+    expect(all(card, "dialog .answer-day:nth-child(3) .answer-child")).toHaveLength(2);
+    expect(all(card, "dialog .answer-day:nth-child(1) .answer-child")).toEqual([]);
+  });
+
+  it("sends again only for the child whose answer failed", async () => {
+    let failing = true;
+    const { card, hass } = await mount(VACATION, "thu-1000", {
+      today: todayOf,
+      commands: commands({
+        "aula_connect/vacation_requests": () => REQUESTS,
+        "aula_connect/vacation_request/answer": (message) => {
+          if (failing && message.child_id === IDA.child_id)
+            throw wsError("home_assistant_error", "Aula is down");
+          return null;
+        },
+      }),
+    });
+    await tap(card, ".family-row", "Juleferie");
+    for (const index of [1, 2, 3]) await day(card, index, "Kommer ikke");
+    await tap(card, "dialog .filled-button", "Send svar");
+    expect(windowText(card)).toContain("Svaret er sendt for Oskar");
+    expect(windowText(card)).toContain("Ida: ");
+    expect(windowText(card)).toContain("Svaret sendes for Ida");
+    failing = false;
+    await tap(card, "dialog .filled-button", "Send svar");
+    expect(
+      sent(hass.callWS.mock, "vacation_request/answer").map((message) => message.child_id),
+    ).toEqual([1001, 1002, 1001]);
+    expect(windowText(card)).toContain("Svaret er sendt for Ida og Oskar");
+  });
+});
+
 describe("a request's state", () => {
   it("offers no answer where answering is turned off, and sends none", async () => {
-    const { card, hass } = await mount(REQUESTS_CARD, "thu-1000", {
+    const { card, hass } = await mount(VACATION, "thu-1000", {
       children: allowing(["vacations"]),
       today: todayOf,
       commands: commands(),
@@ -247,12 +391,13 @@ describe("a request's state", () => {
   });
 
   it("answers from a guardian whose entry allows it", async () => {
-    const { card, hass } = await mount(REQUESTS_CARD, "thu-1000", {
+    const { card, hass } = await mount(VACATION, "thu-1000", {
       children: [...allowing([]), ...SECOND_ENTRY],
       today: todayOf,
       commands: commands(),
       config: { children: [1002] },
     });
+    await tap(card, ".family-fold summary");
     await tap(card, ".family-row", "Ferien");
     await day(card, 1, "Kommer ikke");
     await day(card, 2, "Kommer ikke");
@@ -262,29 +407,49 @@ describe("a request's state", () => {
     ]);
   });
 
-  it("says by when to answer, where it has a deadline and no answer yet", () => {
+  it("says its days, and by when to answer it where it has a deadline and no answer yet", () => {
     const ctx = contextOf(scenarioNamed("thu-1000"));
-    const request = present(REQUESTS.requests[0]) as VacationRequest;
-    expect(requestState({ ...request, deadline: null }, ctx)).toBeUndefined();
-    expect(requestState(request, ctx)).toBe("Svar senest 20. nov.");
-    expect(requestState({ ...request, missing_answer: false }, ctx)).toBeUndefined();
+    const request = present(REQUESTS.requests[0]);
+    const line = (changes: Record<string, unknown>): string =>
+      requestLine(
+        present(
+          requestGroups(
+            [{ child: OSKAR, entry: OSKAR, data: [{ ...request, ...changes }] }],
+            ctx.today,
+          )[0],
+        ),
+        ctx,
+      ).replace(/\u2060/g, "");
+    expect(line({})).toBe("21.–23. dec. · Svar senest 20. nov.");
+    expect(line({ deadline: null })).toBe("21.–23. dec.");
+    expect(line({ missing_answer: false })).toBe("21.–23. dec.");
   });
 });
 
 describe("the vacation card", () => {
   it("lists the vacations not over yet, each deletable where Aula lets it", async () => {
     const { card } = await mount(VACATION, "thu-1000", { commands: commands() });
-    expect(texts(card, ".family-title")).toEqual(["29.–30. oktober", "21.–23. december"]);
-    expect(texts(card, ".family-sub")).toEqual(["Oskar", "Oskar · Til bedsteforældre"]);
-    expect(texts(card, ".family-row .label")).toEqual(["I dag"]);
+    expect(texts(card, "li.family-row .family-title")).toEqual([
+      "29.–30. oktober",
+      "21.–23. december",
+    ]);
+    expect(texts(card, "li.family-row .family-sub")).toEqual([
+      "Oskar",
+      "Oskar · Til bedsteforældre",
+    ]);
+    expect(texts(card, "li.family-row .label")).toEqual(["I gang"]);
     expect(all(card, ".family-row .icon-button")).toHaveLength(1);
   });
 
   it("says when there is no vacation, or why the vacations cannot be had", async () => {
     const { card } = await mount(VACATION, "thu-1000", {
-      commands: commands({ "aula_connect/vacations": () => ({ vacations: [] }) }),
+      commands: commands({
+        "aula_connect/vacations": () => ({ vacations: [] }),
+        "aula_connect/vacation_requests": () => ({ requests: [] }),
+      }),
     });
-    expect(texts(card, ".empty-line")).toEqual(["Ingen ferie meldt"]);
+    expect(texts(card, ".empty-line")).toEqual(["Ingen ferie/fri meldt"]);
+    expect(texts(card, ".block-head .label")).toEqual([]);
     unmountAll();
     const { card: failing } = await mount(VACATION, "thu-1000", {
       commands: commands({
@@ -299,7 +464,8 @@ describe("the vacation card", () => {
   it("deletes a vacation once confirmed", async () => {
     const { card, hass } = await mount(VACATION, "thu-1000", { commands: commands() });
     await tap(card, ".family-row .icon-button");
-    expect(windowText(card)).toContain("Slet Oskars ferie?");
+    expect(windowText(card)).toContain("Slet ferie/fri for Oskar?");
+    expect(all(card, "dialog .face-choice")).toEqual([]);
     expect(windowText(card)).toContain("Til bedsteforældre");
     await tap(card, "dialog .filled-button", "Slet");
     expect(sent(hass.callWS.mock, "vacation/delete")).toEqual([
@@ -330,9 +496,9 @@ describe("the vacation card", () => {
       children: [...CHILDREN, ...SECOND_ENTRY],
       commands: commands(),
     });
-    await tap(card, ".window-actions .filled-button", "Meld ferie");
+    await tap(card, ".window-actions .filled-button", "Meld ferie/fri");
     expect(texts(card, "dialog .face-choice span:not(.face)")).toEqual(["Ida", "Oskar"]);
-    const add = (): HTMLButtonElement => find(card, "dialog .filled-button", "Meld ferie");
+    const add = (): HTMLButtonElement => find(card, "dialog .filled-button", "Meld ferie/fri");
     expect(add().disabled).toBe(true);
     await type(card, 'dialog input[type="date"]', "2026-11-02");
     expect(
@@ -341,7 +507,7 @@ describe("the vacation card", () => {
     await type(card, "dialog .date-field:nth-child(2) input", "2026-11-04");
     await type(card, "dialog textarea", "Besøg ");
     expect(texts(card, "dialog .field-count")).toEqual(["6 af 250 tegn"]);
-    expect(windowText(card)).toContain("Ferie for Ida og Oskar: 2.–4. november");
+    expect(windowText(card)).toContain("Ferie/fri for Ida og Oskar: 2.–4. november");
     await tap(card, "dialog .face-choice", "Ida");
     await tap(card, "dialog .face-choice", "Oskar");
     expect(add().disabled).toBe(true);
@@ -375,7 +541,10 @@ describe("the vacation card", () => {
       children: allowing(["vacation_requests"]),
       commands: commands(),
     });
-    expect(texts(card, ".family-title")).toEqual(["29.–30. oktober", "21.–23. december"]);
+    expect(texts(card, "li.family-row .family-title")).toEqual([
+      "29.–30. oktober",
+      "21.–23. december",
+    ]);
     expect(all(card, ".family-row .icon-button")).toEqual([]);
     expect(all(card, ".window-actions")).toEqual([]);
     expect(texts(card, ".off")).toEqual([
@@ -392,10 +561,10 @@ describe("the vacation card", () => {
       commands: commands(),
     });
     expect(all(card, ".family-row .icon-button")).toEqual([]);
-    await tap(card, ".window-actions .filled-button", "Meld ferie");
+    await tap(card, ".window-actions .filled-button", "Meld ferie/fri");
     expect(all(card, "dialog .face-choice")).toEqual([]);
     await type(card, 'dialog input[type="date"]', "2026-11-02");
-    await tap(card, "dialog .filled-button", "Meld ferie");
+    await tap(card, "dialog .filled-button", "Meld ferie/fri");
     expect(sent(hass.callWS.mock, "vacation/add")).toMatchObject([{ child_ids: [1001] }]);
   });
 
@@ -408,7 +577,7 @@ describe("the vacation card", () => {
         },
       }),
     });
-    await tap(card, ".window-actions .filled-button", "Meld ferie");
+    await tap(card, ".window-actions .filled-button", "Meld ferie/fri");
     expect(all(card, "dialog .face-choice")).toEqual([]);
     await type(card, "dialog .date-field:nth-child(2) input", "2026-11-04");
     await type(card, 'dialog input[type="date"]', "2026-11-02");
@@ -416,7 +585,35 @@ describe("the vacation card", () => {
     expect(
       find(card, "dialog .date-field:nth-child(2) input", undefined, HTMLInputElement).value,
     ).toBe("2026-11-05");
-    await tap(card, "dialog .filled-button", "Meld ferie");
+    await tap(card, "dialog .filled-button", "Meld ferie/fri");
     expect(windowText(card)).toContain("Aula Connect kunne ikke læse det: The comment is too long");
+  });
+
+  it("registers a day off today in one window, the days set to today", async () => {
+    const { card, hass } = await mount(VACATION, "thu-1000", { commands: commands() });
+    await tap(card, ".window-actions .text-button", "Holder fri i dag");
+    expect(windowText(card)).toContain("Ferie/fri for Ida og Oskar: 29. oktober");
+    await tap(card, "dialog .filled-button", "Meld ferie/fri");
+    expect(sent(hass.callWS.mock, "vacation/add")).toMatchObject([
+      { child_ids: [1001, 1002], start: "2026-10-29", end: "2026-10-29" },
+    ]);
+  });
+
+  it("deletes a vacation of two children once, or for the children chosen", async () => {
+    const shared = { vacations: [present(VACATIONS.vacations[0])] };
+    const { card, hass } = await mount(VACATION, "thu-1000", {
+      commands: commands({ "aula_connect/vacations": () => shared }),
+    });
+    expect(texts(card, "li.family-row .family-sub")).toEqual(["Ida og Oskar · Til bedsteforældre"]);
+    await tap(card, ".family-row .icon-button");
+    expect(windowText(card)).toContain("Slet ferie/fri for Ida og Oskar?");
+    await tap(card, "dialog .face-choice", "Ida");
+    await tap(card, "dialog .face-choice", "Oskar");
+    expect(find(card, "dialog .filled-button", "Slet").disabled).toBe(true);
+    await tap(card, "dialog .face-choice", "Oskar");
+    await tap(card, "dialog .filled-button", "Slet");
+    expect(sent(hass.callWS.mock, "vacation/delete")).toEqual([
+      { type: "aula_connect/vacation/delete", entry_id: "entry-a", vacation_id: 71 },
+    ]);
   });
 });

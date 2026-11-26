@@ -23,7 +23,7 @@ import { rememberSender } from "../core/selection.ts";
 import type { Change, Child, SickCheck, ThreadList, TodayData } from "../core/types.ts";
 import { allowing, senderOf, type FamilyChild, type FamilyView } from "../model/family.ts";
 import type { CardState } from "./card.ts";
-import { alert, faceImage, icon, label, loading, turnedOff } from "./primitives.ts";
+import { alert, faceImage, icon, label, listOf, loading, minis, turnedOff } from "./primitives.ts";
 import { head, modal } from "./window.ts";
 
 /** What reporting a child sick is about: the child, its entries and its day as it is now. */
@@ -495,7 +495,216 @@ export interface SickCardOptions {
   readonly sender: string | undefined;
 }
 
-/** Renders the sick card: a row for each child, which opens the window that reports it sick. */
+/** A child of the window that reports several sick: whether it can be, and how it went. */
+interface SeveralChild {
+  readonly family: FamilyChild;
+  readonly entry: Child;
+  /** What the check answered, or its error; undefined while it runs. */
+  check: SickCheck | { readonly error: unknown } | undefined;
+  /** Why its report failed; undefined while it did not. */
+  error: unknown;
+  /** Whether it was reported sick in this window. */
+  reported: boolean;
+}
+
+/** Tells whether a child can be reported sick now, by its route and its check. */
+function reportable(item: SeveralChild): boolean {
+  const check = item.check;
+  return (
+    check !== undefined &&
+    !("error" in check) &&
+    check.route !== "none" &&
+    check.child_found &&
+    check.sick_today !== true
+  );
+}
+
+/**
+ * Opens the window that reports several children sick today at once, each checked first and each
+ * reported once; then each can be written about on its own. `key` is the opening button's
+ * `data-detail`.
+ */
+export function openSickSeveral(
+  state: CardState,
+  families: readonly FamilyChild[],
+  options: SickCardOptions,
+  key: string,
+): void {
+  const items: SeveralChild[] = families.map((family) => ({
+    family,
+    entry: senderOf(family, options.sender, "sick_reports"),
+    check: undefined,
+    error: undefined,
+    reported: false,
+  }));
+  const chosen = new Set(items.map((item) => item.family.child.child_id));
+  const step = { busy: false, done: false };
+  for (const item of items) {
+    const settle = (answer: SickCheck | { readonly error: unknown }): void => {
+      item.check = answer;
+      state.requestUpdate();
+    };
+    checkSick(state.callWS, item.entry).then(settle, (error: unknown) => {
+      settle({ error });
+    });
+  }
+  const report = (): void => {
+    step.busy = true;
+    state.requestUpdate();
+    void (async () => {
+      // Each child is reported once, in turn; one that fails is not tried again.
+      for (const item of items.filter(
+        (found) => chosen.has(found.family.child.child_id) && reportable(found),
+      )) {
+        try {
+          await reportSick(state.callWS, item.entry);
+          item.reported = true;
+          rememberSender(item.family.child.child_id, item.entry.entry_id);
+        } catch (error: unknown) {
+          item.error = error;
+        }
+      }
+      step.busy = false;
+      step.done = true;
+      state.requestUpdate();
+    })();
+  };
+  state.openModal(key, (ctx, close) => {
+    const { t } = ctx;
+    const faces = items.map((item) => state.face(item.family.child));
+    const day = capitalize(formatDay(ctx.today, ctx.language), ctx.language);
+    const top = head(
+      t("reportSeveralSick"),
+      [day],
+      [],
+      ctx,
+      close,
+      minis(faces, ctx, "window-faces"),
+    );
+    const nameOf = (item: SeveralChild): string => state.face(item.family.child).name;
+    if (step.done) {
+      return modal(
+        html`${top}
+          ${items
+            .filter((item) => item.reported || item.error !== undefined)
+            .map((item) =>
+              item.reported
+                ? html`<p class="done-line">
+                    ${icon("mdi:check-circle-outline")}<span
+                      >${t("sickDone", { name: nameOf(item) })}</span
+                    >
+                    ${
+                      may(item.family, "messages")
+                        ? html`<button
+                            class="text-button"
+                            type="button"
+                            @click=${() => {
+                              openSick(
+                                state,
+                                { family: item.family, ...options },
+                                `sick|${String(item.family.child.child_id)}`,
+                                true,
+                              );
+                            }}
+                          >
+                            ${t("writeMessage")}
+                          </button>`
+                        : nothing
+                    }
+                  </p>`
+                : alert("error", `${nameOf(item)}: ${actionErrorText(item.error, t)}`),
+            )}
+          <div class="window-actions">
+            <button class="filled-button" type="button" @click=${close}>${t("close2")}</button>
+          </div>`,
+        close,
+      );
+    }
+    const waiting = items.some((item) => item.check === undefined);
+    const ready = items.filter(
+      (item) => chosen.has(item.family.child.child_id) && reportable(item),
+    );
+    return modal(
+      html`${top}
+        <div class="field">
+          <span class="field-label" id="sick-several">${t("vacationFor")}</span>
+          <div class="choices" role="group" aria-labelledby="sick-several">
+            ${items.map((item) => {
+              const id = item.family.child.child_id;
+              const face = state.face(item.family.child);
+              const can = reportable(item);
+              return html`<button
+                class="choice face-choice"
+                type="button"
+                aria-pressed=${chosen.has(id) && can ? "true" : "false"}
+                ?disabled=${!can || step.busy}
+                @click=${() => {
+                  if (!chosen.delete(id)) chosen.add(id);
+                  state.requestUpdate();
+                }}
+              >
+                ${faceImage(face, "mini")}<span>${face.name}</span>
+              </button>`;
+            })}
+          </div>
+        </div>
+        ${items.map((item) => {
+          const check = item.check;
+          if (check === undefined || reportable(item)) return nothing;
+          if ("error" in check)
+            return alert("error", `${nameOf(item)}: ${actionErrorText(check.error, t)}`);
+          return html`<p class="window-note">
+            ${icon("mdi:information-outline")}<span
+              >${
+                check.sick_today === true
+                  ? t("sickDone", { name: nameOf(item) })
+                  : t("sickRouteNone", { name: nameOf(item) })
+              }</span
+            >
+          </p>`;
+        })}
+        ${waiting ? loading(t) : nothing}
+        ${
+          ready.some(
+            (item) =>
+              item.check !== undefined &&
+              !("error" in item.check) &&
+              item.check.route === "tabulex",
+          )
+            ? html`<p class="window-note">
+                ${icon("mdi:alert-outline")}<span>${t("sickFinal")}</span>
+              </p>`
+            : nothing
+        }
+        ${
+          ready.length > 0
+            ? html`<p class="info-line">
+                ${icon("mdi:thermometer")}<span
+                  >${t("sickSeveralSummary", { names: listOf(ready.map(nameOf), ctx) })}</span
+                >
+              </p>`
+            : nothing
+        }
+        <div class="window-actions">
+          <button class="text-button" type="button" @click=${close}>${t("cancel")}</button>
+          <button
+            class="filled-button"
+            type="button"
+            ?disabled=${waiting || ready.length === 0 || step.busy}
+            @click=${report}
+          >
+            ${step.busy ? t("sending") : t("sickConfirm")}
+          </button>
+        </div>`,
+      close,
+    );
+  });
+}
+
+/**
+ * Renders the sick card: a row for each child, which opens the window that reports it sick, and
+ * a button that reports several sick at once where more than one can be.
+ */
 export function renderSickCard(
   view: FamilyView,
   ctx: ViewContext,
@@ -503,6 +712,13 @@ export function renderSickCard(
   options: SickCardOptions,
 ): TemplateResult {
   const { t } = ctx;
+  const several = view.children.filter(
+    (family) =>
+      family.today?.sick.today !== true &&
+      family.today?.sick.route !== undefined &&
+      family.today.sick.route !== "none" &&
+      may(family, "sick_reports"),
+  );
   return html`<section class="family-card" aria-label=${t("sickTitle")}>
     <h2 class="block-head">${icon("mdi:thermometer")}<span>${t("sickTitle")}</span></h2>
     <ul class="family-rows">
@@ -532,5 +748,22 @@ export function renderSickCard(
         </li>`;
       })}
     </ul>
+    ${
+      several.length > 1
+        ? html`<div class="window-actions">
+            <button
+              class="text-button"
+              type="button"
+              aria-haspopup="dialog"
+              data-detail="sick-several"
+              @click=${() => {
+                openSickSeveral(state, several, options, "sick-several");
+              }}
+            >
+              ${t("reportSeveralSick")}
+            </button>
+          </div>`
+        : nothing
+    }
   </section>`;
 }

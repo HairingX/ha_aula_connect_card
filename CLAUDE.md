@@ -10,10 +10,13 @@ how it is set up: the README.
 
 ## These cards
 
-- The school day, week plan, week, overview and important cards only show. The sick, vacation
-  requests and vacation cards, and the overview's presence window, act in Aula only on a tap,
+- The school day, week plan, week, overview and important cards only show. The sick and
+  Ferie/fri cards, and the overview's presence and request windows, act in Aula only on a tap,
   each step its own tap, showing what is sent and to whom, with nothing sent unseen; nothing is
   ever marked read. What is opened closes again by itself.
+- The dashboard's first page shows only what matters now; what needs the family comes to the
+  overview and goes once it is done. Sickness, vacations and vacation requests are Fravær, a
+  page of their own, as Aula's Komme/gå has them.
 - The children's bar's choice (hidden children, the overview's look, the guardian last acted as)
   is kept per device in browser storage, wrapped in try/catch: ids and words, never a child's
   data. People standing in for children come from configuration.

@@ -6,7 +6,7 @@
  */
 
 import { addDays, isDay } from "../core/dates.ts";
-import type { Day, Vacation, VacationDay, VacationRequest } from "../core/types.ts";
+import type { Day, VacationDay, VacationRequest } from "../core/types.ts";
 
 /** How far ahead a vacation can be registered, in days from today. */
 export const VACATION_AHEAD_DAYS = 365;
@@ -77,11 +77,4 @@ export function vacationValid(start: string, end: string, today: Day): boolean {
     end >= start &&
     end <= addDays(today, VACATION_AHEAD_DAYS)
   );
-}
-
-/** Returns the vacations not over yet, by their first day. */
-export function comingVacations(vacations: readonly Vacation[], today: Day): Vacation[] {
-  return vacations
-    .filter((vacation) => vacation.end >= today)
-    .sort((a, b) => a.start.localeCompare(b.start));
 }

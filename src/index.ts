@@ -14,7 +14,6 @@ import { AulaConnectOverviewCard } from "./cards/overview-card.ts";
 import { registerCard } from "./cards/register.ts";
 import { AulaConnectSickCard } from "./cards/sick-card.ts";
 import { AulaConnectVacationCard } from "./cards/vacation-card.ts";
-import { AulaConnectVacationRequestsCard } from "./cards/vacation-requests-card.ts";
 import { AulaConnectWeekCard } from "./cards/week-card.ts";
 import { AulaConnectWeekplanCard } from "./cards/weekplan-card.ts";
 import { DAY_CARD } from "./config/day.ts";
@@ -24,7 +23,6 @@ import {
   OVERVIEW_CARD,
   SICK_CARD,
   VACATION_CARD,
-  VACATION_REQUESTS_CARD,
 } from "./config/family.ts";
 import { WEEK_CARD } from "./config/week.ts";
 import { WEEKPLAN_CARD } from "./config/weekplan.ts";
@@ -79,12 +77,6 @@ const defined = [
     description: "pickerSickDescription",
     preview: true,
     anchor: "#sick-card",
-  }),
-  registerCard(VACATION_REQUESTS_CARD, AulaConnectVacationRequestsCard, {
-    name: "pickerVacationRequestsName",
-    description: "pickerVacationRequestsDescription",
-    preview: true,
-    anchor: "#vacation-requests-card",
   }),
   registerCard(VACATION_CARD, AulaConnectVacationCard, {
     name: "pickerVacationName",

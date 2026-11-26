@@ -17,9 +17,7 @@ export const OVERVIEW_CARD = "aula-connect-overview-card";
 export const IMPORTANT_CARD = "aula-connect-important-card";
 /** The card that reports a child sick. */
 export const SICK_CARD = "aula-connect-sick-card";
-/** The card that answers vacation requests. */
-export const VACATION_REQUESTS_CARD = "aula-connect-vacation-requests-card";
-/** The card that registers vacations. */
+/** Ferie/fri: the vacations and the vacation requests. */
 export const VACATION_CARD = "aula-connect-vacation-card";
 
 /** A person whose name and picture stand in for a child's. */
@@ -30,18 +28,31 @@ export interface PersonFor {
   readonly person: string;
 }
 
-/** The views the overview's tiles go to, relative to the dashboard unless they begin with "/". */
+/**
+ * The views the overview's tiles go to, relative to the dashboard unless they begin with "/";
+ * null for a tile left out.
+ */
 export interface Paths {
   /** The Important page. */
-  readonly important: string;
+  readonly important: string | null;
   /** The week plan. */
-  readonly weekplan: string;
+  readonly weekplan: string | null;
   /** The week. */
-  readonly week: string;
+  readonly week: string | null;
+  /** Fravær: sickness, vacations and vacation requests. */
+  readonly absence: string | null;
 }
 
+/** Fravær's icon, on the overview's tile and the dashboard's view. */
+export const ABSENCE_ICON = "mdi:calendar-account-outline";
+
 /** The views the dashboard strategy makes, and the overview goes to by default. */
-export const DEFAULT_PATHS: Paths = { important: "vigtigt", weekplan: "ugeplan", week: "uge" };
+export const DEFAULT_PATHS: { readonly [key in keyof Paths]: string } = {
+  important: "vigtigt",
+  weekplan: "ugeplan",
+  week: "uge",
+  absence: "fravaer",
+};
 
 /** The children's bar's configuration. */
 export interface ChildrenBarConfig extends CommonConfig {
@@ -117,14 +128,19 @@ export function parseFlag(value: unknown, name: string): boolean {
 /** Reads `paths`: the views the overview's tiles go to. */
 export function parsePaths(value: unknown): Paths {
   if (absent(value)) return DEFAULT_PATHS;
-  if (!isRecord(value)) throw new Error("paths: must be a mapping of important, weekplan and week");
-  const paths = { ...DEFAULT_PATHS };
+  if (!isRecord(value))
+    throw new Error("paths: must be a mapping of important, weekplan, week and absence");
+  const paths: { -readonly [key in keyof Paths]: string | null } = { ...DEFAULT_PATHS };
   for (const [key, path] of Object.entries(value)) {
     if (!(key in DEFAULT_PATHS))
-      throw new Error(`paths: unknown key "${key}"; the keys are important, weekplan and week`);
+      throw new Error(
+        `paths: unknown key "${key}"; the keys are important, weekplan, week and absence`,
+      );
     if (absent(path)) continue;
-    if (typeof path !== "string") throw new Error(`paths.${key}: must be a view's path`);
-    paths[key as keyof Paths] = path.trim();
+    if (path === false) paths[key as keyof Paths] = null;
+    else if (typeof path !== "string")
+      throw new Error(`paths.${key}: must be a view's path, or false to leave the tile out`);
+    else paths[key as keyof Paths] = path.trim();
   }
   return paths;
 }
@@ -207,7 +223,6 @@ export type FamilyCard =
   | typeof OVERVIEW_CARD
   | typeof IMPORTANT_CARD
   | typeof SICK_CARD
-  | typeof VACATION_REQUESTS_CARD
   | typeof VACATION_CARD;
 
 const FORMS: Readonly<Record<FamilyCard, readonly FieldName[]>> = {
@@ -224,7 +239,6 @@ const FORMS: Readonly<Record<FamilyCard, readonly FieldName[]>> = {
   ],
   [IMPORTANT_CARD]: ["children", "size", "subject_names_group"],
   [SICK_CARD]: ["children", "sick_message", "sender", "size"],
-  [VACATION_REQUESTS_CARD]: ["children", "sender", "size"],
   [VACATION_CARD]: ["children", "sender", "size"],
 };
 
@@ -233,7 +247,6 @@ const RESOLVE: Readonly<Record<FamilyCard, (config: unknown, lenient: boolean) =
   [OVERVIEW_CARD]: resolveOverviewConfig,
   [IMPORTANT_CARD]: resolveImportantConfig,
   [SICK_CARD]: resolveActionConfig,
-  [VACATION_REQUESTS_CARD]: resolveActionConfig,
   [VACATION_CARD]: resolveActionConfig,
 };
 

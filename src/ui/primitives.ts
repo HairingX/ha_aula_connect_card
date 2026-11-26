@@ -152,6 +152,21 @@ export function faceImage(face: Face, cls = ""): TemplateResult {
       >`;
 }
 
+/**
+ * Shows the faces of the children something concerns, side by side and overlapping, with their
+ * names for a screen reader.
+ */
+export function minis(faces: readonly Face[], ctx: ViewContext, cls = ""): TemplateResult {
+  return html`<span class="ov-minis ${cls}"
+    >${faces.map((face) => faceImage(face, "mini"))}<span class="sr"
+      >${listOf(
+        faces.map((face) => face.name),
+        ctx,
+      )}</span
+    ></span
+  >`;
+}
+
 /** The icon of an event, by Aula's type. */
 export function eventIcon(type: string): string {
   switch (type) {

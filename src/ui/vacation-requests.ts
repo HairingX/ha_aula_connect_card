@@ -1,6 +1,7 @@
 /**
- * The vacation requests: for each child the institution's requests that can still be answered,
- * and the window that answers one, day by day. Nothing is sent without a tap.
+ * The vacation requests: a row for each request, once for every child it is asked of, and the
+ * window that answers it day by day for all of them at once, a day split where the children's
+ * differ. Nothing is sent without a tap, and each child's answer is sent once.
  *
  * @packageDocumentation
  */
@@ -16,120 +17,145 @@ import {
   formatWeekdayShortDate,
 } from "../core/dates.ts";
 import { rememberSender } from "../core/selection.ts";
-import type { Child, Day, VacationDay, VacationRequest } from "../core/types.ts";
-import type { FamilyChild } from "../model/family.ts";
-import {
-  answerableDays,
-  answerReady,
-  COMMENT_MAX,
-  deadlinePassed,
-  openRequests,
-} from "../model/vacation.ts";
+import type { Day, VacationDay } from "../core/types.ts";
+import type { RequestFor, RequestGroup } from "../model/absence.ts";
+import { answerableDays, answerReady, COMMENT_MAX, deadlinePassed } from "../model/vacation.ts";
 import type { CardState } from "./card.ts";
-import type { Load } from "./loads.ts";
-import { alert, apiError, aula, faceImage, icon, label, loading, turnedOff } from "./primitives.ts";
+import { alert, aula, faceImage, icon, label, listOf, minis, turnedOff } from "./primitives.ts";
 import { head, modal } from "./window.ts";
 
-/** A child's vacation requests, and the entry they are asked and answered from. */
-export interface ChildRequests {
-  /** The child, with its entries and day. */
-  readonly family: FamilyChild;
-  /** The entry acted from. */
-  readonly entry: Child;
-  /** The requests, as they stand. */
-  readonly load: Load<VacationRequest[]>;
+/** A child's own answer for a day. */
+interface OwnAnswer {
+  /** The child's request. */
+  readonly item: RequestFor;
+  /** Its answer for the day. */
+  readonly day: VacationDay;
+}
+
+/** A day's answer: for every child at once, or one for each child where they differ. */
+interface DayAnswer {
+  /** The day. */
+  readonly date: Day;
+  /** The answer every child is given, while the day is not split. */
+  readonly shared: VacationDay;
+  /** Each child's own answer, once the day is split. */
+  split: OwnAnswer[] | undefined;
 }
 
 /** What answering a request has come to. */
 interface Answer {
-  days: VacationDay[];
+  readonly days: DayAnswer[];
   comment: string;
   busy: boolean;
-  error: unknown;
-  sent: boolean;
+  /** Why the children whose answer failed were not answered. */
+  readonly errors: Map<RequestFor, unknown>;
+  /** The children whose answer was sent. */
+  readonly sent: Set<RequestFor>;
 }
 
-/**
- * Shows the day to answer a request by; nothing for one answered, as its mark says that, nor for
- * one awaiting an answer without a deadline, as its label says that.
- */
-export function requestState(request: VacationRequest, ctx: ViewContext): string | undefined {
-  if (!request.missing_answer || request.deadline === null) return undefined;
-  return `${ctx.t("answerByTitle")} ${formatShortDate(request.deadline, ctx.language)}`;
-}
-
-function requestTitle(request: VacationRequest, ctx: ViewContext): string {
+/** Returns a request's title, or its days where it has none. */
+export function requestTitle(group: RequestGroup, ctx: ViewContext): string {
   return (
-    request.title ||
-    ctx.t("holidayOf", { days: formatDayRange(request.start, request.end, ctx.language, "short") })
+    group.title ||
+    ctx.t("holidayOf", { days: formatDayRange(group.start, group.end, ctx.language, "short") })
+  );
+}
+
+/** Returns a request's line under its title: its days, and the day to answer it by while it awaits an answer. */
+export function requestLine(group: RequestGroup, ctx: ViewContext): string {
+  const days = formatDayRange(group.start, group.end, ctx.language, "short");
+  return group.missing && group.deadline !== null
+    ? `${days} · ${ctx.t("answerByTitle")} ${formatShortDate(group.deadline, ctx.language)}`
+    : days;
+}
+
+const same = (a: VacationDay, b: VacationDay): boolean =>
+  a.is_coming === b.is_coming && a.entry_time === b.entry_time && a.exit_time === b.exit_time;
+
+// A child whose request lacks one of the days starts it unanswered.
+function answerOf(items: readonly RequestFor[]): Answer {
+  const [first] = items as readonly [RequestFor, ...RequestFor[]];
+  const days = first.request.days.map((day): DayAnswer => {
+    const blank = { ...day, is_coming: null, entry_time: null, exit_time: null };
+    const own = items.map((item) => ({
+      item,
+      day: { ...(item.request.days.find((found) => found.date === day.date) ?? blank) },
+    }));
+    const differ = own.some((answer) => !same(answer.day, day));
+    return { date: day.date, shared: { ...day }, split: differ ? own : undefined };
+  });
+  return { days, comment: "", busy: false, errors: new Map(), sent: new Set() };
+}
+
+function daysFor(answer: Answer, item: RequestFor): VacationDay[] {
+  return answer.days.flatMap((day) =>
+    (day.split
+      ? day.split.filter((own) => own.item === item).map((own) => own.day)
+      : [day.shared]
+    ).map((own) => ({ ...own, date: day.date })),
   );
 }
 
 /**
- * Opens the window that answers a request; `key` is the opening button's `data-detail`, and
- * `answered` is called once the answer is sent.
+ * Opens the window that answers a request for every child it is asked of whose entry allows it;
+ * `key` is the opening button's `data-detail`, and `answered` is called once an answer is sent.
  */
-export function openRequest(
+export function openRequestGroup(
   state: CardState,
-  target: ChildRequests,
-  request: VacationRequest,
+  group: RequestGroup,
   key: string,
   answered: () => void,
 ): void {
-  const answer: Answer = {
-    days: request.days.map((day) => ({ ...day })),
-    comment: "",
-    busy: false,
-    error: undefined,
-    sent: false,
-  };
+  const items = group.items.filter((item) => item.entry.allowed.includes("vacation_requests"));
+  const answer = answerOf(items.length > 0 ? items : group.items);
   const send = (today: Day): void => {
-    const entry = target.entry;
+    const waiting = items.filter((item) => !answer.sent.has(item));
     answer.busy = true;
-    answer.error = undefined;
+    answer.errors.clear();
     state.requestUpdate();
-    answerVacationRequest(
-      state.callWS,
-      entry,
-      request.id,
-      answerableDays(answer.days, today),
-      answer.comment,
-    ).then(
-      () => {
-        answer.busy = false;
-        answer.sent = true;
-        rememberSender(entry.child_id, entry.entry_id);
-        answered();
-        state.requestUpdate();
-      },
-      (error: unknown) => {
-        answer.busy = false;
-        answer.error = error;
-        state.requestUpdate();
-      },
-    );
+    void (async () => {
+      // One answer for each child, in turn, each sent once.
+      for (const item of waiting) {
+        try {
+          await answerVacationRequest(
+            state.callWS,
+            item.entry,
+            item.request.id,
+            answerableDays(daysFor(answer, item), today),
+            answer.comment,
+          );
+          answer.sent.add(item);
+          rememberSender(item.entry.child_id, item.entry.entry_id);
+        } catch (error: unknown) {
+          answer.errors.set(item, error);
+        }
+      }
+      answer.busy = false;
+      if (answer.sent.size > 0) answered();
+      state.requestUpdate();
+    })();
   };
   state.openModal(key, (ctx, close) =>
-    modal(requestWindow(answer, target, request, ctx, close, state, send), close),
+    modal(requestWindow(answer, group, items, ctx, close, state, send), close),
   );
 }
 
-function dayAnswer(
+function dayChoices(
   day: VacationDay,
-  request: VacationRequest,
+  name: string,
+  times: boolean,
+  locked: boolean,
   ctx: ViewContext,
   state: CardState,
-  locked: boolean,
 ): TemplateResult {
   const { t } = ctx;
-  const date = capitalize(formatWeekdayShortDate(day.date, ctx.language), ctx.language);
   const choose = (coming: boolean) => (): void => {
     day.is_coming = coming;
     state.requestUpdate();
   };
-  const timeInput = (which: "entry_time" | "exit_time", name: string): TemplateResult =>
+  const timeInput = (which: "entry_time" | "exit_time", text: string): TemplateResult =>
     html`<label class="answer-time"
-      ><span>${name}</span
+      ><span>${text}</span
       ><input
         class="text-input"
         type="time"
@@ -141,9 +167,7 @@ function dayAnswer(
           state.requestUpdate();
         }}
     /></label>`;
-  return html`<li class="answer-day">
-    <span class="answer-date">${date}</span>
-    <span class="choices" role="group" aria-label=${date}>
+  return html`<span class="choices" role="group" aria-label=${name}>
       <button
         class="choice"
         type="button"
@@ -164,10 +188,60 @@ function dayAnswer(
       </button>
     </span>
     ${
-      day.is_coming === true && request.times_required
+      day.is_coming === true && times
         ? html`<span class="answer-times"
             >${timeInput("entry_time", t("dayArrives"))}${timeInput("exit_time", t("dayLeaves"))}</span
           >`
+        : nothing
+    }`;
+}
+
+function dayRow(
+  day: DayAnswer,
+  items: readonly RequestFor[],
+  times: boolean,
+  locked: boolean,
+  ctx: ViewContext,
+  state: CardState,
+): TemplateResult {
+  const { t } = ctx;
+  const date = capitalize(formatWeekdayShortDate(day.date, ctx.language), ctx.language);
+  const toggle = (): void => {
+    if (day.split === undefined) {
+      day.split = items.map((item) => ({ item, day: { ...day.shared } }));
+    } else {
+      Object.assign(day.shared, ...day.split.slice(0, 1).map((own) => own.day), {
+        date: day.date,
+      });
+      day.split = undefined;
+    }
+    state.requestUpdate();
+  };
+  const split = day.split;
+  return html`<li class="answer-day">
+    <span class="answer-date">${date}</span>
+    ${
+      split === undefined
+        ? dayChoices(day.shared, date, times, locked, ctx, state)
+        : html`<ul class="answer-split">
+            ${split
+              .filter((own) => items.includes(own.item))
+              .map((own) => {
+                const face = state.face(own.item.child);
+                return html`<li class="answer-child">
+                  <span class="answer-who"
+                    >${faceImage(face, "mini")}<span>${face.name}</span></span
+                  >
+                  ${dayChoices(own.day, `${date}: ${face.name}`, times, locked, ctx, state)}
+                </li>`;
+              })}
+          </ul>`
+    }
+    ${
+      items.length > 1 && !locked
+        ? html`<button class="text-button answer-split-toggle" type="button" @click=${toggle}>
+            ${split === undefined ? t("answerSplit") : t("answerJoin")}
+          </button>`
         : nothing
     }
   </li>`;
@@ -175,50 +249,67 @@ function dayAnswer(
 
 function requestWindow(
   answer: Answer,
-  target: ChildRequests,
-  request: VacationRequest,
+  group: RequestGroup,
+  items: readonly RequestFor[],
   ctx: ViewContext,
   close: () => void,
   state: CardState,
   send: (today: Day) => void,
 ): TemplateResult {
   const { t } = ctx;
-  const face = state.face(target.family.child);
-  const passed = deadlinePassed(request, ctx.today);
-  const range = formatDayRange(request.start, request.end, ctx.language, "long");
+  const faces = group.items.map((item) => state.face(item.child));
+  const range = formatDayRange(group.start, group.end, ctx.language, "long");
   const top = head(
-    requestTitle(request, ctx),
-    [face.name, range],
-    [request.missing_answer ? label(t("missingAnswer"), "warning") : label(t("answered"))],
+    requestTitle(group, ctx),
+    [
+      listOf(
+        faces.map((face) => face.name),
+        ctx,
+      ),
+      range,
+    ],
+    [group.missing ? label(t("missingAnswer"), "warning") : label(t("answered"))],
     ctx,
     close,
-    faceImage(face, "window-face"),
+    minis(faces, ctx, "window-faces"),
   );
-  if (answer.sent) {
-    return html`${top}
-      <p class="done-line">${icon("mdi:check-circle-outline")}<span>${t("answerSent")}</span></p>
+  const [first] = group.items as readonly [RequestFor, ...RequestFor[]];
+  const note = first.request.note
+    ? html`<p class="window-note">
+        ${icon("mdi:information-outline")}<span>${aula(first.request.note, ctx)}</span>
+      </p>`
+    : nothing;
+  if (items.length === 0) return html`${top}${note}${turnedOff("vacation_requests", t)}`;
+  const nameOf = (item: RequestFor): string => state.face(item.child).name;
+  const sentTo = items.filter((item) => answer.sent.has(item));
+  const sentLine =
+    sentTo.length > 0
+      ? html`<p class="done-line">
+          ${icon("mdi:check-circle-outline")}<span
+            >${t("answerSentFor", { names: listOf(sentTo.map(nameOf), ctx) })}</span
+          >
+        </p>`
+      : nothing;
+  if (sentTo.length === items.length) {
+    return html`${top} ${sentLine}
       <div class="window-actions">
         <button class="filled-button" type="button" @click=${close}>${t("close2")}</button>
       </div>`;
   }
-  const note = request.note
-    ? html`<p class="window-note">
-        ${icon("mdi:information-outline")}<span>${aula(request.note, ctx)}</span>
-      </p>`
-    : nothing;
-  if (!target.entry.allowed.includes("vacation_requests"))
-    return html`${top}${note}${turnedOff("vacation_requests", t)}`;
+  const passed = deadlinePassed(first.request, ctx.today);
   const locked = passed || answer.busy;
-  const ready = answerReady(answer.days, request.times_required, ctx.today);
+  const times = first.request.times_required;
+  const waiting = items.filter((item) => !answer.sent.has(item));
+  const ready = waiting.every((item) => answerReady(daysFor(answer, item), times, ctx.today));
   return html`${top} ${note}
     ${
       passed
         ? alert("warning", t("requestDeadlinePassed"))
-        : request.deadline === null
+        : group.deadline === null
           ? nothing
           : html`<p class="info-line">
               ${icon("mdi:calendar-clock")}<span
-                >${t("answerByTitle")} ${formatShortDate(request.deadline, ctx.language)}</span
+                >${t("answerByTitle")} ${formatShortDate(group.deadline, ctx.language)}</span
               >
             </p>`
     }
@@ -226,7 +317,7 @@ function requestWindow(
       <span class="field-label">${t("answerEveryDay")}</span>
       <ul class="answer-days">
         ${answer.days.map((day) =>
-          dayAnswer(day, request, ctx, state, locked || day.date < ctx.today),
+          dayRow(day, waiting, times, locked || day.date < ctx.today, ctx, state),
         )}
       </ul>
     </div>
@@ -245,7 +336,22 @@ function requestWindow(
         }}
       ></textarea>
     </div>
-    ${answer.error === undefined ? nothing : alert("error", actionErrorText(answer.error, t))}
+    ${sentLine}
+    ${[...answer.errors].map(([item, error]) =>
+      alert(
+        "error",
+        t("answerFailedFor", { name: nameOf(item), error: actionErrorText(error, t) }),
+      ),
+    )}
+    ${
+      ready && !passed
+        ? html`<p class="info-line">
+            ${icon("mdi:send-outline")}<span
+              >${t("answerGoesTo", { names: listOf(waiting.map(nameOf), ctx) })}</span
+            >
+          </p>`
+        : nothing
+    }
     <div class="window-actions">
       <button class="text-button" type="button" @click=${close}>${t("cancel")}</button>
       <button
@@ -261,74 +367,41 @@ function requestWindow(
     </div>`;
 }
 
-/** Renders the vacation requests card; `answered` is called once a request is answered. */
-export function renderVacationRequests(
-  children: readonly ChildRequests[],
+/** Shows a request's row, once for every child it is asked of; a tap opens its window. */
+export function requestRow(
+  group: RequestGroup,
   ctx: ViewContext,
   state: CardState,
   answered: () => void,
 ): TemplateResult {
   const { t } = ctx;
-  const waiting = children.some(({ load }) => load.data === undefined && load.error === undefined);
-  const rows = children.flatMap((target) => {
-    const { load, family } = target;
-    if (load.error !== undefined && load.data === undefined)
-      return [html`<li>${apiError(load.error, t)}</li>`];
-    if (load.data === undefined) return [];
-    const face = state.face(family.child);
-    return openRequests(load.data, ctx.today).map((request) => {
-      const said = requestState(request, ctx);
-      const key = `request|${String(family.child.child_id)}|${String(request.id)}`;
-      return html`<li>
-        <button
-          class="family-row"
-          type="button"
-          aria-haspopup="dialog"
-          data-detail=${key}
-          @click=${() => {
-            openRequest(state, target, request, key, answered);
-          }}
-        >
-          ${faceImage(face)}
-          <span class="family-text">
-            <span class="family-title">${requestTitle(request, ctx)}</span>
-            <span class="family-sub"
-              >${face.name} ·
-              ${formatDayRange(request.start, request.end, ctx.language, "short")}</span
-            >
-            ${said === undefined ? nothing : html`<span class="family-sub">${said}</span>`}
-          </span>
-          ${
-            request.missing_answer
-              ? html`${label(t("missingAnswer"), "warning")}${icon("mdi:chevron-right", "chevron-end")}`
-              : html`<ha-icon
-                  class="chevron-end answered-mark"
-                  icon="mdi:check-circle"
-                  role="img"
-                  aria-label=${t("answered")}
-                ></ha-icon>`
-          }
-        </button>
-      </li>`;
-    });
-  });
-  return html`<section class="family-card" aria-label=${t("vacationRequests")}>
-    <h2 class="block-head">${icon("mdi:beach")}<span>${t("vacationRequests")}</span></h2>
-    ${
-      rows.length > 0
-        ? html`<ul class="family-rows">
-            ${rows}
-          </ul>`
-        : nothing
-    }
-    ${
-      rows.length > 0
-        ? nothing
-        : waiting
-          ? loading(t)
-          : html`<p class="empty-line">
-              ${icon("mdi:check-circle-outline")}<span>${t("noVacationRequests")}</span>
-            </p>`
-    }
-  </section>`;
+  const key = `request|${group.key}`;
+  const faces = group.items.map((item) => state.face(item.child));
+  return html`<li>
+    <button
+      class="family-row"
+      type="button"
+      aria-haspopup="dialog"
+      data-detail=${key}
+      @click=${() => {
+        openRequestGroup(state, group, key, answered);
+      }}
+    >
+      ${minis(faces, ctx, "family-faces")}
+      <span class="family-text">
+        <span class="family-title">${requestTitle(group, ctx)}</span>
+        <span class="family-sub">${requestLine(group, ctx)}</span>
+      </span>
+      ${
+        group.missing
+          ? html`${label(t("missingAnswer"), "warning")}${icon("mdi:chevron-right", "chevron-end")}`
+          : html`<ha-icon
+              class="chevron-end answered-mark"
+              icon="mdi:check-circle"
+              role="img"
+              aria-label=${t("answered")}
+            ></ha-icon>`
+      }
+    </button>
+  </li>`;
 }
