@@ -318,8 +318,10 @@ What is important is headed by an orange flag and how much is due when - **4 vig
 dag · 2 til i morgen**, the later day only where it fits - and left out where nothing is. Each
 look is set apart, under `rows`, `columns` and `board`: `important` is `list`, the default, the
 next `important_max` notes (3 unless set, up to 99) a line each with its subject in its colour
-and its day, and **+ 2 mere** for the rest; or `button`, the heading alone. A tap opens them all,
-day by day. On the board a note's line is whole; elsewhere it ends in "…" where it does not fit.
+and its day, and **+ 2 mere** for the rest; or `button`, the heading alone. On the board a note's
+line is whole; elsewhere it ends in "…" where it does not fit. A tap opens all from today on, day
+by day, the days the heading names marked with the flag's colour, and the window opens at the
+first of them; its head, whose they are, stays in sight as it scrolls.
 
 ```yaml
 type: custom:aula-connect-overview-card

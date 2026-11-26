@@ -281,3 +281,18 @@ describe("the overview", () => {
     );
   });
 });
+
+describe("a window", () => {
+  it("keeps its head in sight as it scrolls, on the window's own background", () => {
+    expect(declared(details, ".detail-head")).toEqual(
+      expect.arrayContaining(["position: sticky", "top: 0"]),
+    );
+    expect(declared(details, ".detail-head").join(";")).toContain("--ha-dialog-surface-background");
+  });
+
+  it("marks the days of what is important the overview summed up by the colour of its flag", () => {
+    expect(declared(family, ".important-marked")).toContain(
+      "border-inline-start: calc(4px * var(--aula-scale)) solid var(--aula-warning)",
+    );
+  });
+});

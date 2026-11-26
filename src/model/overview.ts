@@ -63,8 +63,8 @@ export interface OverviewChild {
   readonly content: DayContent | undefined;
   /** The important notes from the focus day on, in the order of their days. */
   readonly important: readonly ImportantDue[];
-  /** The day the important notes are from: the focus day, else today. */
-  readonly importantFrom: Day;
+  /** The important notes from today on, in the order of their days. */
+  readonly upcoming: readonly ImportantDue[];
   /** The child's day as it is now, once it has come. */
   readonly today: TodayData | undefined;
   /** The child's presence today, where the institution registers one. */
@@ -228,7 +228,7 @@ function childOf(
     focus: basis.focus,
     content,
     important: importantFrom(basis, from),
-    importantFrom: from,
+    upcoming: importantFrom(basis, ctx.today),
     today,
     presence: presenceOf(today, hoursToday, ctx, switchAt),
     hoursToday,

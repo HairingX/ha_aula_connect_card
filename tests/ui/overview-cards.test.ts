@@ -248,6 +248,7 @@ describe("the overview", () => {
     const { card } = await mount(OVERVIEW, "thu-1000", { today: todayOf });
     await tap(card, ".ov-important", "1 vigtig ting til i dag");
     expect(windowText(card)).toContain("Vigtigt for Ida");
+    expect(windowText(card)).toContain("Fra i dag og frem");
     expect(windowText(card)).toContain("I dag · 29. okt.");
     expect(windowText(card)).toContain("Lektie til i dag: Læsebogen s. 38+39");
     const heard = vi.fn();
@@ -257,6 +258,49 @@ describe("the overview", () => {
     expect(location.pathname).toBe("/aula/vigtigt");
     expect(heard).toHaveBeenCalledOnce();
     expect(windowText(card)).toBe("");
+  });
+
+  it("marks in the window the days the overview sums up, among all from today on", async () => {
+    const { card } = await mount(OVERVIEW, "thu-1530", { today: todayOf });
+    expect(texts(card, ".ov-important-sum")[0]).toBe("2 vigtige ting til i morgen");
+    await tap(card, ".ov-important");
+    expect(windowText(card)).toContain("Fra i dag og frem");
+    expect(texts(card, "dialog .detail-heading").slice(0, 2)).toEqual([
+      "I dag · 29. okt.",
+      "I morgen · 30. okt.",
+    ]);
+    expect(texts(card, "dialog .important-marked .detail-heading")).toEqual([
+      "I morgen · 30. okt.",
+    ]);
+    expect(all(card, "dialog [data-opens-at]")).toHaveLength(1);
+  });
+
+  it("opens the window at the first day marked, under its head, unless it comes first", async () => {
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: Element,
+    ) {
+      const top = this.matches("[data-opens-at]") ? 300 : 0;
+      const bottom = this.matches(".detail-head") ? 80 : 0;
+      return {
+        top,
+        bottom,
+        left: 0,
+        right: 0,
+        width: 0,
+        height: 0,
+        x: 0,
+        y: top,
+        toJSON: () => ({}),
+      };
+    });
+    const { card } = await mount(OVERVIEW, "thu-1530", { today: todayOf });
+    await tap(card, ".ov-important");
+    expect(find(card, "dialog", undefined, HTMLDialogElement).scrollTop).toBe(220);
+    unmountAll();
+    const { card: morning } = await mount(OVERVIEW, "thu-1000", { today: todayOf });
+    await tap(morning, ".ov-important");
+    expect(find(morning, "dialog", undefined, HTMLDialogElement).scrollTop).toBe(0);
+    vi.restoreAllMocks();
   });
 
   it("opens a child's presence, with its times and reporting it sick", async () => {

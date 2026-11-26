@@ -443,10 +443,21 @@ export abstract class AulaCard<Config extends CardConfigBase, View extends CardV
       // Only a modal dialog keeps the page behind it from a finger and the keyboard; iOS still
       // drags the page behind a dialog, unless the page itself is held still.
       const dialog = this.renderRoot.querySelector("dialog");
-      if (dialog && !dialog.open) dialog.showModal();
+      if (dialog && !dialog.open) {
+        dialog.showModal();
+        this.#openAt(dialog);
+      }
       this.#holdPage(dialog !== null);
       this.#measure();
     });
+  }
+
+  // A window may name where it opens: there, under its head, which stays in sight as it scrolls.
+  #openAt(dialog: HTMLDialogElement): void {
+    const at = dialog.querySelector("[data-opens-at]");
+    const head = dialog.querySelector(".detail-head");
+    if (!at || !head || at.previousElementSibling === head) return;
+    dialog.scrollTop += at.getBoundingClientRect().top - head.getBoundingClientRect().bottom;
   }
 
   /** Resolves once the card has rendered all it was asked to. */

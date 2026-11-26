@@ -1181,14 +1181,15 @@ export const details = css`
     background: var(--mdc-dialog-scrim-color, rgba(0, 0, 0, 0.32));
   }
   .detail-body {
+    --detail-pad: var(--aula-space-6);
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-4);
-    padding: var(--aula-space-4) var(--aula-space-6) var(--aula-space-6);
+    padding: var(--aula-space-4) var(--detail-pad) var(--aula-space-6);
   }
   @media (max-width: 400px) {
     .detail-body {
-      padding-inline: var(--aula-space-4);
+      --detail-pad: var(--aula-space-4);
     }
   }
   .detail-cols,
@@ -1214,10 +1215,20 @@ export const details = css`
       border-top: 0;
     }
   }
+  /* The head stays in sight while the window scrolls, so that it is always clear whose it is. */
   .detail-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     display: flex;
     align-items: flex-start;
     gap: var(--aula-space-3);
+    margin: calc(-1 * var(--aula-space-4)) calc(-1 * var(--detail-pad)) 0;
+    padding: var(--aula-space-4) var(--detail-pad) var(--aula-space-2);
+    background: var(
+      --ha-dialog-surface-background,
+      var(--mdc-theme-surface, var(--card-background-color, #fff))
+    );
   }
   .detail-titles {
     flex: 1;
@@ -2894,6 +2905,22 @@ export const family = css`
   }
   .ov-panel .ov-important-text {
     white-space: normal;
+  }
+  /* In the window of all that is important, the days the overview summed up stand out. */
+  .important-marked {
+    padding-inline-start: var(--aula-space-3);
+    border-inline-start: calc(4px * var(--aula-scale)) solid var(--aula-warning);
+  }
+  .important-marked > .detail-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-2);
+    color: var(--aula-text);
+  }
+  .important-marked .ov-important-mark {
+    width: calc(24px * var(--aula-scale));
+    height: calc(24px * var(--aula-scale));
+    --mdc-icon-size: calc(14px * var(--aula-scale));
   }
   .note-due > li.due {
     padding: var(--aula-space-3) var(--aula-space-3) var(--aula-space-3) var(--aula-space-4);

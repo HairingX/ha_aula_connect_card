@@ -180,18 +180,19 @@ export function whenText(day: Day, ctx: ViewContext): string {
   return ahead < 7 ? formatWeekday(day, ctx.language) : formatShortDate(day, ctx.language);
 }
 
-/** Returns how much is important for its first day, and for the next where it is soon. */
-function importantParts(
-  first: ImportantDue,
-  important: readonly ImportantDue[],
-  ctx: ViewContext,
-): string[] {
+/** Returns the days a summary names: the first with something important, and the next if soon. */
+function summaryDays(important: readonly ImportantDue[], ctx: ViewContext): Day[] {
+  return [...new Set(important.map((item) => item.day))].filter(
+    (day, index) => index === 0 || (index === 1 && daysBetween(ctx.today, day) <= 3),
+  );
+}
+
+/** Returns how much is important for the days a summary names. */
+function importantParts(important: readonly ImportantDue[], ctx: ViewContext): string[] {
   const on = (day: Day): number => important.filter((item) => item.day === day).length;
-  const text = ctx.t("importantFor", { n: on(first.day), when: whenText(first.day, ctx) });
-  const next = important.find((item) => item.day !== first.day);
-  return next && daysBetween(ctx.today, next.day) <= 3
-    ? [text, ctx.t("importantThen", { n: on(next.day), when: whenText(next.day, ctx) })]
-    : [text];
+  return summaryDays(important, ctx).map((day, index) =>
+    ctx.t(index === 0 ? "importantFor" : "importantThen", { n: on(day), when: whenText(day, ctx) }),
+  );
 }
 
 /** Returns the axis every child's bar shares: from the earliest start to the latest end. */
@@ -335,7 +336,7 @@ function importantBlock(
     <span class="ov-important-head">
       <span class="ov-important-mark">${icon("mdi:flag")}</span
       ><span class="ov-important-sum"
-        >${importantParts(first, item.important, ctx).map(
+        >${importantParts(item.important, ctx).map(
           (part, index) => html`<span>${index > 0 ? ` · ${part}` : part}</span>`,
         )}</span
       >${icon("mdi:chevron-right", "ov-important-go")}
@@ -819,19 +820,28 @@ export function openImportant(
   const important = options.paths.important;
   state.openModal(key, (ctx, close) => {
     const face = state.face(item.child);
-    const days = [...new Set(item.important.map((due) => due.day))];
-    const from = item.importantFrom;
+    const days = [...new Set(item.upcoming.map((due) => due.day))];
+    // The days the overview summed up are marked, and the window opens at the first of them.
+    const marked = summaryDays(item.important, ctx);
     return modal(
-      html`${head(ctx.t("importantTitle", { name: face.name }), [ctx.t("importantFrom", { day: whenText(from, ctx) })], [], ctx, close, faceImage(face, "window-face"))}
-      ${days.map((day) =>
-        section(
-          `${capitalize(daysBetween(ctx.today, day) < 7 ? whenText(day, ctx) : formatWeekday(day, ctx.language), ctx.language)} · ${formatShortDate(day, ctx.language)}`,
-          [],
-          html`<ul class="note-due">
-            ${item.important.filter((due) => due.day === day).map((due) => dueItem(due, ctx))}
-          </ul>`,
-        ),
-      )}
+      html`${head(ctx.t("importantTitle", { name: face.name }), [ctx.t("importantFrom", { day: whenText(ctx.today, ctx) })], [], ctx, close, faceImage(face, "window-face"))}
+      ${days.map((day) => {
+        const title = `${capitalize(daysBetween(ctx.today, day) < 7 ? whenText(day, ctx) : formatWeekday(day, ctx.language), ctx.language)} · ${formatShortDate(day, ctx.language)}`;
+        const notes = html`<ul class="note-due">
+          ${item.upcoming.filter((due) => due.day === day).map((due) => dueItem(due, ctx))}
+        </ul>`;
+        return marked.includes(day)
+          ? html`<section
+              class="detail-section important-marked"
+              ?data-opens-at=${day === marked[0]}
+            >
+              <h3 class="detail-heading">
+                <span class="ov-important-mark">${icon("mdi:flag")}</span>${title}
+              </h3>
+              ${notes}
+            </section>`
+          : section(title, [], notes);
+      })}
       ${
         important === null
           ? nothing
