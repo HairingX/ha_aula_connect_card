@@ -2513,6 +2513,27 @@ export const family = css`
     stroke: var(--aula-line);
     stroke-width: 1;
   }
+  .clock-zoom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--aula-space-4);
+    width: 100%;
+    padding: var(--aula-space-4);
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+  }
+  .clock-zoom .ov-clock-face {
+    width: min(100%, 70vh, calc(440px * var(--aula-scale)));
+    height: auto;
+  }
+  .clock-zoom-hours {
+    font-size: calc(var(--aula-font-2xl) * 1.5);
+    font-weight: var(--aula-bold);
+    font-variant-numeric: tabular-nums;
+  }
   .clock-school {
     fill: none;
     stroke: var(--aula-accent);
@@ -2707,45 +2728,40 @@ export const family = css`
     font-size: var(--aula-font-2xl);
   }
   .board-tiles {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(calc(104px * var(--aula-scale)), 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: var(--aula-space-2);
-    max-width: calc(4 * 150px * var(--aula-scale));
   }
-  /* A tile's icon and word grow with the tile, as children read them from across the room; the
-     tile's own sizes cannot be in its own container's units. */
+  /* Children read the board from across the room: the icon is always large, the word always whole
+     and large, and a tile grows wider for a long word rather than shrink it. */
   .board-subject,
   .board-thing {
-    container-type: inline-size;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: var(--aula-space-1);
     box-sizing: border-box;
-    aspect-ratio: 1;
-    width: 100%;
-    padding: var(--aula-space-2);
+    min-width: calc(120px * var(--aula-scale));
+    max-width: 100%;
+    height: calc(120px * var(--aula-scale));
+    padding: var(--aula-space-2) var(--aula-space-3);
     border: 0;
     border-radius: calc(14px * var(--aula-scale));
     font: inherit;
+    font-size: calc(22px * var(--aula-scale));
     font-weight: var(--aula-bold);
     line-height: 1.1;
     text-align: center;
   }
-  .board-subject ha-icon,
-  .board-thing ha-icon {
-    --mdc-icon-size: 46cqi;
+  .board-subject > ha-icon,
+  .board-thing > ha-icon {
+    --mdc-icon-size: calc(64px * var(--aula-scale));
   }
   .board-subject > span,
-  .board-thing > span {
+  .board-thing > span:not(.sr) {
     max-width: 100%;
-    font-size: 17cqi;
-    overflow-wrap: anywhere;
-  }
-  .board-subject > span.long,
-  .board-thing > span.long {
-    font-size: 13cqi;
+    white-space: nowrap;
   }
   button.board-subject {
     cursor: pointer;
@@ -2764,21 +2780,21 @@ export const family = css`
   }
   .board-thing-for {
     position: absolute;
-    top: 6cqi;
-    left: 6cqi;
+    top: calc(8px * var(--aula-scale));
+    left: calc(8px * var(--aula-scale));
     display: grid;
     place-items: center;
-    width: 26cqi;
-    height: 26cqi;
+    width: calc(30px * var(--aula-scale));
+    height: calc(30px * var(--aula-scale));
     border-radius: 50%;
     background: var(--subject, var(--aula-fill-strong));
     color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0);
   }
   .board-thing .board-thing-for ha-icon {
-    --mdc-icon-size: 16cqi;
+    --mdc-icon-size: calc(20px * var(--aula-scale));
     color: inherit;
   }
-  .board-thing ha-icon {
+  .board-thing > ha-icon {
     color: var(--aula-text);
   }
   .board-none {

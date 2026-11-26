@@ -438,7 +438,7 @@ function hoursBig(item: OverviewChild, ctx: ViewContext): unknown {
 }
 
 // A clock of the school hours stands in for the presence where the child has school and is not
-// away from it; it opens the presence as the presence does.
+// away from it; a tap shows it large, and any tap closes it again.
 function boardClock(
   item: OverviewChild,
   ctx: ViewContext,
@@ -453,24 +453,33 @@ function boardClock(
     presence?.kind === "ask";
   if (options.looks.board.clock !== "analog" || !span || away)
     return presencePill(item, ctx, state, options);
-  const label = ctx.t("clockLabel", {
-    span: `${timeText(span.start, ctx)}–${timeText(span.end, ctx)}`,
-    now: formatTime(ctx.now, ctx.language, ctx.zone, ctx.amPm),
-  });
-  const face = schoolClock(span.start, span.end, ctx);
-  if (!presence) return html`<span class="ov-clock" role="img" aria-label=${label}>${face}</span>`;
-  const key = `presence|${String(item.child.child_id)}`;
+  const label = (now: ViewContext): string =>
+    now.t("clockLabel", {
+      span: `${timeText(span.start, now)}–${timeText(span.end, now)}`,
+      now: formatTime(now.now, now.language, now.zone, now.amPm),
+    });
+  const key = `clock|${String(item.child.child_id)}`;
+  const name = state.face(item.child).name;
   return html`<button
     class="ov-clock"
     type="button"
     aria-haspopup="dialog"
-    aria-label=${label}
+    aria-label=${label(ctx)}
     data-detail=${key}
     @click=${() => {
-      openPresence(item, presence, state, options, key);
+      state.openModal(key, (now, close) =>
+        modal(
+          html`<h2 id="detail-title" class="sr">${name}</h2>
+            <button class="clock-zoom" type="button" aria-label=${label(now)} @click=${close}>
+              ${schoolClock(span.start, span.end, now)}
+              <span class="clock-zoom-hours">${timeSpan(span.start, span.end, now)}</span>
+            </button>`,
+          close,
+        ),
+      );
     }}
   >
-    ${face}
+    ${schoolClock(span.start, span.end, ctx)}
   </button>`;
 }
 
@@ -494,9 +503,7 @@ function packTile(
 ): TemplateResult {
   return html`<li class="board-thing" style=${subjectColor(subject)}>
     <span class="board-thing-for">${icon(subjectIcon(subject))}</span>
-    ${icon(packIcon(thing, options.packIcons))}<span class=${thing.length > 8 ? "long" : ""}
-      >${aula(thing, ctx)}</span
-    >
+    ${icon(packIcon(thing, options.packIcons))}<span>${aula(thing, ctx)}</span>
     <span class="sr">${ctx.t("packFor", { subject: subject.name })}</span>
   </li>`;
 }
@@ -508,7 +515,6 @@ function subjectTile(
   state: CardState,
 ): TemplateResult {
   const { subject } = lesson;
-  const name = subject.name.length > 10 ? subject.short : subject.name;
   const key = `tile|${String(item.child.child_id)}|${subject.key}`;
   return html`<li>
     <button
@@ -521,9 +527,7 @@ function subjectTile(
         state.showDetail({ kind: "lesson", row: lesson }, key);
       }}
     >
-      ${icon(subjectIcon(subject))}<span class=${name.length > 8 ? "long" : ""}
-        >${aula(name, ctx)}</span
-      >
+      ${icon(subjectIcon(subject))}<span>${aula(subject.name, ctx)}</span>
     </button>
   </li>`;
 }

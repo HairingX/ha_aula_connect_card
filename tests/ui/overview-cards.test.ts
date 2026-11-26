@@ -363,15 +363,14 @@ describe("the overview", () => {
       "Matematik",
       "Tysk",
       "Geografi",
-      "KLT",
+      "Klassens tid",
     ]);
-    expect(texts(card, ".board-subject span.long")).toEqual(["Matematik"]);
     await tap(card, "button.board-subject", "Dansk");
     expect(windowText(card)).toContain("Dansk");
     expect(windowText(card)).toContain("10.05");
   });
 
-  it("shows a child's school hours on a clock where asked, which opens its presence", async () => {
+  it("shows a child's school hours on a clock where asked, which a tap shows large", async () => {
     setLook("board");
     const { card } = await mount(OVERVIEW, "thu-1000", {
       today: (child) => (child.child_id === 1001 ? todayOf(child) : sickToday(child)),
@@ -383,10 +382,13 @@ describe("the overview", () => {
     expect(all(card, ".ov-clock .clock-hour")).toHaveLength(12);
     expect(texts(card, ".presence")).toEqual(["Syg"]);
     await tap(card, "button.ov-clock");
-    expect(windowText(card)).toContain("Ida i dag");
+    expect(texts(card, "dialog .clock-zoom-hours")).toEqual(["08.00–12.55"]);
+    expect(all(card, "dialog .clock-zoom .clock-hour")).toHaveLength(12);
+    await tap(card, "dialog .clock-zoom");
+    expect(windowText(card)).toBe("");
   });
 
-  it("shows the clock without a presence to open, and the vacation instead of it", async () => {
+  it("shows the clock without a presence, and the vacation instead of it", async () => {
     setLook("board");
     const { card } = await mount(OVERVIEW, "thu-1000", {
       config: { board: { clock: "analog" } },
@@ -401,11 +403,11 @@ describe("the overview", () => {
             : { vacations: [] },
       },
     });
-    expect(all(card, "span.ov-clock[role=img]")).toHaveLength(1);
+    expect(all(card, "button.ov-clock")).toHaveLength(1);
     expect(texts(card, ".presence")).toEqual(["Ferie/fri til fre. 30. okt."]);
   });
 
-  it("names a board's day tomorrow by its weekday, and a long subject by its abbreviation", async () => {
+  it("names a board's day tomorrow by its weekday", async () => {
     setLook("board");
     const { card } = await mount(OVERVIEW, "thu-1530");
     expect(texts(card, ".board-head")[0]).toBe("Fredag har du");
