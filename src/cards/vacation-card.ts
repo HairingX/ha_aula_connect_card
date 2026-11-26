@@ -68,31 +68,32 @@ export class AulaConnectVacationCard extends AulaCard<ActionConfig, FamilyView> 
     ctx: ViewContext,
   ): TemplateResult {
     const children = view.children.map((item) => {
-      const id = item.child.child_id;
+      const id = String(item.child.child_id);
+      // The requests are read each day, and again when the number awaiting an answer changes;
+      // the vacations each day, as a wall screen stays for days.
+      const asked = senderOf(item, config.sender, "vacation_requests");
+      const requests = this.#requests.get(
+        `${asked.entry_id}|${id}`,
+        `${String(item.today?.vacation_requests_pending)}|${ctx.today}`,
+        () => fetchVacationRequests(this.callWS, asked),
+      );
       const entry = senderOf(item, config.sender, "vacations");
-      // Asked for again each day, as a wall screen stays for days.
-      const load = this.#vacations.get(`${entry.entry_id}|${String(id)}`, ctx.today, () =>
+      const load = this.#vacations.get(`${entry.entry_id}|${id}`, ctx.today, () =>
         fetchVacations(this.callWS, entry),
       );
-      return { family: item, entry, load };
-    });
-    // The requests are read each day, and again when the number awaiting an answer changes.
-    const requests = view.children.map((item) => {
-      const entry = senderOf(item, config.sender, "vacation_requests");
-      const load = this.#requests.get(
-        `${entry.entry_id}|${String(item.child.child_id)}`,
-        `${String(item.today?.vacation_requests_pending)}|${ctx.today}`,
-        () => fetchVacationRequests(this.callWS, entry),
-      );
-      return { child: item.child, entry, load };
+      return { family: item, entry, load, answers: requests.data ?? [], asked, requests };
     });
     return renderVacations(children, ctx, this, {
       requests: requestGroups(
-        requests.map(({ child, entry, load }) => ({ child, entry, data: load.data })),
+        children.map(({ family, asked, requests }) => ({
+          child: family.child,
+          entry: asked,
+          data: requests.data,
+        })),
         ctx.today,
       ),
-      requestErrors: requests.flatMap(({ load }) =>
-        load.error !== undefined && load.data === undefined ? [load.error] : [],
+      requestErrors: children.flatMap(({ requests }) =>
+        requests.error !== undefined && requests.data === undefined ? [requests.error] : [],
       ),
       changed: () => {
         this.#vacations.refresh();

@@ -588,7 +588,7 @@ describe("Fravær on the overview", () => {
     expect(location.pathname).toBe("/aula/fravaer");
   });
 
-  it("says the requests awaiting an answer could not be read, and asks for none without them", async () => {
+  it("says the requests awaiting an answer could not be read, and nothing where none awaits", async () => {
     const { card } = await mount(OVERVIEW, "thu-1000", {
       today: pending,
       commands: {
@@ -601,16 +601,11 @@ describe("Fravær on the overview", () => {
     expect(texts(card, ".ov-band-note")).toEqual(["Ferieanmodningerne kunne ikke hentes"]);
     expect(all(card, ".ov-band")).toEqual([]);
     unmountAll();
-    const { card: none, hass } = await mount(OVERVIEW, "thu-1000", {
+    const { card: none } = await mount(OVERVIEW, "thu-1000", {
       today: (child) => ({ ...todayOf(child), vacation_requests_pending: 0 }),
       commands: quiet,
     });
     expect(all(none, ".ov-band, .ov-band-note")).toEqual([]);
-    expect(
-      hass.callWS.mock.calls.filter(
-        ([message]) => (message as { type: string }).type === "aula_connect/vacation_requests",
-      ),
-    ).toEqual([]);
   });
 
   it("shows a vacation on the child's chip, and one coming in Det sker", async () => {
@@ -660,6 +655,19 @@ describe("Fravær on the overview", () => {
       config: { switch_time: "09:00" },
     });
     expect(all(switched, ".presence.ask")).toEqual([]);
+  });
+
+  it("shows a child answered not to come today as on a vacation", async () => {
+    const today = {
+      ...present(REQUESTS.requests[1]),
+      title: "Efterårsferie",
+      days: [{ date: "2026-10-29", is_coming: false, entry_time: null, exit_time: null }],
+    };
+    const { card } = await mount(OVERVIEW, "thu-1000", {
+      today: (child) => ({ ...todayOf(child), vacation_requests_pending: 0 }),
+      commands: { ...quiet, "aula_connect/vacation_requests": () => ({ requests: [today] }) },
+    });
+    expect(texts(card, ".presence")).toEqual(["Ferie/fri i dag", "Ferie/fri i dag"]);
   });
 
   it("shows a child reported sick as sick, though on a vacation", async () => {

@@ -154,3 +154,37 @@ export function vacationOn(vacations: readonly Vacation[], day: Day): Vacation |
     .filter((vacation) => vacation.start <= day && day <= vacation.end)
     .sort((a, b) => b.end.localeCompare(a.end))[0];
 }
+
+/**
+ * Returns the days a child's answered requests say it does not come, each run of them as a
+ * vacation the family has registered by its answer: it cannot be deleted, as an answer is not,
+ * and its comment is the request's title. A run a vacation registered covers is left out.
+ */
+export function answeredAway(
+  requests: readonly VacationRequest[],
+  vacations: readonly Vacation[],
+): Vacation[] {
+  const away: Vacation[] = [];
+  for (const request of requests) {
+    if (request.missing_answer) continue;
+    let run: Vacation | undefined;
+    for (const day of request.days) {
+      if (day.is_coming !== false) run = undefined;
+      else if (run) run.end = day.date;
+      else {
+        run = {
+          id: `${String(request.id)}|${day.date}`,
+          start: day.date,
+          end: day.date,
+          comment: request.title,
+          editable: false,
+        };
+        away.push(run);
+      }
+    }
+  }
+  return away.filter(
+    (item) =>
+      !vacations.some((vacation) => vacation.start <= item.start && item.end <= vacation.end),
+  );
+}

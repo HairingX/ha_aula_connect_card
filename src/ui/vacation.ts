@@ -11,9 +11,9 @@ import { actionErrorText, addVacation, deleteVacation, errorText } from "../core
 import type { ViewContext } from "../core/context.ts";
 import { addDays, formatDayRange } from "../core/dates.ts";
 import { rememberSender } from "../core/selection.ts";
-import type { Child, Vacation } from "../core/types.ts";
+import type { Child, Vacation, VacationRequest } from "../core/types.ts";
 import type { RequestGroup, VacationFor, VacationGroup } from "../model/absence.ts";
-import { vacationGroups } from "../model/absence.ts";
+import { answeredAway, vacationGroups } from "../model/absence.ts";
 import type { FamilyChild } from "../model/family.ts";
 import { COMMENT_MAX, VACATION_AHEAD_DAYS, vacationValid } from "../model/vacation.ts";
 import type { CardState } from "./card.ts";
@@ -40,6 +40,8 @@ export interface ChildVacations {
   readonly entry: Child;
   /** The vacations, as they stand. */
   readonly load: Load<Vacation[]>;
+  /** The child's vacation requests as they stand, whose answers say days it does not come. */
+  readonly answers: readonly VacationRequest[];
 }
 
 /** What a window that changes the vacations has come to. */
@@ -431,7 +433,11 @@ export function renderVacations(
   const waiting = children.some(({ load }) => load.data === undefined && load.error === undefined);
   const allowed = children.filter(({ entry }) => entry.allowed.includes("vacations"));
   const groups = vacationGroups(
-    children.map(({ family, entry, load }) => ({ child: family.child, entry, data: load.data })),
+    children.map(({ family, entry, load, answers }) => ({
+      child: family.child,
+      entry,
+      data: load.data && [...load.data, ...answeredAway(answers, load.data)],
+    })),
     ctx.today,
   );
   const failed = children.flatMap(({ load }) =>

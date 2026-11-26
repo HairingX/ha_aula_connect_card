@@ -356,7 +356,7 @@ sender: Lise Testesen
 `custom:aula-connect-vacation-card` holds a family's vacations in one: first the institution's
 requests **Mangler svar**, then the vacations registered and not over yet under **Meldt**, their
 number beside the title, a vacation that has begun marked **I gang**; then **Holder fri i dag** and
-**Meld ferie/fri**, and last the requests answered, folded. A request asked of several children,
+**Meld ferie/fri**, and last the requests answered, folded. The days a request is answered **Kommer ikke** are under **Meldt** too, by the request's title, as they are the child's vacation as much as one registered; the overview shows them as it does one registered. A request asked of several children,
 and a vacation registered for several, is one row with their faces.
 
 ![Answering a vacation request for two children](docs/vacation-thu-1000-380-light-blue-da-2child-answer.png)

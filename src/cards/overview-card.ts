@@ -20,7 +20,13 @@ import {
   type OverviewConfig,
 } from "../config/family.ts";
 import type { ConfigForm } from "../config/form.ts";
-import { requestGroups, vacationGroups, vacationOn, type ChildReads } from "../model/absence.ts";
+import {
+  answeredAway,
+  requestGroups,
+  vacationGroups,
+  vacationOn,
+  type ChildReads,
+} from "../model/absence.ts";
 import type { Hold } from "../model/child.ts";
 import { senderOf } from "../model/family.ts";
 import { AHEAD_DAYS, overviewView, type OverviewView } from "../model/overview.ts";
@@ -85,41 +91,40 @@ export class AulaConnectOverviewCard extends AulaCard<OverviewConfig, OverviewVi
     });
   }
 
-  // The requests are read only while some await an answer, and again when that number changes;
-  // the vacations once a day, as a wall screen stays for days.
+  // The requests are read each day, and again when the number awaiting an answer changes; the
+  // vacations each day, as a wall screen stays for days. The days an answer says a child does
+  // not come are its vacation as much as one registered.
   #absence(view: OverviewView, config: OverviewConfig, ctx: ViewContext): AbsenceView {
     const requests: ChildReads<VacationRequest>[] = [];
     const vacations: ChildReads<Vacation>[] = [];
+    const ongoing = new Map<number, Vacation>();
     let unread = false;
     for (const item of view.children) {
       const id = String(item.child.child_id);
       const pending = item.today?.vacation_requests_pending ?? 0;
-      if (pending > 0) {
-        const entry = senderOf(item, config.sender, "vacation_requests");
-        const load = this.#requests.get(
-          `${entry.entry_id}|${id}`,
-          `${String(pending)}|${ctx.today}`,
-          () => fetchVacationRequests(this.callWS, entry),
-        );
-        unread ||= load.data === undefined && load.error !== undefined;
-        requests.push({ child: item.child, entry, data: load.data });
-      }
-      const entry = senderOf(item, config.sender, "vacations");
-      const load = this.#vacations.get(`${entry.entry_id}|${id}`, ctx.today, () =>
-        fetchVacations(this.callWS, entry),
+      const asked = senderOf(item, config.sender, "vacation_requests");
+      const answers = this.#requests.get(
+        `${asked.entry_id}|${id}`,
+        `${String(pending)}|${ctx.today}`,
+        () => fetchVacationRequests(this.callWS, asked),
       );
-      vacations.push({ child: item.child, entry, data: load.data });
+      unread ||= pending > 0 && answers.data === undefined && answers.error !== undefined;
+      requests.push({ child: item.child, entry: asked, data: answers.data });
+      const entry = senderOf(item, config.sender, "vacations");
+      const registered =
+        this.#vacations.get(`${entry.entry_id}|${id}`, ctx.today, () =>
+          fetchVacations(this.callWS, entry),
+        ).data ?? [];
+      const away = [...registered, ...answeredAway(answers.data ?? [], registered)];
+      vacations.push({ child: item.child, entry, data: away });
+      const now = vacationOn(away, ctx.today);
+      if (now) ongoing.set(item.child.child_id, now);
     }
     const last = addDays(ctx.today, AHEAD_DAYS - 1);
     return {
       requests: requestGroups(requests, ctx.today).filter((group) => group.missing),
       unread,
-      ongoing: new Map(
-        vacations.flatMap((read) => {
-          const vacation = vacationOn(read.data ?? [], ctx.today);
-          return vacation ? [[read.child.child_id, vacation] as const] : [];
-        }),
-      ),
+      ongoing,
       coming: vacationGroups(vacations, ctx.today).filter(
         (group) => group.start > ctx.today && group.start <= last,
       ),
