@@ -245,7 +245,7 @@ const SETS: Record<string, () => Shot[]> = {
     shot("day", "thu-1930", 800, { children: 2, config: { group_by: "block" }, tag: "lined-up" }),
     shot("weekplan", "thu-1930", 380),
     shot("weekplan", "thu-1930", 800, { children: 2 }),
-    shot("weekplan", "thu-1930", 380, { config: { notes: "all" }, tag: "notes-all" }),
+    shot("weekplan", "thu-1930", 380, { config: { notes: "tasks" }, tag: "notes-tasks" }),
     shot("week", "thu-1010", 380),
     shot("week", "thu-1930", 800),
     shot("week", "sun-1800", 380),

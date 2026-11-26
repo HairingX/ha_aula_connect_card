@@ -121,7 +121,7 @@ export function importantList(notes: readonly NoteView[], ctx: ViewContext): Tem
  * Says why a part has nothing. A week plan not yet in Aula stands out, with its icon: its
  * important notes are unknown, not none.
  */
-export function emptyNote(text: string, empty: EmptyKind | "none" | undefined): TemplateResult {
+export function emptyNote(text: string, empty: string | undefined): TemplateResult {
   const missing = empty === "planMissing";
   return html`<p class="empty ${missing ? "missing" : ""}">
     ${missing ? icon("mdi:clock-alert-outline") : nothing}${text}

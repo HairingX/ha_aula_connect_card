@@ -18,6 +18,18 @@ import type { NoteView } from "./notes.ts";
 /** Which of the week plan's notes the card shows: what is marked, the others, or both. */
 export type NotesShown = "tasks" | "comments" | "all";
 
+/**
+ * Why a child's part of a day is empty: nothing marked important, no notes, nothing in the plan -
+ * by what the card shows - the plan not in Aula yet, or no week plan at all.
+ */
+export type EmptyPart = "noImportant" | "noPlan" | "noPlanAtAll" | "planMissing" | "noWeekPlan";
+
+const NOTHING: Readonly<Record<NotesShown, EmptyPart>> = {
+  tasks: "noImportant",
+  comments: "noPlan",
+  all: "noPlanAtAll",
+};
+
 /** A child's notes for one day. */
 export interface WeekplanPart {
   /** The child. */
@@ -27,7 +39,7 @@ export interface WeekplanPart {
   /** The week plan's other notes. */
   readonly comments: readonly NoteView[];
   /** Why there is none: none in the week plan, the week plan not in Aula yet, or no week plan. */
-  readonly empty: "noImportant" | "planMissing" | "noWeekPlan" | undefined;
+  readonly empty: EmptyPart | undefined;
 }
 
 /** The week plan for one day, a part for each child that has some, or whose focus day it is. */
@@ -147,7 +159,7 @@ export function weekplanCardView(
       const has = items.length + comments.length > 0;
       const week = startOfWeek(view.day);
       if (view.day === focus.day) {
-        const empty = rules.planMissing.has(week) ? "planMissing" : "noImportant";
+        const empty = rules.planMissing.has(week) ? "planMissing" : NOTHING[options.notes];
         add(later, view.day, { child, items, comments, empty: has ? undefined : empty });
       } else if (has) {
         add(view.day > cutoff ? later : before, view.day, {

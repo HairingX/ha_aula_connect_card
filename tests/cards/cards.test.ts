@@ -291,7 +291,10 @@ describe("the cards", () => {
   });
 
   it("fold the earlier days", async () => {
-    const { card } = await mount("aula-connect-weekplan-card", "thu-1530", { children: [1001] });
+    const { card } = await mount("aula-connect-weekplan-card", "thu-1530", {
+      children: [1001],
+      notes: "tasks",
+    });
     expect(text(card, ".fold > summary")).toBe("Tidligere (3)");
   });
 

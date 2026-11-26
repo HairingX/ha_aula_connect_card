@@ -276,8 +276,9 @@ describe("the week plan card's grouping", () => {
 
 describe("the week plan card's notes", () => {
   it.each<[unknown, string]>([
-    [undefined, "tasks"],
-    ["", "tasks"],
+    [undefined, "all"],
+    ["", "all"],
+    ["tasks", "tasks"],
     ["comments", "comments"],
     ["all", "all"],
   ])("are %j: %s", (notes, shown) => {

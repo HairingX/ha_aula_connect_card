@@ -122,7 +122,7 @@ describe("the school day card", () => {
     });
     expect(texts(card, ".strip .kid-name")).toEqual(["Ida", "Oskar"]);
     expect(texts(card, '[data-block="task"] .part-who span:last-child')).toEqual(["Ida", "Oskar"]);
-    expect(texts(card, '[data-block="task"] .empty')).toEqual(["Intet i ugeplanen."]);
+    expect(texts(card, '[data-block="task"] .empty')).toEqual(["Intet markeret som vigtigt."]);
     expect(texts(card, ".daybar .bar-item.cancelled .bar-name")).toEqual(["Klassens tid"]);
   });
 
@@ -152,7 +152,7 @@ describe("the school day card", () => {
 
   it("puts a day's events in the timetable when it has no lessons, as a calendar does", async () => {
     const { card } = await mount(DAY, "motionsdag", { config: { children: [1001] } });
-    expect(texts(card, ".block .empty")).toEqual(["Intet i ugeplanen."]);
+    expect(texts(card, ".block .empty")).toEqual(["Intet markeret som vigtigt."]);
     expect(texts(card, '[data-block="timetable"] .daybar .bar-item.ev .bar-name')).toEqual([
       "Motionsdag",
     ]);
@@ -582,7 +582,7 @@ describe("the week card's children", () => {
 describe("the week plan card", () => {
   it("groups by the day the notes are for, then by child, with the earlier days folded first", async () => {
     const { card } = await mount(WEEKPLAN, "thu-1530", {
-      config: { group_by: "day" },
+      config: { group_by: "day", notes: "tasks" },
     });
     const [tomorrow] = all(card, ".note-day");
     expect(tomorrow?.classList.contains("focus")).toBe(true);
@@ -1691,5 +1691,26 @@ describe("browsing the weeks", () => {
         .slice(-2),
     ).toEqual(["2026-11-02/2026-11-16", "2026-10-26/2026-11-02"]);
     expect(heads(card)[0]).toBe("Uge 44 · Sidste uge 26. okt.–1. nov.");
+  });
+});
+
+describe("the week plan card's empty day", () => {
+  it("says what it does not show, not that the week plan is empty", async () => {
+    const said = async (notes: string): Promise<string[]> => {
+      // Friday has nothing in the plan; the rest of the week has, so its plan is in Aula.
+      const { card } = await mount(WEEKPLAN, "thu-1530", {
+        config: { children: [1001], notes },
+        week: (_child, start) => {
+          const data = weekData(start);
+          return { ...data, tasks: data.tasks.filter((task) => task.date !== "2026-10-30") };
+        },
+      });
+      const found = texts(card, ".note-day.focus .empty");
+      unmountAll();
+      return found;
+    };
+    expect(await said("tasks")).toEqual(["Intet markeret som vigtigt."]);
+    expect(await said("comments")).toEqual(["Ingen noter."]);
+    expect(await said("all")).toEqual(["Intet i ugeplanen."]);
   });
 });

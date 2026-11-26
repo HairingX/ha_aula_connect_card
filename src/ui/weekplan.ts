@@ -23,6 +23,7 @@ import type {
   WeekplanDay,
   WeekplanHero,
   WeekplanPart,
+  EmptyPart,
 } from "../model/weekplan-view.ts";
 import { emptyNote, importantList, planNotes, sameEmpty } from "./blocks.ts";
 import type { CardState } from "./card.ts";
@@ -39,15 +40,8 @@ import {
   who,
 } from "./primitives.ts";
 
-function partText(part: WeekplanPart, week: number, ctx: ViewContext): string {
-  switch (part.empty) {
-    case "planMissing":
-      return ctx.t("weekPlanNotYet", { n: week });
-    case "noWeekPlan":
-      return ctx.t("noWeekPlan");
-    default:
-      return ctx.t("noImportant");
-  }
+function partText(empty: EmptyPart, week: number, ctx: ViewContext): string {
+  return empty === "planMissing" ? ctx.t("weekPlanNotYet", { n: week }) : ctx.t(empty);
 }
 
 function notes(part: WeekplanPart, day: string, ctx: ViewContext, state: CardState): unknown {
@@ -79,9 +73,7 @@ function day(
   const index = (child: Child): number =>
     view.children.findIndex((entry) => childKey(entry.child) === childKey(child)) + 1;
   const texts = item.parts.map((part) =>
-    part.items.length + part.comments.length > 0
-      ? undefined
-      : partText(part, weekNumber(item.day), ctx),
+    part.empty === undefined ? undefined : partText(part.empty, weekNumber(item.day), ctx),
   );
   const once = several ? sameEmpty(texts) : undefined;
   return html`<section class="note-day ${item.focus ? "focus" : ""}">

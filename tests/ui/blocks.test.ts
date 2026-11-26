@@ -35,9 +35,9 @@ function shown(notes: Parameters<typeof importantList>[0]): HTMLElement {
 describe("a block a child has nothing for", () => {
   it("says so in the block's own words", () => {
     expect(ORDERED.map((id) => emptyText(id, "none", content, ctx))).toEqual([
-      "Intet i ugeplanen.",
+      "Intet markeret som vigtigt.",
       "Intet skema i Aula.",
-      "Intet i ugeplanen.",
+      "Ingen noter.",
     ]);
   });
 });

@@ -22,7 +22,7 @@ export interface WeekplanCardConfig extends CommonConfig {
 
 /** Reads `notes`: tasks, comments or all. */
 export function parseNotes(value: unknown): NotesShown {
-  if (value === undefined || value === null || value === "") return "tasks";
+  if (value === undefined || value === null || value === "") return "all";
   if (value !== "tasks" && value !== "comments" && value !== "all") {
     throw new Error("notes: must be tasks, comments or all");
   }

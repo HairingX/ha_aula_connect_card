@@ -155,11 +155,15 @@ columns, and several children each have a column, named once at the top.
 
 `notes` chooses what it shows of the week plan:
 
-- `tasks`, the default: what the plan marks as a task, in boxes, as in **Vigtigt**.
-- `comments`: the plan's other notes, as in **Noter**.
-- `all`: both, the tasks in boxes and the notes in a quieter column under them.
+- `all`, the default: the whole plan, what it marks as important in boxes and its notes in a
+  quieter column under them.
+- `tasks`: only what the plan marks as important, in boxes, as in **Vigtigt**.
+- `comments`: only the plan's notes, as in **Noter**.
 
-![The week plan card with notes: all](docs/weekplan-thu-1930-380-light-blue-da-1child-notes-all.png)
+A day with nothing of what it shows says that, in those words: "Intet markeret som vigtigt",
+"Ingen noter" or "Intet i ugeplanen" - never that the plan is empty where it only has no box.
+
+![The week plan card with notes: tasks](docs/weekplan-thu-1930-380-light-blue-da-1child-notes-tasks.png)
 
 ## Week card
 
@@ -381,7 +385,7 @@ children whose entry does; otherwise the card says they are turned off.
 | `subject_names`        | all                      | none                                   | [Names, colours and merging](#subject-names) for lesson titles, over the built-in ones.                                                                                |
 | `expand_abbreviations` | all                      | `true`                                 | `false` shows the subjects' abbreviations as Aula has them, in place of the [built-in names](#subject-names).                                                          |
 | `info_lines`           | all                      | `6`                                    | The lines of a note shown before "Vis mere", 0 to 50; `0` shows every note whole.                                                                                      |
-| `notes`                | week plan                | `tasks`                                | `tasks`, `comments` or `all`: what the card shows of the week plan.                                                                                                    |
+| `notes`                | week plan                | `all`                                  | `all`, `tasks` (what is marked important) or `comments` (the notes): what the card shows of the week plan.                                                             |
 | `order`                | school day, week         | none; week: `[timetable]`              | The blocks to put first, in this order: `task`, `timetable`, `comment`. The rest follow the standard order: Vigtigt with Husk in it, Skema, Noter.                     |
 | `show`                 | school day, week         | everything shown                       | Hide a block with `false`: `task`, `timetable`, `comment`; `pack: false` leaves Husk out of Vigtigt, `events: false` the events, `birthdays: false` the birthdays.     |
 | `timetable`            | school day, week         | `compact`                              | `compact` shows the timetable as a bar; `full` opens it whole, still to be folded.                                                                                     |
