@@ -83,9 +83,16 @@ describe("the vacation requests card", () => {
       "Oskar · 21.–23. dec.",
       "Svar senest 20. nov.",
       "Oskar · 15.–16. feb.",
-      "Besvaret",
     ]);
     expect(texts(shown, ".family-row .label.warning")).toEqual(["Mangler svar"]);
+    const ends = all(shown, ".family-row > ha-icon").map((mark) => [
+      mark.getAttribute("icon"),
+      mark.getAttribute("aria-label"),
+    ]);
+    expect(ends).toEqual([
+      ["mdi:chevron-right", null],
+      ["mdi:check-circle", "Besvaret"],
+    ]);
   });
 
   it("says when there is no request, or why the requests cannot be had", async () => {
@@ -255,11 +262,12 @@ describe("a request's state", () => {
     ]);
   });
 
-  it("says it awaits an answer, by its deadline where it has one", () => {
+  it("says by when to answer, where it has a deadline and no answer yet", () => {
     const ctx = contextOf(scenarioNamed("thu-1000"));
     const request = present(REQUESTS.requests[0]) as VacationRequest;
     expect(requestState({ ...request, deadline: null }, ctx)).toBeUndefined();
     expect(requestState(request, ctx)).toBe("Svar senest 20. nov.");
+    expect(requestState({ ...request, missing_answer: false }, ctx)).toBeUndefined();
   });
 });
 

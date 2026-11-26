@@ -2267,6 +2267,9 @@ export const family = css`
   .chevron-end {
     margin-inline-start: auto;
   }
+  .answered-mark {
+    color: var(--success-color, #43a047);
+  }
   .family-card > .window-actions {
     justify-content: flex-start;
   }

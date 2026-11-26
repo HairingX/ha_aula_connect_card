@@ -50,15 +50,12 @@ interface Answer {
 }
 
 /**
- * Shows that a request is answered, or the day to answer it by; nothing for one awaiting an
- * answer without a deadline, as its label says that.
+ * Shows the day to answer a request by; nothing for one answered, as its mark says that, nor for
+ * one awaiting an answer without a deadline, as its label says that.
  */
 export function requestState(request: VacationRequest, ctx: ViewContext): string | undefined {
-  const { t } = ctx;
-  if (!request.missing_answer) return t("answered");
-  return request.deadline === null
-    ? undefined
-    : `${t("answerByTitle")} ${formatShortDate(request.deadline, ctx.language)}`;
+  if (!request.missing_answer || request.deadline === null) return undefined;
+  return `${ctx.t("answerByTitle")} ${formatShortDate(request.deadline, ctx.language)}`;
 }
 
 function requestTitle(request: VacationRequest, ctx: ViewContext): string {
@@ -301,8 +298,16 @@ export function renderVacationRequests(
             >
             ${said === undefined ? nothing : html`<span class="family-sub">${said}</span>`}
           </span>
-          ${request.missing_answer ? label(t("missingAnswer"), "warning") : nothing}
-          ${icon("mdi:chevron-right", "chevron-end")}
+          ${
+            request.missing_answer
+              ? html`${label(t("missingAnswer"), "warning")}${icon("mdi:chevron-right", "chevron-end")}`
+              : html`<ha-icon
+                  class="chevron-end answered-mark"
+                  icon="mdi:check-circle"
+                  role="img"
+                  aria-label=${t("answered")}
+                ></ha-icon>`
+          }
         </button>
       </li>`;
     });
