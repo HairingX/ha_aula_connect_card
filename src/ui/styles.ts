@@ -2810,6 +2810,11 @@ export const family = css`
     flex-direction: column;
     gap: var(--aula-space-2);
   }
+  /* The subjects and what to bring belong together; what is important is the family's own, and
+     stands apart from them. */
+  :is(.ov-panel, .ov-col) > :is(.ov-important-full, .board-important) {
+    margin-top: var(--aula-space-6);
+  }
   .ov-important-head {
     display: flex;
     align-items: center;
