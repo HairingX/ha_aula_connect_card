@@ -2803,10 +2803,6 @@ export const family = css`
   .board-thing > ha-icon {
     color: var(--aula-text);
   }
-  .board-none {
-    color: var(--aula-text-2);
-    font-size: var(--aula-font-l);
-  }
   /* What is important stands apart from the children's tiles: a heading marked in the colour of
      what needs the family, and each note a card in its subject's colour. */
   .ov-important-full {

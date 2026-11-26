@@ -657,13 +657,14 @@ function panel(
             <ul class="board-tiles">
               ${lessons.map((lesson) => subjectTile(item, lesson, ctx, state))}
             </ul>
-            <span class="board-head">${ctx.t("boardPack")}</span>
             ${
+              // A day with nothing to bring says nothing of it: no heading over nothing.
               things.length === 0
-                ? html`<p class="board-none">${ctx.t("nothingToPack")}</p>`
-                : html`<ul class="board-tiles">
-                    ${things.map(({ thing, subject }) => packTile(thing, subject, ctx, options))}
-                  </ul>`
+                ? nothing
+                : html`<span class="board-head">${ctx.t("boardPack")}</span>
+                    <ul class="board-tiles">
+                      ${things.map(({ thing, subject }) => packTile(thing, subject, ctx, options))}
+                    </ul>`
             }`
         : nothing
     }

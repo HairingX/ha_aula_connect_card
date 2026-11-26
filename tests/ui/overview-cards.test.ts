@@ -344,7 +344,7 @@ describe("the overview", () => {
       "mdi:run",
       "mdi:run",
     ]);
-    expect(texts(card, ".board-none")).toEqual(["Intet særligt"]);
+    expect(texts(card, ".board-head")).toEqual(["I dag har du", "Husk at pakke", "I dag har du"]);
     expect(texts(card, ".board-head")[0]).toBe("I dag har du");
     await tap(card, ".board-important");
     expect(windowText(card)).toContain("Vigtigt for Ida");

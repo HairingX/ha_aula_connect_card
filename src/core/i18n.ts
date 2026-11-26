@@ -240,7 +240,6 @@ const TEXTS = {
   boardToday: ["Today you have", "I dag har du"],
   boardTomorrow: ["{day} you have", "{day} har du"],
   boardPack: ["Pack", "Husk at pakke"],
-  nothingToPack: ["Nothing special", "Intet særligt"],
   coming: ["Coming up", "Det sker"],
   comingRange: ["the next 7 days", "de næste 7 dage"],
   comingNone: ["Nothing in the calendar", "Intet i kalenderen"],
