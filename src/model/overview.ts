@@ -1,6 +1,6 @@
 /**
  * The overview: for each child the day that matters now in a glance, the child's presence today,
- * and the homework due from that day on; and what is coming the next seven days, once for the
+ * and the important notes from that day on; and what is coming the next seven days, once for the
  * children it concerns.
  *
  * @packageDocumentation
@@ -23,7 +23,7 @@ import {
 } from "./child.ts";
 import type { Focus } from "./focus.ts";
 import { schoolHours } from "./lessons.ts";
-import { isHomework, noteView, type NoteView } from "./notes.ts";
+import { isImportant, noteView, type NoteView } from "./notes.ts";
 
 /** How a child's presence is shown. */
 export type PresenceKind = "sick" | "school" | "here" | "coming" | "home" | "away";
@@ -40,8 +40,8 @@ export interface PresenceView {
   readonly data: TodayData;
 }
 
-/** Homework, and the day it is due. */
-export interface HomeworkDue {
+/** An important note, and the day it is for. */
+export interface ImportantDue {
   /** The note. */
   readonly note: NoteView;
   /** The day it is due. */
@@ -60,10 +60,10 @@ export interface OverviewChild {
   readonly focus: Focus;
   /** What the focus day holds; undefined until the child can be shown, or without one. */
   readonly content: DayContent | undefined;
-  /** The homework due from the focus day on, in the order it is due. */
-  readonly homework: readonly HomeworkDue[];
-  /** The day the homework is due from: the focus day, else today. */
-  readonly homeworkFrom: Day;
+  /** The important notes from the focus day on, in the order of their days. */
+  readonly important: readonly ImportantDue[];
+  /** The day the important notes are from: the focus day, else today. */
+  readonly importantFrom: Day;
   /** The child's day as it is now, once it has come. */
   readonly today: TodayData | undefined;
   /** The child's presence today, where the institution registers one. */
@@ -109,13 +109,13 @@ export interface OverviewView {
   readonly sameDay: Day | undefined;
   /** What is coming the next seven days, from today. */
   readonly coming: readonly ComingItem[];
-  /** How many homework notes are due within the next seven days. */
-  readonly homeworkSoon: number;
+  /** How many important notes are for the next seven days. */
+  readonly importantSoon: number;
   /** The card's height in units of 50 pixels, roughly. */
   readonly size: number;
 }
 
-/** How far ahead "Det sker" and the homework count look, in days from today. */
+/** How far ahead "Det sker" and the count of important notes look, in days from today. */
 export const AHEAD_DAYS = 7;
 
 /** Returns "HH:MM" of an ISO 8601 time in a time zone. */
@@ -184,13 +184,13 @@ export function presenceOf(
   }
 }
 
-function homeworkFrom(basis: ChildBasis, from: Day): HomeworkDue[] {
+function importantFrom(basis: ChildBasis, from: Day): ImportantDue[] {
   if (!basis.rules.weekPlan) return [];
   return basis.days
     .filter((view) => view.day >= from)
     .flatMap((view) =>
       view.notes
-        .filter(isHomework)
+        .filter(isImportant)
         .map((note) => ({ note: noteView(note, basis.rules.namer), day: view.day })),
     );
 }
@@ -216,8 +216,8 @@ function childOf(
     state: basis.state,
     focus: basis.focus,
     content,
-    homework: homeworkFrom(basis, from),
-    homeworkFrom: from,
+    important: importantFrom(basis, from),
+    importantFrom: from,
     today,
     presence: presenceOf(today, hoursToday, ctx),
     hoursToday,
@@ -274,8 +274,8 @@ export function overviewView(
   const days = new Set(children.map((item) => item.focus.day));
   const [shared] = days;
   const last = addDays(ctx.today, AHEAD_DAYS - 1);
-  const homeworkSoon = children.reduce(
-    (sum, item) => sum + item.homework.filter((due) => due.day <= last).length,
+  const importantSoon = children.reduce(
+    (sum, item) => sum + item.important.filter((due) => due.day <= last).length,
     0,
   );
   const items = coming(children, ctx);
@@ -284,7 +284,7 @@ export function overviewView(
     missing,
     sameDay: days.size === 1 ? shared : undefined,
     coming: items,
-    homeworkSoon,
+    importantSoon,
     size: 4 + 4 * children.length + Math.min(items.length, 6),
   };
 }

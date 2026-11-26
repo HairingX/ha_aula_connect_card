@@ -12,7 +12,7 @@ import {
   type VacationRequest,
 } from "../../src/core/types.ts";
 import { allowing, entriesOf, familyView, senderOf } from "../../src/model/family.ts";
-import { homeworkPageView } from "../../src/model/homework-page.ts";
+import { importantPageView } from "../../src/model/important-page.ts";
 import { clockOf, overviewView, presenceOf } from "../../src/model/overview.ts";
 import {
   answerableDays,
@@ -218,7 +218,7 @@ describe("a child's presence", () => {
 });
 
 describe("the overview", () => {
-  it("shows each child's day, its homework from it, and what is coming the next week", () => {
+  it("shows each child's day, its important notes from it, and what is coming the next week", () => {
     const item = scenarioNamed("thu-1000");
     const view = overviewView(
       withToday(snapshotOf(item), todayOf),
@@ -227,10 +227,10 @@ describe("the overview", () => {
       noHold,
     );
     expect(view.sameDay).toBe("2026-10-29");
-    expect(view.homeworkSoon).toBe(8);
+    expect(view.importantSoon).toBe(8);
     expect(view.size).toBe(17);
     expect(
-      view.children.map((child) => [child.child.first_name, child.homework.map((due) => due.day)]),
+      view.children.map((child) => [child.child.first_name, child.important.map((due) => due.day)]),
     ).toEqual([
       ["Ida", ["2026-10-29", "2026-10-30", "2026-10-30", "2026-11-02", "2026-11-03", "2026-11-04"]],
       ["Oskar", ["2026-11-02", "2026-11-04"]],
@@ -326,16 +326,16 @@ describe("the overview", () => {
     };
     const view = overviewView(noPlan, OPTIONS, contextOf(item), noHold);
     expect(view.coming.every((coming) => coming.kind === "event")).toBe(true);
-    expect(view.homeworkSoon).toBe(0);
+    expect(view.importantSoon).toBe(0);
   });
 });
 
-describe("the homework page", () => {
+describe("the Important page", () => {
   const item = scenarioNamed("thu-1000");
   const ctx = contextOf(item);
 
   it("folds this week's days before today, and names a child with nothing more due", () => {
-    const view = homeworkPageView(snapshotOf(item), OPTIONS, ctx, noHold, 0);
+    const view = importantPageView(snapshotOf(item), OPTIONS, ctx, noHold, 0);
     expect(view).toMatchObject({
       week: "2026-10-26",
       number: 44,
@@ -356,7 +356,7 @@ describe("the homework page", () => {
   });
 
   it("shows every day of another week in the store's range", () => {
-    const view = homeworkPageView(snapshotOf(item), OPTIONS, ctx, noHold, 1);
+    const view = importantPageView(snapshotOf(item), OPTIONS, ctx, noHold, 1);
     expect(view.earlier).toEqual([]);
     expect(view.days.map((day) => day.day)).toEqual(
       ["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-06"].filter((day) =>
@@ -368,7 +368,7 @@ describe("the homework page", () => {
 
   it("waits for a week beyond the store's range, or says why it cannot have it", () => {
     const snapshot = snapshotOf(item);
-    expect(homeworkPageView(snapshot, OPTIONS, ctx, noHold, 2)).toMatchObject({
+    expect(importantPageView(snapshot, OPTIONS, ctx, noHold, 2)).toMatchObject({
       loading: true,
       days: [],
     });
@@ -385,7 +385,7 @@ describe("the homework page", () => {
         ],
       ]),
     };
-    const view = homeworkPageView(failed, OPTIONS, ctx, noHold, 2);
+    const view = importantPageView(failed, OPTIONS, ctx, noHold, 2);
     expect(view).toMatchObject({ loading: false, error, week: "2026-11-09", number: 46 });
     expect(view.days.length).toBeGreaterThan(0);
   });
@@ -393,7 +393,7 @@ describe("the homework page", () => {
   it("waits for this week's data, or says why it cannot have it", () => {
     const snapshot = snapshotOf(item);
     const loading = { ...snapshot, data: new Map() };
-    expect(homeworkPageView(loading, OPTIONS, ctx, noHold, 0)).toMatchObject({ loading: true });
+    expect(importantPageView(loading, OPTIONS, ctx, noHold, 0)).toMatchObject({ loading: true });
     const error = new Error("down");
     const failed = {
       ...snapshot,
@@ -401,13 +401,13 @@ describe("the homework page", () => {
         [...snapshot.data].map(([key, entry]) => [key, { ...entry, data: undefined, error }]),
       ),
     };
-    expect(homeworkPageView(failed, OPTIONS, ctx, noHold, 0)).toMatchObject({
+    expect(importantPageView(failed, OPTIONS, ctx, noHold, 0)).toMatchObject({
       loading: false,
       error,
     });
   });
 
-  it("has no homework without a week plan", () => {
+  it("has nothing important without a week plan", () => {
     const snapshot = snapshotOf(item);
     const noPlan = {
       ...snapshot,
@@ -418,7 +418,7 @@ describe("the homework page", () => {
         ]),
       ),
     };
-    expect(homeworkPageView(noPlan, OPTIONS, ctx, noHold, 0).none).toEqual([IDA, OSKAR]);
+    expect(importantPageView(noPlan, OPTIONS, ctx, noHold, 0).none).toEqual([IDA, OSKAR]);
   });
 });
 

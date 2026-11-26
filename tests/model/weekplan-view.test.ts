@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import type { StoreSnapshot } from "../../src/core/store.ts";
-import { homeworkCardView, type HomeworkDay } from "../../src/model/homework-view.ts";
+import { weekplanCardView, type WeekplanDay } from "../../src/model/weekplan-view.ts";
 import type { ViewOptions } from "../../src/model/child.ts";
-import type { NotesShown } from "../../src/model/homework-view.ts";
+import type { NotesShown } from "../../src/model/weekplan-view.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
 import { contextOf, noHold, snapshotOf } from "../fixtures/snapshot.ts";
 
@@ -24,10 +24,10 @@ function view(
   snapshot?: StoreSnapshot,
 ) {
   const item = scenarioNamed(id);
-  return homeworkCardView(snapshot ?? snapshotOf(item), options, contextOf(item), noHold);
+  return weekplanCardView(snapshot ?? snapshotOf(item), options, contextOf(item), noHold);
 }
 
-function shape(day: HomeworkDay): string {
+function shape(day: WeekplanDay): string {
   const parts = day.parts.map(
     (part) => `${part.child.first_name} ${part.empty ?? String(part.items.length)}`,
   );
@@ -48,8 +48,8 @@ function withoutNotes(id: string, first: string): StoreSnapshot {
   return { ...snapshot, data };
 }
 
-describe("the homework card", () => {
-  it("starts at the focus day, then every later day with homework, the week named on a new one", () => {
+describe("the week plan card", () => {
+  it("starts at the focus day, then every later day with notes, the week named on a new one", () => {
     expect(view("thu-1530", IDA).days.map(shape)).toEqual([
       "2026-10-30 tomorrow - focus Ida 2",
       "2026-11-02 weekday 45 - Ida 1",
@@ -58,7 +58,7 @@ describe("the homework card", () => {
     ]);
   });
 
-  it("orders a day's homework by its timetable", () => {
+  it("orders a day's important notes by its timetable", () => {
     const [friday] = view("thu-1530", IDA).days;
     expect(friday?.parts[0]?.items.map((item) => item.subject?.name)).toEqual([
       "Matematik",
@@ -66,16 +66,16 @@ describe("the homework card", () => {
     ]);
   });
 
-  it("gives each day a part for each child: the focus day every child's, later days for homework", () => {
+  it("gives each day a part for each child: the focus day every child's, later days with notes", () => {
     expect(view("thu-1530").days.map(shape)).toEqual([
-      "2026-10-30 tomorrow - focus Ida 2 Oskar noHomework",
+      "2026-10-30 tomorrow - focus Ida 2 Oskar noImportant",
       "2026-11-02 weekday 45 - Ida 1 Oskar 1",
       "2026-11-03 weekday - - Ida 1",
       "2026-11-04 weekday - - Ida 1 Oskar 1",
     ]);
   });
 
-  it("folds the days before the focus day, counting their homework", () => {
+  it("folds the days before the focus day, counting their notes", () => {
     const afternoon = view("thu-1530", IDA);
     expect(afternoon.earlier.map((day) => day.day)).toEqual([
       "2026-10-27",
@@ -128,7 +128,7 @@ describe("the homework card", () => {
     expect(shown.earlier).toEqual([]);
   });
 
-  it("looks for homework only as far as the data reaches", () => {
+  it("looks for notes only as far as the data reaches", () => {
     const snapshot = snapshotOf(scenarioNamed("thu-1530"));
     const key = "entry-a/1001";
     const entry = snapshot.data.get(key);
@@ -140,7 +140,7 @@ describe("the homework card", () => {
     expect(view("thu-1530", IDA).days.some((day) => day.day >= "2026-11-02")).toBe(true);
   });
 
-  it("names the holiday ahead before the earlier homework, and awaits no plan for it", () => {
+  it("names the holiday ahead before the earlier notes, and awaits no plan for it", () => {
     const shown = view("before-holiday", IDA);
     expect(shown.heroes).toMatchObject([
       { hero: { kind: "holiday", resumes: "2026-10-19" }, only: [] },

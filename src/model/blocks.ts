@@ -23,7 +23,7 @@ import {
   type LessonBlock,
   type LessonTime,
 } from "./lessons.ts";
-import { inTimetableOrder, isHomework, noteView, type NoteView } from "./notes.ts";
+import { inTimetableOrder, isImportant, noteView, type NoteView } from "./notes.ts";
 import { packRows, type PackRow, type PackRule } from "./pack.ts";
 import type { SubjectLabel, SubjectNamer } from "./subjects.ts";
 
@@ -144,8 +144,8 @@ export interface DayContent {
   readonly hours: { readonly start: string; readonly end: string } | undefined;
   /** The subjects of the lessons held, each once, in the order of the timetable. */
   readonly subjects: readonly SubjectLabel[];
-  /** The homework, in the order of the timetable. */
-  readonly homework: readonly NoteView[];
+  /** The important notes, in the order of the timetable. */
+  readonly important: readonly NoteView[];
   /** The plan for the day: every other note, as Meebook sends them. */
   readonly plan: readonly NoteView[];
   /** The configured things to bring. */
@@ -172,11 +172,11 @@ export interface ContentRules {
   readonly zone: string;
 }
 
-/** Returns a day's homework, in the order of its timetable. */
-export function homeworkOf(view: DayView, rules: ContentRules): NoteView[] {
+/** Returns a day's important notes, in the order of its timetable. */
+export function importantOf(view: DayView, rules: ContentRules): NoteView[] {
   if (!rules.weekPlan) return [];
   return inTimetableOrder(
-    view.notes.filter(isHomework).map((note) => noteView(note, rules.namer)),
+    view.notes.filter(isImportant).map((note) => noteView(note, rules.namer)),
     (note) => note.subject?.key,
     view.lessons.map((lesson) => rules.namer(lesson.title).key),
   );
@@ -185,7 +185,7 @@ export function homeworkOf(view: DayView, rules: ContentRules): NoteView[] {
 /** Returns a day's notes other than what the week plan marks. */
 export function commentsOf(view: DayView, rules: ContentRules): NoteView[] {
   if (!rules.weekPlan) return [];
-  return view.notes.filter((note) => !isHomework(note)).map((note) => noteView(note, rules.namer));
+  return view.notes.filter((note) => !isImportant(note)).map((note) => noteView(note, rules.namer));
 }
 
 function status(value: string | null): LessonStatus | undefined {
@@ -232,7 +232,7 @@ export function dayContent(
     timetable,
     hours: schoolHours(view.lessons),
     subjects: [...subjects.values()],
-    homework: homeworkOf(view, rules),
+    important: importantOf(view, rules),
     plan: commentsOf(view, rules),
     pack: packRows(view.lessons, rules.packing, namer),
     timed: view.events
@@ -251,7 +251,7 @@ export function dayContent(
 }
 
 /** Why a block shows a sentence instead of content. */
-export type EmptyKind = "noHomework" | "planMissing" | "noWeekPlan" | "noTimetable";
+export type EmptyKind = "noImportant" | "planMissing" | "noWeekPlan" | "noTimetable";
 
 /** A block to show on a day. */
 export interface PlannedBlock {
@@ -267,9 +267,9 @@ export interface BlockPlan {
    * Vigtigt's, where either is shown. */
   readonly blocks: readonly PlannedBlock[];
   /** What the week plan marks, in Vigtigt; none while it is hidden. */
-  readonly homework: readonly NoteView[];
+  readonly important: readonly NoteView[];
   /** Why Vigtigt has no task to show beside Husk; undefined when it has, or shows none. */
-  readonly noHomework: EmptyKind | undefined;
+  readonly noImportant: EmptyKind | undefined;
   /** The things to bring, in Vigtigt; none while Husk is hidden. */
   readonly pack: readonly PackRow[];
   /** The subjects Husk names: none while Husk is hidden, or while the timetable, which lists
@@ -283,10 +283,10 @@ export interface BlockPlan {
   readonly nothing: boolean;
 }
 
-function homeworkEmpty(content: DayContent): EmptyKind | undefined {
+function importantEmpty(content: DayContent): EmptyKind | undefined {
   if (!content.schoolDay) return undefined;
   if (!content.weekPlan) return "noWeekPlan";
-  return content.planMissing === undefined ? "noHomework" : "planMissing";
+  return content.planMissing === undefined ? "noImportant" : "planMissing";
 }
 
 /**
@@ -301,7 +301,7 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
   const tasks = blocks.includes("task");
   const subjects = packed && !blocks.includes("timetable") ? content.subjects : [];
   const pack = packed ? content.pack : [];
-  const homework = tasks ? content.homework : [];
+  const important = tasks ? content.important : [];
   const events = blocks.includes("events");
   const allDay = events
     ? content.facts.flatMap((fact) =>
@@ -310,7 +310,7 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
     : [];
   const timed = events ? content.timed : [];
   const has: Record<BlockId, boolean> = {
-    task: homework.length > 0 || subjects.length > 0 || pack.length > 0,
+    task: important.length > 0 || subjects.length > 0 || pack.length > 0,
     pack: false,
     timetable: content.timetable.length > 0 || allDay.length > 0 || timed.length > 0,
     comment: content.plan.length > 0,
@@ -324,7 +324,7 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
   for (const id of drawnBlocks(blocks)) {
     const empty =
       id === "task" && tasks
-        ? homeworkEmpty(content)
+        ? importantEmpty(content)
         : id === "timetable" && other && !isWeekend(content.view.day)
           ? "noTimetable"
           : undefined;
@@ -333,8 +333,8 @@ export function planBlocks(content: DayContent, blocks: readonly BlockId[]): Blo
   }
   return {
     blocks: planned,
-    homework,
-    noHomework: tasks && homework.length === 0 ? homeworkEmpty(content) : undefined,
+    important,
+    noImportant: tasks && important.length === 0 ? importantEmpty(content) : undefined,
     pack,
     subjects,
     allDay,

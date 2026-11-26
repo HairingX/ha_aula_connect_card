@@ -77,7 +77,7 @@ const CARDS = {
   week: "aula-connect-week-card",
   children: "aula-connect-children-card",
   overview: "aula-connect-overview-card",
-  homework: "aula-connect-homework-card",
+  important: "aula-connect-important-card",
   sick: "aula-connect-sick-card",
   requests: "aula-connect-vacation-requests-card",
   vacation: "aula-connect-vacation-card",
@@ -160,7 +160,7 @@ const SICK_ROW = '.family-row[data-detail="sick|1001"]';
 const REQUEST_ROW = '.family-row[data-detail="request|1002|91"]';
 const ADD_VACATION = '[data-detail="vacation-add"]';
 const PRESENCE = '.presence[data-detail="presence|1001"]';
-const HOMEWORK = '[data-detail="homework|1001"]';
+const IMPORTANT = '[data-detail="important|1001"]';
 
 function family(width: number, large = false): Shot[] {
   const look = { children: 2 as const, large };
@@ -171,9 +171,9 @@ function family(width: number, large = false): Shot[] {
       shot("overview", "thu-1530", width, { ...look, config: { look: view }, tag: view }),
     ]),
     shot("overview", "thu-1000", width, { ...look, theme: "dark", tag: "rows" }),
-    shot("overview", "thu-1000", width, { ...look, dialog: HOMEWORK, tag: "homework" }),
+    shot("overview", "thu-1000", width, { ...look, dialog: IMPORTANT, tag: "important" }),
     shot("overview", "thu-1530", width, { ...look, dialog: PRESENCE, tag: "presence" }),
-    shot("homework", "thu-1000", width, look),
+    shot("important", "thu-1000", width, look),
     shot("sick", "thu-1000", width, look),
     shot("sick", "thu-1000", width, { ...look, dialog: SICK_ROW, tag: "step-1" }),
     shot("sick", "thu-1000", width, {
@@ -228,7 +228,7 @@ const SETS: Record<string, () => Shot[]> = {
     shot("overview", "thu-1000", 380, { children: 2, tag: "rows" }),
     shot("overview", "thu-1000", 1216, { children: 2, large: true, tag: "rows" }),
     shot("overview", "thu-1000", 800, { children: 2, config: { look: "board" }, tag: "board" }),
-    shot("homework", "thu-1000", 380, { children: 2 }),
+    shot("important", "thu-1000", 380, { children: 2 }),
     shot("sick", "thu-1000", 380, {
       children: 2,
       dialog: SICK_ROW,
@@ -610,7 +610,7 @@ function glance(arg: { tag: string; screen: number; packing: boolean }): string[
     if (size(item) < 30 || below(item) > arg.screen)
       problems.push(`hours of ${String(size(item))} px end ${String(below(item))} px down`);
   }
-  const husk = [...root.querySelectorAll('[data-block="task"] .hw-pack')];
+  const husk = [...root.querySelectorAll('[data-block="task"] .note-pack')];
   // Husk shows only the things to bring set up, so a card with none has no Husk to show.
   if (husk.length === 0 && arg.packing) problems.push("Husk is not shown");
   for (const line of husk) {
@@ -669,7 +669,7 @@ function layout({ tag, box }: { tag: string; box: string }): string[] {
         );
     }
     // Aula's own long words, as a link in a note, may break anywhere; the cards' words may not.
-    const free = parent.closest(".hw-text, .plan-text") !== null;
+    const free = parent.closest(".note-text, .plan-text") !== null;
     for (let index = 0; index < text.length; index++) {
       range.setStart(node, index);
       range.setEnd(node, index + 1);
@@ -719,7 +719,7 @@ function layout({ tag, box }: { tag: string; box: string }): string[] {
     const lines = new Set([...time.getClientRects()].map((rect) => Math.round(rect.bottom)));
     if (lines.size > 1) problems.push(`the time "${time.textContent}" is broken across lines`);
   }
-  for (const thing of root.querySelectorAll(".hw-pack")) {
+  for (const thing of root.querySelectorAll(".note-pack")) {
     if (thing.scrollHeight > thing.clientHeight + 1)
       problems.push(`"${thing.textContent.slice(0, 24)}" is cut short`);
   }

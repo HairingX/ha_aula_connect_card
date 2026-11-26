@@ -152,7 +152,7 @@ export interface CalendarEvent {
   location: string | null;
 }
 
-/** A note for a day from the school's week plan: homework, something to bring, information. */
+/** A note for a day from the school's week plan: homework, something to bring, something to decide, information. */
 export interface Task {
   /** The note's id. */
   id: string | number;

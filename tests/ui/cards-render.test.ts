@@ -12,7 +12,7 @@ import { allDay, CHILDREN, local, weekData, without } from "../fixtures/week.ts"
 const [IDA] = CHILDREN as [Child, Child];
 
 const DAY = "aula-connect-day-card";
-const HOMEWORK = "aula-connect-weekplan-card";
+const WEEKPLAN = "aula-connect-weekplan-card";
 const WEEK = "aula-connect-week-card";
 
 /** Returns what a screen reader reads of an element: without what is hidden from it. */
@@ -99,7 +99,7 @@ afterEach(async () => {
 });
 
 describe("every card in every scenario", () => {
-  const cases = [DAY, HOMEWORK, WEEK].flatMap((tag) =>
+  const cases = [DAY, WEEKPLAN, WEEK].flatMap((tag) =>
     SCENARIOS.flatMap((item) =>
       ["da", "en"].flatMap((language) =>
         [[1001], []].map((children) => [tag, item.id, language, children] as const),
@@ -230,7 +230,7 @@ describe("the school day card", () => {
     );
   });
 
-  it("says a week plan is not in Aula yet, not that there is no homework", async () => {
+  it("says a week plan is not in Aula yet, not that there is nothing important", async () => {
     const { card } = await mount(DAY, "sun-1800-noplan", { config: { children: [1001] } });
     expect(text(card, '[data-block="task"] .empty')).toBe(
       "Ugeplanen for uge 45 er ikke i Aula endnu.",
@@ -313,15 +313,15 @@ describe("abbreviations", () => {
       "task",
       "timetable",
     ]);
-    const items = all(card, '[data-block="task"] .homework > li');
-    expect(items.map((item) => item.className.trim())).toEqual(["hw", "hw hw-pack"]);
+    const items = all(card, '[data-block="task"] .important > li');
+    expect(items.map((item) => item.className.trim())).toEqual(["hw", "hw note-pack"]);
     expect(items[0]?.textContent.trim()).toBe("Ugeplanen for uge 44 er ikke i Aula endnu.");
     const { card: alone } = await mount(DAY, "thu-1010", {
       config: { children: [1001], packing, show: { task: false } },
     });
     expect(
-      all(alone, '[data-block="task"] .homework > li').map((item) => item.className.trim()),
-    ).toEqual(["hw hw-pack"]);
+      all(alone, '[data-block="task"] .important > li').map((item) => item.className.trim()),
+    ).toEqual(["hw note-pack"]);
   });
 
   it("name the subject of things to bring that has no colour", async () => {
@@ -362,7 +362,7 @@ describe("the school day card grouped by child", () => {
 
 describe("the week plan card grouped by child", () => {
   it("gives each child's days a column of its own by default: the focus day, and those with notes for the child", async () => {
-    const { card } = await mount(HOMEWORK, "thu-1930");
+    const { card } = await mount(WEEKPLAN, "thu-1930");
     expect(all(card, ".strip")).toHaveLength(0);
     const columns = all(card, ".by-child > .kid-col");
     expect(columns.map((column) => column.querySelector(".who-name")?.textContent)).toEqual([
@@ -370,7 +370,7 @@ describe("the week plan card grouped by child", () => {
       "Oskar",
     ]);
     const titles = columns.map((column) =>
-      [...column.querySelectorAll(".hw-day .day-title")].map((title) => title.textContent),
+      [...column.querySelectorAll(".note-day .day-title")].map((title) => title.textContent),
     );
     expect(titles).toEqual([
       ["I morgen", "Mandag", "Tirsdag", "Onsdag"],
@@ -381,7 +381,7 @@ describe("the week plan card grouped by child", () => {
   });
 
   it("lines the children's days up side by side with group_by: day", async () => {
-    const { card } = await mount(HOMEWORK, "thu-1930", { config: { group_by: "day" } });
+    const { card } = await mount(WEEKPLAN, "thu-1930", { config: { group_by: "day" } });
     expect(all(card, ".strip")).toHaveLength(1);
     expect(all(card, ".by-child")).toHaveLength(0);
   });
@@ -508,7 +508,7 @@ describe("the school day card's blocks", () => {
       config: { children: [1001], show: { timetable: false } },
       language: "en",
     });
-    expect(text(card, ".hw-pack > .pack-label")).toBe("Remember:");
+    expect(text(card, ".note-pack > .pack-label")).toBe("Remember:");
     expect(text(card, ".pack-subjects .pack-label")).toBe("Subjects:");
     expect(text(card, '.pack-subjects [lang="da"]')).toBe("Matematik, Dansk, Engelsk, Historie");
   });
@@ -579,42 +579,42 @@ describe("the week card's children", () => {
   });
 });
 
-describe("the homework card", () => {
-  it("groups by the day homework is for, then by child, with the earlier days folded first", async () => {
-    const { card } = await mount(HOMEWORK, "thu-1530", {
+describe("the week plan card", () => {
+  it("groups by the day the notes are for, then by child, with the earlier days folded first", async () => {
+    const { card } = await mount(WEEKPLAN, "thu-1530", {
       config: { group_by: "day" },
     });
-    const [tomorrow] = all(card, ".hw-day");
+    const [tomorrow] = all(card, ".note-day");
     expect(tomorrow?.classList.contains("focus")).toBe(true);
-    expect(texts(card, ".hw-day:first-of-type .day-title")).toEqual(["I morgen"]);
-    expect(texts(card, ".hw-day:first-of-type .day-date")).toEqual(["fredag 30. okt."]);
+    expect(texts(card, ".note-day:first-of-type .day-title")).toEqual(["I morgen"]);
+    expect(texts(card, ".note-day:first-of-type .day-date")).toEqual(["fredag 30. okt."]);
     expect(tomorrow?.querySelectorAll(".part")).toHaveLength(2);
     expect(text(card, ".fold > summary")).toBe("Tidligere (4)");
     expect(all(card, ".earlier-days")).toEqual([]);
-    expect(all(card, ".fold, .hw-day").map((element) => element.className)).toEqual([
+    expect(all(card, ".fold, .note-day").map((element) => element.className)).toEqual([
       "fold earlier",
-      ...all(card, ".hw-day").map((element) => element.className),
+      ...all(card, ".note-day").map((element) => element.className),
     ]);
     await open(card, ".fold");
-    expect(all(card, ".earlier-days .hw-day").length).toBeGreaterThan(0);
+    expect(all(card, ".earlier-days .note-day").length).toBeGreaterThan(0);
   });
 
   it("puts each note of a day on one surface", async () => {
-    const { card } = await mount(HOMEWORK, "thu-1530", { config: { children: [1001] } });
-    expect(all(card, ".hw-day:first-of-type .homework")).toHaveLength(1);
-    expect(all(card, ".hw-day:first-of-type .hw")).toHaveLength(2);
+    const { card } = await mount(WEEKPLAN, "thu-1530", { config: { children: [1001] } });
+    expect(all(card, ".note-day:first-of-type .important")).toHaveLength(1);
+    expect(all(card, ".note-day:first-of-type .hw")).toHaveLength(2);
   });
 
   it("names the children above their columns, and each day's part for when they are stacked", async () => {
-    const { card } = await mount(HOMEWORK, "thu-1530", {
+    const { card } = await mount(WEEKPLAN, "thu-1530", {
       config: { group_by: "day" },
     });
     expect(texts(card, ".strip .who-name")).toEqual(["Ida", "Oskar"]);
-    expect(texts(card, ".hw-day:first-of-type .part-who")).toEqual(["IIda", "OOskar"]);
+    expect(texts(card, ".note-day:first-of-type .part-who")).toEqual(["IIda", "OOskar"]);
   });
 
   it("names the schools above the columns when the children go to different ones", async () => {
-    const { card } = await mount(HOMEWORK, "thu-1530", {
+    const { card } = await mount(WEEKPLAN, "thu-1530", {
       config: { group_by: "day" },
       setup: (hass) => {
         hass.callWS.mockResolvedValue({ children: [IDA, OSKAR_ELSEWHERE] });
@@ -625,29 +625,29 @@ describe("the homework card", () => {
   });
 
   it("has no title of its own, as its section names it, nor a name for one child", async () => {
-    const { card } = await mount(HOMEWORK, "thu-1530", { config: { children: [1001] } });
+    const { card } = await mount(WEEKPLAN, "thu-1530", { config: { children: [1001] } });
     expect(all(card, "h2, .strip, .part-who")).toEqual([]);
-    expect(card.shadowRoot?.querySelector(".homework-card")?.getAttribute("aria-label")).toMatch(
+    expect(card.shadowRoot?.querySelector(".weekplan-card")?.getAttribute("aria-label")).toMatch(
       /^Ugeplan\P{L}+Ida$/u,
     );
   });
 
   it("shows what is marked, the other notes, or both, the marked on a surface first", async () => {
     const day = async (notes: string): Promise<string[]> => {
-      const { card } = await mount(HOMEWORK, "thu-1930", { config: { children: [1001], notes } });
-      return all(card, ".hw-day:first-of-type .part > *").map((element) => element.className);
+      const { card } = await mount(WEEKPLAN, "thu-1930", { config: { children: [1001], notes } });
+      return all(card, ".note-day:first-of-type .part > *").map((element) => element.className);
     };
-    expect(await day("tasks")).toEqual(["homework"]);
+    expect(await day("tasks")).toEqual(["important"]);
     expect(await day("comments")).toEqual(["plan"]);
-    expect(await day("all")).toEqual(["homework", "plan"]);
+    expect(await day("all")).toEqual(["important", "plan"]);
   });
 
-  it("shows a child's homework while another loads, and why one cannot be shown", async () => {
-    const { card } = await mount(HOMEWORK, "thu-1930", oskar());
+  it("shows a child's notes while another loads, and why one cannot be shown", async () => {
+    const { card } = await mount(WEEKPLAN, "thu-1930", oskar());
     expect(all(card, '.pending [aria-busy="true"]')).toHaveLength(1);
     unmountAll();
     const { card: refused } = await mount(
-      HOMEWORK,
+      WEEKPLAN,
       "thu-1930",
       oskar(wsError("not_found", "gone")),
     );
@@ -655,7 +655,7 @@ describe("the homework card", () => {
   });
 
   it("says what it knows for each child without a school day ahead", async () => {
-    const { card } = await mount(HOMEWORK, "before-holiday", {
+    const { card } = await mount(WEEKPLAN, "before-holiday", {
       ...changed("before-holiday", (data, child) =>
         child.child_id === 1002
           ? data
@@ -665,32 +665,32 @@ describe("the homework card", () => {
     expect(texts(card, ".day-title")).toEqual(["Ingen skoledage (Ida)", "Efterårsferie (Oskar)"]);
   });
 
-  it("names the holiday ahead, after the earlier homework", async () => {
-    const { card } = await mount(HOMEWORK, "before-holiday", { config: { children: [1001] } });
-    expect(text(card, ".hw-day.focus .day-title")).toBe("Efterårsferie");
-    expect(text(card, ".hw-day.focus .day-date")).toBe(
+  it("names the holiday ahead, after the earlier notes", async () => {
+    const { card } = await mount(WEEKPLAN, "before-holiday", { config: { children: [1001] } });
+    expect(text(card, ".note-day.focus .day-title")).toBe("Efterårsferie");
+    expect(text(card, ".note-day.focus .day-date")).toBe(
       "10.–18. okt., skolen starter mandag 19. oktober",
     );
   });
 
   it("says once what every child lacks on a day, naming no one", async () => {
-    const { card } = await mount(HOMEWORK, "sun-1800-noplan", {
+    const { card } = await mount(WEEKPLAN, "sun-1800-noplan", {
       config: { group_by: "day" },
     });
-    const [monday] = all(card, ".hw-day");
+    const [monday] = all(card, ".note-day");
     expect(monday?.querySelectorAll(".part-who")).toHaveLength(0);
-    expect(texts(card, ".hw-day:first-of-type .empty")).toEqual([
+    expect(texts(card, ".note-day:first-of-type .empty")).toEqual([
       "Ugeplanen for uge 45 er ikke i Aula endnu.",
     ]);
   });
 
   it("puts one child's days in a grid that becomes columns where there is room", async () => {
-    const { card } = await mount(HOMEWORK, "thu-1530", { config: { children: [1001] } });
-    expect(all(card, ".hw-days > .hw-day")).toHaveLength(4);
+    const { card } = await mount(WEEKPLAN, "thu-1530", { config: { children: [1001] } });
+    expect(all(card, ".note-days > .note-day")).toHaveLength(4);
   });
 
   it("says next week's plan is not in Aula yet on a line of its own", async () => {
-    const { card } = await mount(HOMEWORK, "thu-1530", {
+    const { card } = await mount(WEEKPLAN, "thu-1530", {
       config: { children: [1001] },
       ...changed("thu-1530", (data) => ({
         ...data,
@@ -1148,7 +1148,7 @@ describe("rarer days", () => {
     const parts = all(card, '.focus-day [data-block="task"] .vital');
     expect(
       parts.map((part) => [
-        part.querySelector(".hw-pack") !== null,
+        part.querySelector(".note-pack") !== null,
         part.querySelector(".vital-flag") !== null,
       ]),
     ).toEqual([
@@ -1213,7 +1213,7 @@ describe("rarer days", () => {
     ]);
   });
 
-  it("shows notes without a subject: homework by its title and the comment among the notes", async () => {
+  it("shows notes without a subject: an important one by its title and the comment among the notes", async () => {
     const note = (id: number, type: string, title: string | null, content: string) => ({
       id,
       date: "2026-10-30",
@@ -1236,7 +1236,7 @@ describe("rarer days", () => {
       })),
     });
     expect(texts(card, '[data-block="pack"]').join(" ")).not.toContain("regntøj");
-    expect(texts(card, ".hw-head").at(-1)).toBe("Projekt");
+    expect(texts(card, ".note-head").at(-1)).toBe("Projekt");
     expect(all(card, ".plan-note").length - all(card, ".plan-subject").length).toBe(1);
   });
 
@@ -1290,12 +1290,12 @@ describe("rarer days", () => {
     expect(text(card, ".hero")).toContain("Studiedag");
     expect(text(card, ".hero")).not.toContain("skolen starter");
     unmountAll();
-    const { card: homework } = await mount(HOMEWORK, "thu-1930", {
+    const { card: important } = await mount(WEEKPLAN, "thu-1930", {
       config: { children: [1001] },
       ...changed("thu-1930", holiday),
     });
-    expect(text(homework, ".hw-day.focus")).toContain("Studiedag");
-    expect(text(homework, ".hw-day.focus")).not.toContain("skolen starter");
+    expect(text(important, ".note-day.focus")).toContain("Studiedag");
+    expect(text(important, ".note-day.focus")).not.toContain("skolen starter");
   });
 
   it("says a day has nothing when every block is hidden", async () => {
@@ -1322,7 +1322,7 @@ describe("rarer days", () => {
   });
 
   it("keeps showing a child's last data with the error that stopped it", async () => {
-    for (const tag of [DAY, WEEK, HOMEWORK]) {
+    for (const tag of [DAY, WEEK, WEEKPLAN]) {
       const { card, hass } = await mount(tag, "thu-1930");
       hass.connection.refuse = wsError("not_found", "gone");
       hass.connection.emit("disconnected");
@@ -1330,13 +1330,13 @@ describe("rarer days", () => {
       await vi.advanceTimersByTimeAsync(1_000);
       await card.updateComplete;
       expect(texts(card, '[role="alert"]')).toHaveLength(2);
-      expect(all(card, ".hero, .weeks, .hw-days").length).toBeGreaterThan(0);
+      expect(all(card, ".hero, .weeks, .note-days").length).toBeGreaterThan(0);
       unmountAll();
     }
   });
 
-  it("shows a homework card's child that is loading or refused", async () => {
-    const { card } = await mount(HOMEWORK, "thu-1930", {
+  it("shows a week plan card's child that is loading or refused", async () => {
+    const { card } = await mount(WEEKPLAN, "thu-1930", {
       config: { children: [1002] },
       ...oskar(),
     });
@@ -1344,7 +1344,7 @@ describe("rarer days", () => {
     expect(all(card, '.pending [aria-busy="true"]')).toHaveLength(1);
     unmountAll();
     const { card: refused } = await mount(
-      HOMEWORK,
+      WEEKPLAN,
       "thu-1930",
       oskar(wsError("not_found", "gone")),
     );

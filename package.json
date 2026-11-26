@@ -2,7 +2,7 @@
   "name": "aula-connect-card",
   "version": "0.0.0",
   "private": true,
-  "description": "A Home Assistant dashboard card with each child's week from Aula Connect: timetable, homework, events and birthdays.",
+  "description": "A Home Assistant dashboard card with each child's week from Aula Connect: timetable, what is important, events and birthdays.",
   "license": "MIT",
   "type": "module",
   "engines": {

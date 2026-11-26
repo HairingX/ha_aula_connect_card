@@ -5,7 +5,7 @@ import {
   blocks,
   dayStyles,
   details,
-  homeworkStyles,
+  weekplanStyles,
   weekStyles,
 } from "../../src/ui/styles.ts";
 
@@ -53,7 +53,7 @@ function declared(sheet: string, selector: string, within = ""): string[] {
     .flatMap((rule) => rule.declarations);
 }
 
-const ALL = [base, blocks, details, dayStyles, homeworkStyles, weekStyles];
+const ALL = [base, blocks, details, dayStyles, weekplanStyles, weekStyles];
 
 describe("the things to bring", () => {
   it("stand each in its subject's colour, its text black or white, grey without one", () => {
@@ -191,9 +191,9 @@ describe("the cards' layout", () => {
     );
   });
 
-  it("puts one child's homework days in columns from 600 px", () => {
+  it("puts one child's week plan days in columns from 600 px", () => {
     expect(
-      declared(homeworkStyles, ".normal .n-1 .hw-days", "@container child (min-width: 600px)"),
+      declared(weekplanStyles, ".normal .n-1 .note-days", "@container child (min-width: 600px)"),
     ).toContain("grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))");
   });
 
@@ -204,7 +204,7 @@ describe("the cards' layout", () => {
         rule.declarations.includes("margin-inline-start: 0"),
     );
     expect(moved.flatMap((rule) => rule.selectors)).toEqual([
-      ".homework-card > .fold > summary .chevron",
+      ".weekplan-card > .fold > summary .chevron",
     ]);
   });
 });

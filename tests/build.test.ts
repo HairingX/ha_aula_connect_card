@@ -62,8 +62,8 @@ describe("the templates' white space", () => {
 describe("the texts' short keys", () => {
   it("renames a camelCase key the bundle has only as the texts' property and as strings", () => {
     expect(
-      shortenTextKeys('var T={noHomework:[`a`,`b`],now:[`c`,`d`]};t(`noHomework`);t("now")', [
-        "noHomework",
+      shortenTextKeys('var T={noImportant:[`a`,`b`],now:[`c`,`d`]};t(`noImportant`);t("now")', [
+        "noImportant",
         "now",
       ]),
     ).toBe('var T={q0:[`a`,`b`],now:[`c`,`d`]};t(`q0`);t("now")');
@@ -76,7 +76,7 @@ describe("the texts' short keys", () => {
   });
 
   it("gives a key a name the bundle does not have yet", () => {
-    expect(shortenTextKeys("var T={noHomework:1};q0;t(`noHomework`)", ["noHomework"])).toBe(
+    expect(shortenTextKeys("var T={noImportant:1};q0;t(`noImportant`)", ["noImportant"])).toBe(
       "var T={q1:1};q0;t(`q1`)",
     );
   });

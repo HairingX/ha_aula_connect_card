@@ -58,17 +58,17 @@ describe("the subjects in Husk", () => {
 
   it("hold Husk in Vigtigt, which says why it has no task where the week plan marks none", () => {
     const pack = [{ subject: subjectNamer([])("IDR"), items: ["Idrætstøj"] }];
-    const bare = { ...content, homework: [], pack };
+    const bare = { ...content, important: [], pack };
     const plan = planBlocks(bare, DEFAULT_ORDER);
     expect(plan.blocks.map((block) => block.id)).toEqual(["task", "timetable", "comment"]);
-    expect([plan.pack, plan.homework, plan.noHomework]).toEqual([pack, [], "noHomework"]);
+    expect([plan.pack, plan.important, plan.noImportant]).toEqual([pack, [], "noImportant"]);
     const hidden = planBlocks(bare, ["pack", "timetable"]);
-    expect([hidden.blocks[0], hidden.noHomework]).toEqual([
+    expect([hidden.blocks[0], hidden.noImportant]).toEqual([
       { id: "task", empty: undefined },
       undefined,
     ]);
     const none = planBlocks(bare, ["task", "timetable"]);
-    expect([none.pack, none.blocks[0]]).toEqual([[], { id: "task", empty: "noHomework" }]);
+    expect([none.pack, none.blocks[0]]).toEqual([[], { id: "task", empty: "noImportant" }]);
     expect(
       planBlocks(content, ["comment", "pack", "task"]).blocks.map((block) => block.id),
     ).toEqual(["comment", "task"]);

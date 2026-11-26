@@ -17,11 +17,11 @@ describe("cardLanguage", () => {
 
 describe("translator", () => {
   it("gives Danish texts in Danish", () => {
-    expect(translator("da")("noHomework")).toBe("Intet i ugeplanen.");
+    expect(translator("da")("noImportant")).toBe("Intet i ugeplanen.");
   });
 
   it("gives English texts otherwise", () => {
-    expect(translator("de")("noHomework")).toBe("Nothing in the week plan.");
+    expect(translator("de")("noImportant")).toBe("Nothing in the week plan.");
   });
 
   it("fills in placeholders and leaves unknown ones", () => {

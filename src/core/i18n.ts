@@ -35,15 +35,15 @@ const TEXTS = {
   errorGeneric: ["Could not load from Aula: {message}", "Kunne ikke hente fra Aula: {message}"],
   // The cards
   regionDay: ["School day – {names}", "Skoledag – {names}"],
-  regionHomework: ["Week plan – {names}", "Ugeplan – {names}"],
+  regionWeekplan: ["Week plan – {names}", "Ugeplan – {names}"],
   regionWeek: ["Week – {names}", "Uge – {names}"],
   pickerDayName: ["Aula Connect · School day", "Aula Connect · Skoledag"],
   pickerDayDescription: [
     "The school day that matters now: today, and from noon the next school day – the week plan, things to bring, timetable and events.",
     "Dagen, der gælder nu: i dag, og fra middag næste skoledag – ugeplanen, hvad der skal med, skema og begivenheder.",
   ],
-  pickerHomeworkName: ["Aula Connect · Week plan", "Aula Connect · Ugeplan"],
-  pickerHomeworkDescription: [
+  pickerWeekplanName: ["Aula Connect · Week plan", "Aula Connect · Ugeplan"],
+  pickerWeekplanDescription: [
     "The week plan for the days ahead, by the day it is for: what is marked, the other notes, or both.",
     "Ugeplanen for de kommende dage, samlet efter dagen, den gælder: det markerede, det øvrige eller begge.",
   ],
@@ -59,13 +59,13 @@ const TEXTS = {
   ],
   pickerOverviewName: ["Aula Connect · Overview", "Aula Connect · Overblik"],
   pickerOverviewDescription: [
-    "Every child's day at a glance: presence, timetable, things to bring and homework, the pages, and what is coming.",
-    "Alle børnenes dag med et blik: fremmøde, skema, hvad der skal med og lektier, siderne, og hvad der sker.",
+    "Every child's day at a glance: presence, timetable, things to bring and what is important, the pages, and what is coming.",
+    "Alle børnenes dag med et blik: fremmøde, skema, hvad der skal med og det vigtige, siderne, og hvad der sker.",
   ],
-  pickerHomeworkPageName: ["Aula Connect · Homework", "Aula Connect · Lektier"],
-  pickerHomeworkPageDescription: [
-    "A week's homework for every child, by the day it is due, browsed a week at a time.",
-    "En uges lektier for alle børn, efter dagen de skal laves til, en uge ad gangen.",
+  pickerImportantPageName: ["Aula Connect · Important", "Aula Connect · Vigtigt"],
+  pickerImportantPageDescription: [
+    "What the week plan marks as important for every child, by the day it is for, a week at a time.",
+    "Det, ugeplanen markerer som vigtigt, for alle børn, efter dagen det gælder, en uge ad gangen.",
   ],
   pickerSickName: ["Aula Connect · Report sick", "Aula Connect · Sygemelding"],
   pickerSickDescription: [
@@ -112,8 +112,8 @@ const TEXTS = {
   blockComment: ["Notes", "Noter"],
   blockEvents: ["Events", "Begivenheder"],
   blockBirthdays: ["Birthdays", "Fødselsdage"],
-  noHomework: ["Nothing in the week plan.", "Intet i ugeplanen."],
-  noWeekPlanHomework: ["No week plan in Aula.", "Ingen ugeplan i Aula."],
+  noImportant: ["Nothing in the week plan.", "Intet i ugeplanen."],
+  noWeekPlanImportant: ["No week plan in Aula.", "Ingen ugeplan i Aula."],
   noPlan: ["Nothing in the week plan.", "Intet i ugeplanen."],
   noLessons: ["No timetable in Aula.", "Intet skema i Aula."],
   subjects: ["Subjects:", "Fag:"],
@@ -219,22 +219,22 @@ const TEXTS = {
   presenceCame: ["came {time}", "kom {time}"],
   presenceLeft: ["left {time}", "gik {time}"],
   presenceNote: ["From the check-in in Aula.", "Fra komme/gå i Aula."],
-  homeworkNone: ["No homework", "Ingen lektier"],
-  homeworkFor: [
-    { one: "{n} homework for {when}", other: "{n} homework for {when}" },
-    { one: "{n} lektie til {when}", other: "{n} lektier til {when}" },
+  importantNone: ["Nothing important", "Intet vigtigt"],
+  importantFor: [
+    { one: "{n} important thing for {when}", other: "{n} important things for {when}" },
+    { one: "{n} vigtig ting til {when}", other: "{n} vigtige ting til {when}" },
   ],
-  homeworkThen: ["{n} for {when}", "{n} til {when}"],
+  importantThen: ["{n} for {when}", "{n} til {when}"],
   whenToday: ["today", "i dag"],
   whenTomorrow: ["tomorrow", "i morgen"],
   inDays: [
     { one: "in {n} day", other: "in {n} days" },
     { one: "om {n} dag", other: "om {n} dage" },
   ],
-  homeworkTitle: ["{name}'s homework", "{name}s lektier"],
-  homeworkFrom: ["Due from {day} on", "Fra {day} og frem"],
-  homeworkAll: ["All homework", "Alle lektier"],
-  homeworkSoon: ["Homework soon", "Lektier snart"],
+  importantTitle: ["Important for {name}", "Vigtigt for {name}"],
+  importantFrom: ["From {day} on", "Fra {day} og frem"],
+  importantAll: ["All that is important", "Alt vigtigt"],
+  importantSoon: ["Important soon", "Vigtigt snart"],
   moreCount: ["+ {n} more", "+ {n} mere"],
   endsAtBig: ["Ends {time}", "Fri kl. {time}"],
   boardToday: ["Today you have", "I dag har du"],
@@ -245,16 +245,19 @@ const TEXTS = {
   comingRange: ["the next 7 days", "de næste 7 dage"],
   comingNone: ["Nothing in the calendar", "Intet i kalenderen"],
   pages: ["Pages", "Sider"],
-  navHomework: ["Homework", "Lektier"],
+  navImportant: ["Important", "Vigtigt"],
   navWeekPlan: ["Week plan", "Ugeplan"],
   navWeek: ["Week", "Uge"],
-  // The homework page
-  regionHomeworkPage: ["Homework – {names}", "Lektier – {names}"],
+  // The Important page
+  regionImportantPage: ["Important – {names}", "Vigtigt – {names}"],
   earlierInWeek: ["Earlier this week ({n})", "Tidligere i ugen ({n})"],
-  noHomeworkWeek: ["{name} has no homework in week {n}", "{name} har ingen lektier i uge {n}"],
-  noMoreHomeworkWeek: [
-    "{name} has no more homework in week {n}",
-    "{name} har ikke flere lektier i uge {n}",
+  noImportantWeek: [
+    "{name} has nothing important in week {n}",
+    "{name} har intet vigtigt i uge {n}",
+  ],
+  noMoreImportantWeek: [
+    "{name} has nothing more important in week {n}",
+    "{name} har ikke mere vigtigt i uge {n}",
   ],
   // Reporting sick and writing a message
   sickTitle: ["Illness", "Sygdom"],
@@ -382,7 +385,7 @@ const TEXTS = {
   ],
   // The week plan card
   weekShort: ["week {n}", "uge {n}"],
-  earlierHomework: ["Earlier ({n})", "Tidligere ({n})"],
+  earlierWeekplan: ["Earlier ({n})", "Tidligere ({n})"],
   weekPlanNotYet: [
     "Week {n}'s plan isn't in Aula yet.",
     "Ugeplanen for uge {n} er ikke i Aula endnu.",

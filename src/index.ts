@@ -1,7 +1,7 @@
 /**
  * The Aula Connect cards and the Aula Connect dashboard, from the Aula Connect integration: the
  * school day, the week plan and the week, which only show; the children's bar, the overview and
- * the homework page; and the cards that report a child sick, answer vacation requests and
+ * the Important page; and the cards that report a child sick, answer vacation requests and
  * register vacations, which act in Aula only on a tap and once confirmed.
  *
  * @packageDocumentation
@@ -9,7 +9,7 @@
 
 import { AulaConnectChildrenCard } from "./cards/children-card.ts";
 import { AulaConnectDayCard } from "./cards/day-card.ts";
-import { AulaConnectHomeworkCard } from "./cards/homework-card.ts";
+import { AulaConnectImportantCard } from "./cards/important-card.ts";
 import { AulaConnectOverviewCard } from "./cards/overview-card.ts";
 import { registerCard } from "./cards/register.ts";
 import { AulaConnectSickCard } from "./cards/sick-card.ts";
@@ -20,7 +20,7 @@ import { AulaConnectWeekplanCard } from "./cards/weekplan-card.ts";
 import { DAY_CARD } from "./config/day.ts";
 import {
   CHILDREN_CARD,
-  HOMEWORK_CARD,
+  IMPORTANT_CARD,
   OVERVIEW_CARD,
   SICK_CARD,
   VACATION_CARD,
@@ -44,8 +44,8 @@ const defined = [
     anchor: "#school-day-card",
   }),
   registerCard(WEEKPLAN_CARD, AulaConnectWeekplanCard, {
-    name: "pickerHomeworkName",
-    description: "pickerHomeworkDescription",
+    name: "pickerWeekplanName",
+    description: "pickerWeekplanDescription",
     preview: true,
     anchor: "#week-plan-card",
   }),
@@ -68,11 +68,11 @@ const defined = [
     preview: false,
     anchor: "#overview-card",
   }),
-  registerCard(HOMEWORK_CARD, AulaConnectHomeworkCard, {
-    name: "pickerHomeworkPageName",
-    description: "pickerHomeworkPageDescription",
+  registerCard(IMPORTANT_CARD, AulaConnectImportantCard, {
+    name: "pickerImportantPageName",
+    description: "pickerImportantPageDescription",
     preview: false,
-    anchor: "#homework-card",
+    anchor: "#important-card",
   }),
   registerCard(SICK_CARD, AulaConnectSickCard, {
     name: "pickerSickName",

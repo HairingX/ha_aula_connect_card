@@ -3,7 +3,7 @@
 Home Assistant dashboard cards for the Danish school platform Aula, from the
 [Aula Connect](https://github.com/HairingX/ha_aula_connect) integration: **the school day** that
 matters now, **the week plan** for the days ahead, and **the week** day by day; and for the family,
-**the children's bar**, **an overview** of every child's day, **the homework**, and the cards
+**the children's bar**, **an overview** of every child's day, **what is important**, and the cards
 that **report a child sick**, **answer vacation requests** and **register vacations**. They are
 made to be read on a phone in the evening and on a wall screen in the morning, in Danish or
 English. The school day cards only show; the family's cards act in Aula only on a tap, and only
@@ -53,7 +53,7 @@ Every option can be set in each card's visual editor, or in YAML as below.
 The cards look at **the school day that matters now**, for each child:
 
 - **Until noon** it is today, when today is a school day.
-- **From noon** it is the next school day, as what matters then is tomorrow's homework and bag.
+- **From noon** it is the next school day, as what matters then is what is important for tomorrow, and the bag.
   On a Friday afternoon, a Saturday and a Sunday that is Monday; before a holiday, the first day
   after it.
 - The header says which day it is, so that it is never taken for today: **I dag** or
@@ -176,7 +176,7 @@ timetable first, between thin lines, opened whole at a tap on it. Husk follows t
 it comes from, above the line; what the plan marks follows in rows beside a flag. A day the week plan
 marks nothing for says nothing of it. Where the week's plan is not in Aula yet, the opened day
 says so first, with a mark, and each closed row has "⚑ ?" in place of its count, so that a day
-without homework is never taken for one whose plan is still to come. A weekend with something on is one
+with nothing important is never taken for one whose plan is still to come. A weekend with something on is one
 row, and a holiday's days are one row with its dates. From Friday afternoon this week collapses
 and next week opens at Monday:
 
@@ -194,7 +194,7 @@ above the children.
 
 The **Aula Connect** dashboard is made from the cards: a sections view with the children's bar
 and the overview, and beside them the sick card, the vacation requests and the vacations; under
-it the overview's pages as subviews, each under the children's bar: **Lektier**, **Ugeplan** and
+it the overview's pages as subviews, each under the children's bar: **Vigtigt**, **Ugeplan** and
 **Uge**. Make a new dashboard, open its raw configuration, and write:
 
 ```yaml
@@ -248,13 +248,13 @@ look_switch: true
 
 `custom:aula-connect-overview-card` shows each child's day that matters now at a glance: its
 hours, its day as a bar on one axis for all the children, what to bring with an icon for each
-thing, and the homework due from that day on. Beside the name, the child's presence today as the
+thing, and what the week plan marks as important from that day on. Beside the name, the child's presence today as the
 institution registers it: at school until the day ends, here since a time, coming, gone home,
-or sick; after `switch_time` it says that it is today's. Under the children, tiles go to the
-homework, the week plan and the week, and **Det sker** lists what is coming the next seven days
+or sick; after `switch_time` it says that it is today's. Under the children, tiles go to
+what is important, the week plan and the week, and **Det sker** lists what is coming the next seven days
 once, with the faces of the children it is for.
 
-A tap on the homework opens it day by day; a tap on the presence opens the day's times, and
+A tap on what is important opens it day by day; a tap on the presence opens the day's times, and
 reports the child sick from there, where Aula Connect's options allow it. An event opens its
 window as in the school day card.
 
@@ -262,7 +262,7 @@ Three looks, chosen in the children's bar or kept with `look`:
 
 - **Rækker** (`rows`): a row per child; on the wall, the face, the bar and what to bring side by
   side, with the time school ends in large.
-- **Kolonner** (`columns`): a column per child, with the homework due soon listed.
+- **Kolonner** (`columns`): a column per child, with what is important soon listed.
 - **Tavle** (`board`): large tiles for the children themselves: today's subjects and the things
   to pack.
 
@@ -270,19 +270,20 @@ Three looks, chosen in the children's bar or kept with `look`:
 type: custom:aula-connect-overview-card
 look: board # rows, columns or board; the children's bar's when left out
 paths: # the views the tiles go to
-  homework: lektier
+  important: vigtigt
   weekplan: ugeplan
   week: uge
 pack_icons: # over the built-in icons, by the thing
   blokfløjte: mdi:music
 ```
 
-## Homework card
+## Important card
 
-![The homework card](docs/homework-thu-1000-380-light-blue-da-2child.png)
+![The important card](docs/important-thu-1000-380-light-blue-da-2child.png)
 
-`custom:aula-connect-homework-card` shows a week's homework for the children the bar shows, by
-the day it is due, with the faces naming whose it is. The days before today are folded; the
+`custom:aula-connect-important-card` shows what the week plan marks as important for a week -
+homework, things to bring, things to decide - for the children the bar shows, by the day it is
+for, with the faces naming whose it is. The days before today are folded; the
 arrows browse a week at a time, and **I dag** comes back, as does the card after ten minutes
 without a touch.
 
@@ -358,7 +359,7 @@ entry does; otherwise the card says they are turned off.
 | `people`               | children's bar           | none                        | A `person` whose name and picture stand in for a child's, on every card of the page.                                                                                   |
 | `look_switch`          | children's bar           | `true`                      | `false` leaves out the switch between the overview's looks.                                                                                                            |
 | `look`                 | overview                 | the bar's                   | `rows`, `columns` or `board`, kept whatever the children's bar chooses.                                                                                                |
-| `paths`                | overview                 | `lektier`, `ugeplan`, `uge` | The views the tiles go to: `homework`, `weekplan`, `week`; relative to the dashboard unless they begin with `/`.                                                       |
+| `paths`                | overview                 | `vigtigt`, `ugeplan`, `uge` | The views the tiles go to: `important`, `weekplan`, `week`; relative to the dashboard unless they begin with `/`.                                                      |
 | `pack_icons`           | overview                 | none                        | An mdi icon for a thing to bring, by the thing, over the built-in ones.                                                                                                |
 | `sick_message`         | overview, sick           | a sentence                  | The message about the illness; `{name}` is the child's first name.                                                                                                     |
 | `sender`               | overview, sick, vacation | the one used last           | The guardian to act as, by the name Aula Connect gives the entry.                                                                                                      |
@@ -559,7 +560,7 @@ holds the day, each child's hours and what each child is to bring.
 
 ## Privacy
 
-The school day, week plan, week, overview and homework cards only show: they change nothing in
+The school day, week plan, week, overview and important cards only show: they change nothing in
 Aula and mark nothing as read. The sick, vacation requests and vacation cards, and the overview's
 presence window, act in Aula only on a tap of their buttons, each step its own tap: a report, a
 message, an answer, a vacation or its deletion. Everything goes through Home Assistant's own

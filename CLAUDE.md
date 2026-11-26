@@ -10,7 +10,7 @@ how it is set up: the README.
 
 ## These cards
 
-- The school day, week plan, week, overview and homework cards only show. The sick, vacation
+- The school day, week plan, week, overview and important cards only show. The sick, vacation
   requests and vacation cards, and the overview's presence window, act in Aula only on a tap,
   each step its own tap, showing what is sent and to whom, with nothing sent unseen; nothing is
   ever marked read. What is opened closes again by itself.
@@ -58,7 +58,7 @@ how it is set up: the README.
     events have ISO date-times with offset. `teachers` are full names. A lesson's `status` is
     `normal`, `substitute`, or another value shown as it is.
   - Notes and birthdays come only from a week plan: without one (`week_plan` false) the card
-    leaves them out, and says nothing of homework.
+    leaves them out, and says nothing of what is important.
   - The card moves to a new day and week by its own clock, as events come only on change. It
     subscribes again after a lost connection, and lists the children again after `ended`.
   - The store subscribes each child for this week and next; the week card browsed to other weeks

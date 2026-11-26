@@ -8,7 +8,7 @@ import { forget } from "../../src/core/memory.ts";
 import { RETRY_WINDOW_MS, STARTING_MS } from "../../src/core/store.ts";
 import { IDLE_RESET_MS } from "../../src/model/focus.ts";
 import { STUB_WAIT_MS } from "../../src/ui/card.ts";
-import { base, blocks, dayStyles, homeworkStyles, weekStyles } from "../../src/ui/styles.ts";
+import { base, blocks, dayStyles, weekplanStyles, weekStyles } from "../../src/ui/styles.ts";
 import { FakeConnection, fakeHass, present, settle, wsError, type FakeHass } from "../fake-hass.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
 import { local } from "../fixtures/week.ts";
@@ -109,9 +109,9 @@ describe("registration", () => {
         "https://github.com/HairingX/ha_aula_connect_card#overview-card",
       ],
       [
-        "aula-connect-homework-card",
+        "aula-connect-important-card",
         false,
-        "https://github.com/HairingX/ha_aula_connect_card#homework-card",
+        "https://github.com/HairingX/ha_aula_connect_card#important-card",
       ],
       [
         "aula-connect-sick-card",
@@ -311,9 +311,9 @@ describe("the cards", () => {
       min_columns: 12,
       min_rows: 4,
     });
-    const homework = new AulaConnectWeekplanCard();
-    expect(homework.getCardSize()).toBe(6);
-    expect(homework.getGridOptions()).toEqual({
+    const important = new AulaConnectWeekplanCard();
+    expect(important.getCardSize()).toBe(6);
+    expect(important.getGridOptions()).toEqual({
       columns: "full",
       rows: "auto",
       min_columns: 12,
@@ -496,7 +496,7 @@ describe("Home Assistant's state", () => {
 
 describe("the theme's primary colour", () => {
   it("never colours text: it fills only the marks beside words, and outlines focus", () => {
-    const sheets = [base, blocks, dayStyles, homeworkStyles, weekStyles].join("\n");
+    const sheets = [base, blocks, dayStyles, weekplanStyles, weekStyles].join("\n");
     const uses = [
       ...sheets.matchAll(/([\w-]+)\s*:\s*[^;{}]*var\(--(?:aula-accent|primary-color)\b[^;{}]*;/g),
     ].map((match) => match[1]);

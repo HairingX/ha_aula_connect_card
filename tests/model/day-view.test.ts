@@ -152,7 +152,7 @@ describe("the header", () => {
       focus: { day: "2026-10-27", reason: "tomorrow" },
     });
     expect(named(item.facts)).toEqual([]);
-    expect(blocks(item)).toEqual(["task: noHomework", "timetable: content"]);
+    expect(blocks(item)).toEqual(["task: noImportant", "timetable: content"]);
   });
 
   it("says birthdays in the header and events in the timetable, no block for either", () => {
@@ -303,7 +303,7 @@ describe("several children", () => {
 });
 
 describe("the school day's blocks", () => {
-  it("say homework is not shown without a week plan, and leave birthdays out", () => {
+  it("say important notes are not shown without a week plan, and leave birthdays out", () => {
     const item = group("no-week-plan");
     expect(blocks(item)).toEqual(["task: noWeekPlan", "timetable: content"]);
     expect(named(item.facts)).toEqual([]);
@@ -319,7 +319,7 @@ describe("the school day's blocks", () => {
     ]);
   });
 
-  it("say the week plan is not in Aula yet instead of no homework", () => {
+  it("say the week plan is not in Aula yet instead of nothing important", () => {
     const item = group("sun-1800-noplan");
     expect(blocks(item)[0]).toBe("task: planMissing");
     expect(item.children[0]?.content?.planMissing).toBe(45);

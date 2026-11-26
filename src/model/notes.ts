@@ -1,5 +1,5 @@
 /**
- * The week plan's notes as the cards show them: homework apart from the plan for the day, each
+ * The week plan's notes as the cards show them: what is important apart from the plan for the day, each
  * with its subject named, as plain text.
  *
  * @packageDocumentation
@@ -21,8 +21,8 @@ export interface NoteView {
   readonly text: string;
 }
 
-/** Tells whether a note is homework: Meebook's type `task`. Every other type is the plan. */
-export function isHomework(note: Task): boolean {
+/** Tells whether a note is important: Meebook's type `task`. Every other type is the plan. */
+export function isImportant(note: Task): boolean {
   return note.type === "task";
 }
 

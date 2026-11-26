@@ -13,7 +13,7 @@ import { DAY_CARD } from "./config/day.ts";
 import {
   CHILDREN_CARD,
   DEFAULT_PATHS,
-  HOMEWORK_CARD,
+  IMPORTANT_CARD,
   OVERVIEW_CARD,
   SICK_CARD,
   VACATION_CARD,
@@ -119,9 +119,9 @@ export function dashboard(
           ...(acting.length > 0 ? [{ type: "grid" as const, cards: acting }] : []),
         ],
       },
-      page(t("navHomework"), DEFAULT_PATHS.homework, "mdi:book-open-page-variant-outline", [
+      page(t("navImportant"), DEFAULT_PATHS.important, "mdi:flag-outline", [
         bar(false),
-        card(HOMEWORK_CARD, children),
+        card(IMPORTANT_CARD, children),
       ]),
       page(t("navWeekPlan"), DEFAULT_PATHS.weekplan, "mdi:calendar-text-outline", [
         bar(false),
@@ -215,7 +215,7 @@ export function registerStrategies(): boolean {
       type: DASHBOARD_STRATEGY,
       strategyType: "dashboard",
       name: "Aula Connect",
-      description: "The children's day, homework, week plan and week, and what to act on in Aula.",
+      description: "The children's day, important, week plan and week, and what to act on in Aula.",
       documentationURL: `${DOCUMENTATION}#dashboard`,
     },
     {

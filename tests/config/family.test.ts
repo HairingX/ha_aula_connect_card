@@ -4,7 +4,7 @@ import {
   CHILDREN_CARD,
   DEFAULT_PATHS,
   familyForm,
-  HOMEWORK_CARD,
+  IMPORTANT_CARD,
   OVERVIEW_CARD,
   parseFlag,
   parseLook,
@@ -14,7 +14,7 @@ import {
   parseText,
   resolveActionConfig,
   resolveChildrenConfig,
-  resolveHomeworkConfig,
+  resolveImportantConfig,
   resolveOverviewConfig,
   SICK_CARD,
   VACATION_CARD,
@@ -40,7 +40,7 @@ describe("the family's cards' configuration", () => {
       sickMessage: undefined,
       sender: undefined,
     });
-    expect(resolveHomeworkConfig({})).toMatchObject({ children: [], size: "normal" });
+    expect(resolveImportantConfig({})).toMatchObject({ children: [], size: "normal" });
     expect(resolveActionConfig({ sick_message: " ", sender: "" })).toMatchObject({
       sickMessage: undefined,
       sender: undefined,
@@ -66,14 +66,14 @@ describe("the family's cards' configuration", () => {
     expect(
       resolveOverviewConfig({
         look: "board",
-        paths: { homework: " /aula/lektier ", week: null },
+        paths: { important: " /aula/vigtigt ", week: null },
         pack_icons: { " Fløjte ": " mdi:music-note " },
         sick_message: " {name} er syg. ",
         sender: "Peter Testesen",
       }),
     ).toMatchObject({
       look: "board",
-      paths: { homework: "/aula/lektier", weekplan: "ugeplan", week: "uge" },
+      paths: { important: "/aula/vigtigt", weekplan: "ugeplan", week: "uge" },
       packIcons: { fløjte: "mdi:music-note" },
       sickMessage: "{name} er syg.",
       sender: "Peter Testesen",
@@ -97,10 +97,10 @@ describe("the family's cards' configuration", () => {
     ],
     [() => parseLook("grid"), "look: must be rows, columns or board"],
     [() => parseFlag("yes", "look_switch"), "look_switch: must be true or false"],
-    [() => parsePaths("lektier"), "paths: must be a mapping of homework, weekplan and week"],
+    [() => parsePaths("vigtigt"), "paths: must be a mapping of important, weekplan and week"],
     [
       () => parsePaths({ events: "x" }),
-      'paths: unknown key "events"; the keys are homework, weekplan and week',
+      'paths: unknown key "events"; the keys are important, weekplan and week',
     ],
     [() => parsePaths({ week: 3 }), "paths.week: must be a view's path"],
     [() => parsePackIcons(["x"]), "pack_icons: must be a mapping of things to icons"],
@@ -142,7 +142,7 @@ describe("the family's cards' editor", () => {
         "subject_names_group",
       ],
     ],
-    [HOMEWORK_CARD, ["children", "size", "subject_names_group"]],
+    [IMPORTANT_CARD, ["children", "size", "subject_names_group"]],
     [SICK_CARD, ["children", "sick_message", "sender", "size"]],
     [VACATION_REQUESTS_CARD, ["children", "sender", "size"]],
     [VACATION_CARD, ["children", "sender", "size"]],

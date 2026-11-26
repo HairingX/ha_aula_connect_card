@@ -407,12 +407,12 @@ function size(groups: readonly DayGroup[]): number {
     total += 3;
     for (const child of item.children) {
       if (!child.content) continue;
-      const { timetable, homework, plan, pack, timed } = child.content;
+      const { timetable, important, plan, pack, timed } = child.content;
       const lessons = timetable.filter((row) => row.kind === "lesson").length;
       const breaks = timetable.length - lessons;
       const items = pack.reduce((sum, row) => sum + row.items.length, 0);
       total +=
-        1 + lessons + breaks / 2 + 2 * (homework.length + plan.length) + items / 3 + timed.length;
+        1 + lessons + breaks / 2 + 2 * (important.length + plan.length) + items / 3 + timed.length;
     }
   }
   return Math.min(30, Math.round(total));

@@ -39,7 +39,7 @@ const saturdayLesson: WeekData = {
     },
   ],
 };
-const homeworkTuesday = tuesdayOnly({
+const importantTuesday = tuesdayOnly({
   tasks: [
     {
       id: "t",
@@ -201,9 +201,9 @@ const ROWS: Row[] = [
     true,
   ],
   [
-    "a day with only homework is a school day",
+    "a day with only important is a school day",
     local("2026-10-26", "19:30"),
-    homeworkTuesday,
+    importantTuesday,
     NOON,
     ZONE,
     "2026-10-27",

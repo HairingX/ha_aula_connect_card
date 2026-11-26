@@ -9,7 +9,7 @@ import type { ViewContext } from "../core/context.ts";
 import { addDays, startOfWeek, weekNumber } from "../core/dates.ts";
 import type { StoreSnapshot } from "../core/store.ts";
 import { childKey, type Child, type ChildKey, type Day } from "../core/types.ts";
-import { commentsOf, homeworkOf } from "./blocks.ts";
+import { commentsOf, importantOf } from "./blocks.ts";
 import { childBases, type ChildState, type Hold, type ViewOptions } from "./child.ts";
 import { heroKey, noSchoolHero, type NoSchoolHero } from "./day-view.ts";
 import type { Focus } from "./focus.ts";
@@ -19,7 +19,7 @@ import type { NoteView } from "./notes.ts";
 export type NotesShown = "tasks" | "comments" | "all";
 
 /** A child's notes for one day. */
-export interface HomeworkPart {
+export interface WeekplanPart {
   /** The child. */
   readonly child: Child;
   /** What the week plan marks, in the order of the day's timetable. */
@@ -27,37 +27,37 @@ export interface HomeworkPart {
   /** The week plan's other notes. */
   readonly comments: readonly NoteView[];
   /** Why there is none: none in the week plan, the week plan not in Aula yet, or no week plan. */
-  readonly empty: "noHomework" | "planMissing" | "noWeekPlan" | undefined;
+  readonly empty: "noImportant" | "planMissing" | "noWeekPlan" | undefined;
 }
 
-/** The homework for one day, a part for each child that has some, or whose focus day it is. */
-export interface HomeworkDay {
-  /** The day the homework is for. */
+/** The week plan for one day, a part for each child that has some, or whose focus day it is. */
+export interface WeekplanDay {
+  /** The day the notes are for. */
   readonly day: Day;
   /** How the day is titled: "I dag", "I morgen", or its weekday. */
   readonly relation: "today" | "tomorrow" | "weekday";
   /** The week's number, on the first day of a week other than this one. */
   readonly week: number | undefined;
-  /** Whether it is a child's focus day: the day the homework is for next. */
+  /** Whether it is a child's focus day: the day the notes are for next. */
   readonly focus: boolean;
   /** The children's parts, in the children's order. */
-  readonly parts: readonly HomeworkPart[];
+  readonly parts: readonly WeekplanPart[];
 }
 
-/** A child of the homework card. */
-export interface HomeworkChildView {
+/** A child of the week plan card. */
+export interface WeekplanChildView {
   /** The child. */
   readonly child: Child;
   /** Whether the child can be shown. */
   readonly state: ChildState;
   /** The child's focus day. */
   readonly focus: Focus;
-  /** Whether the school has a week plan, without which there is no homework to show. */
+  /** Whether the school has a week plan, without which there is nothing to show. */
   readonly weekPlan: boolean;
 }
 
 /** A header for children with no school day ahead. */
-export interface HomeworkHero {
+export interface WeekplanHero {
   /** What it says. */
   readonly hero: NoSchoolHero;
   /** The children it is for; empty when it is for every child. */
@@ -72,19 +72,19 @@ export interface NotYet {
   readonly only: readonly Child[];
 }
 
-/** The homework card's view. */
-export interface HomeworkCardView {
+/** The week plan card's view. */
+export interface WeekplanCardView {
   /** The numbers of the first and the last week the card covers. */
   readonly weeks: readonly [number, number];
   /** The children shown, in order. */
-  readonly children: readonly HomeworkChildView[];
+  readonly children: readonly WeekplanChildView[];
   /** The headers of children with no school day ahead. */
-  readonly heroes: readonly HomeworkHero[];
-  /** The focus days, then every later day with homework, in date order. */
-  readonly days: readonly HomeworkDay[];
-  /** The days before the focus days with homework. */
-  readonly earlier: readonly HomeworkDay[];
-  /** The number of homework notes on the earlier days. */
+  readonly heroes: readonly WeekplanHero[];
+  /** The focus days, then every later day with notes, in date order. */
+  readonly days: readonly WeekplanDay[];
+  /** The days before the focus days with notes. */
+  readonly earlier: readonly WeekplanDay[];
+  /** The number of notes on the earlier days. */
   readonly earlierCount: number;
   /** The weeks whose plan is not in Aula yet, where no day says so. */
   readonly notYet: readonly NotYet[];
@@ -98,10 +98,10 @@ export interface HomeworkCardView {
   readonly groupBy: "day" | "child";
 }
 
-type Parts = Map<Day, Map<ChildKey, HomeworkPart>>;
+type Parts = Map<Day, Map<ChildKey, WeekplanPart>>;
 
-function add(parts: Parts, day: Day, part: HomeworkPart): void {
-  const byChild = parts.get(day) ?? new Map<ChildKey, HomeworkPart>();
+function add(parts: Parts, day: Day, part: WeekplanPart): void {
+  const byChild = parts.get(day) ?? new Map<ChildKey, WeekplanPart>();
   byChild.set(childKey(part.child), part);
   parts.set(day, byChild);
 }
@@ -111,12 +111,12 @@ function only(children: readonly Child[], all: number): readonly Child[] {
 }
 
 /** Builds the week plan card's view, of the notes `options.notes` chooses. */
-export function homeworkCardView(
+export function weekplanCardView(
   snapshot: StoreSnapshot,
   options: ViewOptions & { readonly notes: NotesShown; readonly groupBy: "day" | "child" },
   ctx: ViewContext,
   hold: Hold,
-): HomeworkCardView {
+): WeekplanCardView {
   const { bases, missing } = childBases(snapshot, options, ctx, hold);
   const thisWeek = startOfWeek(ctx.today);
   const later: Parts = new Map();
@@ -142,12 +142,12 @@ export function homeworkCardView(
     const cutoff = focus.day ?? addDays(focus.horizon, 1);
     for (const view of basis.days) {
       if (!view.known) continue;
-      const items = options.notes === "comments" ? [] : homeworkOf(view, rules);
+      const items = options.notes === "comments" ? [] : importantOf(view, rules);
       const comments = options.notes === "tasks" ? [] : commentsOf(view, rules);
       const has = items.length + comments.length > 0;
       const week = startOfWeek(view.day);
       if (view.day === focus.day) {
-        const empty = rules.planMissing.has(week) ? "planMissing" : "noHomework";
+        const empty = rules.planMissing.has(week) ? "planMissing" : "noImportant";
         add(later, view.day, { child, items, comments, empty: has ? undefined : empty });
       } else if (has) {
         add(view.day > cutoff ? later : before, view.day, {
@@ -166,7 +166,7 @@ export function homeworkCardView(
     }
   }
   // A day's parts are in the children's order, as each child's days are gone through in turn.
-  const days = (parts: Parts): HomeworkDay[] => {
+  const days = (parts: Parts): WeekplanDay[] => {
     const shown = new Set<Day>();
     return [...parts]
       .sort(([a], [b]) => a.localeCompare(b))
@@ -186,7 +186,7 @@ export function homeworkCardView(
   };
   const shown = days(later);
   const earlier = days(before);
-  const count = (list: readonly HomeworkDay[]): number =>
+  const count = (list: readonly WeekplanDay[]): number =>
     list.reduce(
       (sum, day) =>
         sum + day.parts.reduce((n, part) => n + part.items.length + part.comments.length, 0),

@@ -358,10 +358,10 @@ export function weekCardView(
       for (const item of section.rows) {
         rows++;
         if (item.kind === "focus") {
-          const { timetable, homework, plan } = item.row.content;
+          const { timetable, important, plan } = item.row.content;
           rows +=
             timetable.filter((entry) => entry.kind === "lesson").length +
-            2 * (homework.length + plan.length);
+            2 * (important.length + plan.length);
         }
       }
     }

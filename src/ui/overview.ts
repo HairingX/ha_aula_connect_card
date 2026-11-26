@@ -1,7 +1,7 @@
 /**
  * The overview's three looks: a row per child, a column per child, and a board of large tiles for
  * the children themselves. Each shows the day that matters now, the child's presence today, what
- * to bring, and the homework due; under them the pages, and what is coming the next week.
+ * to bring, and the important notes; under them the pages, and what is coming the next week.
  *
  * @packageDocumentation
  */
@@ -26,7 +26,7 @@ import { allowing } from "../model/family.ts";
 import { dayBar, type DayBar } from "../model/daybar.ts";
 import type {
   ComingItem,
-  HomeworkDue,
+  ImportantDue,
   OverviewChild,
   OverviewView,
   PresenceView,
@@ -140,19 +140,19 @@ export function whenText(day: Day, ctx: ViewContext): string {
 }
 
 /**
- * Returns the homework button's words: the first day's homework, and the next day's within three
- * days; `first` is the first of `homework`.
+ * Returns the important button's words: the first day's important notes, and the next day's within three
+ * days; `first` is the first of `important`.
  */
-export function homeworkLine(
-  first: HomeworkDue,
-  homework: readonly HomeworkDue[],
+export function importantLine(
+  first: ImportantDue,
+  important: readonly ImportantDue[],
   ctx: ViewContext,
 ): string {
-  const on = (day: Day): number => homework.filter((item) => item.day === day).length;
-  const text = ctx.t("homeworkFor", { n: on(first.day), when: whenText(first.day, ctx) });
-  const next = homework.find((item) => item.day !== first.day);
+  const on = (day: Day): number => important.filter((item) => item.day === day).length;
+  const text = ctx.t("importantFor", { n: on(first.day), when: whenText(first.day, ctx) });
+  const next = important.find((item) => item.day !== first.day);
   return next && daysBetween(ctx.today, next.day) <= 3
-    ? `${text} · ${ctx.t("homeworkThen", { n: on(next.day), when: whenText(next.day, ctx) })}`
+    ? `${text} · ${ctx.t("importantThen", { n: on(next.day), when: whenText(next.day, ctx) })}`
     : text;
 }
 
@@ -244,28 +244,28 @@ function packChips(
   </p>`;
 }
 
-function homeworkButton(
+function importantButton(
   item: OverviewChild,
   ctx: ViewContext,
   state: CardState,
   options: OverviewOptions,
 ): TemplateResult {
-  const key = `homework|${String(item.child.child_id)}`;
-  const [first] = item.homework;
+  const key = `important|${String(item.child.child_id)}`;
+  const [first] = item.important;
   if (!first)
-    return html`<p class="ov-homework none">
-      ${icon("mdi:book-open-page-variant-outline")}<span>${ctx.t("homeworkNone")}</span>
+    return html`<p class="ov-important none">
+      ${icon("mdi:flag-outline")}<span>${ctx.t("importantNone")}</span>
     </p>`;
   return html`<button
-    class="ov-homework"
+    class="ov-important"
     type="button"
     aria-haspopup="dialog"
     data-detail=${key}
     @click=${() => {
-      openHomework(item, ctx, state, options, key);
+      openImportant(item, ctx, state, options, key);
     }}
   >
-    ${icon("mdi:book-open-page-variant-outline")}<span>${homeworkLine(first, item.homework, ctx)}</span>${icon("mdi:chevron-right", "chevron-end")}
+    ${icon("mdi:flag-outline")}<span>${importantLine(first, item.important, ctx)}</span>${icon("mdi:chevron-right", "chevron-end")}
   </button>`;
 }
 
@@ -329,7 +329,7 @@ function rows(
           ${bars[index] ? html`<div class="ov-bar">${renderDayBar(bars[index], ctx, axis)}</div>` : nothing}
           ${packChips(item, ctx, true, options)}
           ${item.content ? factStack(item.content.facts, ctx) : nothing}
-          ${item.state.kind === "ready" ? homeworkButton(item, ctx, state, options) : nothing}
+          ${item.state.kind === "ready" ? importantButton(item, ctx, state, options) : nothing}
         </section>`,
     )}
   </div>`;
@@ -341,22 +341,22 @@ function soonList(
   state: CardState,
   options: OverviewOptions,
 ): unknown {
-  const shown = item.homework.slice(0, 4);
+  const shown = item.important.slice(0, 4);
   if (shown.length === 0)
-    return html`<p class="ov-homework none">
-      ${icon("mdi:book-open-page-variant-outline")}<span>${ctx.t("homeworkNone")}</span>
+    return html`<p class="ov-important none">
+      ${icon("mdi:flag-outline")}<span>${ctx.t("importantNone")}</span>
     </p>`;
-  const key = `homework|${String(item.child.child_id)}`;
+  const key = `important|${String(item.child.child_id)}`;
   return html`<button
     class="ov-soon"
     type="button"
     aria-haspopup="dialog"
     data-detail=${key}
     @click=${() => {
-      openHomework(item, ctx, state, options, key);
+      openImportant(item, ctx, state, options, key);
     }}
   >
-    <span class="ov-soon-head">${ctx.t("homeworkSoon")}</span>
+    <span class="ov-soon-head">${ctx.t("importantSoon")}</span>
     ${shown.map(
       (due) =>
         html`<span
@@ -370,7 +370,7 @@ function soonList(
           <span class="ov-when">${whenText(due.day, ctx)}</span></span
         >`,
     )}
-    ${item.homework.length > shown.length ? html`<span class="ov-more">${ctx.t("moreCount", { n: item.homework.length - shown.length })}</span>` : nothing}
+    ${item.important.length > shown.length ? html`<span class="ov-more">${ctx.t("moreCount", { n: item.important.length - shown.length })}</span>` : nothing}
   </button>`;
 }
 
@@ -412,8 +412,8 @@ function panel(
   const subjects = content?.subjects ?? [];
   const things = (content?.pack ?? []).flatMap((packed) => packed.items);
   const today = item.focus.day === ctx.today;
-  const key = `homework|${String(item.child.child_id)}`;
-  const [first] = item.homework;
+  const key = `important|${String(item.child.child_id)}`;
+  const [first] = item.important;
   return html`<section class="ov-panel">
     <div class="ov-col-head">${who(item, state)} ${presencePill(item, ctx, state, options)}</div>
     ${endsBig(item, ctx)} ${sickLabel(item, ctx)} ${waiting(item, ctx)}
@@ -445,18 +445,18 @@ function panel(
     ${
       first
         ? html`<button
-            class="board-homework"
+            class="board-important"
             type="button"
             aria-haspopup="dialog"
             data-detail=${key}
             @click=${() => {
-              openHomework(item, ctx, state, options, key);
+              openImportant(item, ctx, state, options, key);
             }}
           >
-            ${icon("mdi:book-open-page-variant-outline")}<span class="board-count"
-              >${item.homework.filter((due) => due.day === first.day).length}</span
+            ${icon("mdi:flag-outline")}<span class="board-count"
+              >${item.important.filter((due) => due.day === first.day).length}</span
             >
-            <span>${homeworkLine(first, item.homework, ctx).replace(/^\d+ /, "")}</span>
+            <span>${importantLine(first, item.important, ctx).replace(/^\d+ /, "")}</span>
           </button>`
         : nothing
     }
@@ -470,12 +470,7 @@ function nav(
   options: OverviewOptions,
 ): TemplateResult {
   const tiles: readonly [string, string, string, number][] = [
-    [
-      options.paths.homework,
-      "mdi:book-open-page-variant-outline",
-      ctx.t("navHomework"),
-      view.homeworkSoon,
-    ],
+    [options.paths.important, "mdi:flag-outline", ctx.t("navImportant"), view.importantSoon],
     [options.paths.weekplan, "mdi:calendar-text-outline", ctx.t("navWeekPlan"), 0],
     [options.paths.week, "mdi:calendar-week", ctx.t("navWeek"), 0],
   ];
@@ -607,8 +602,8 @@ export function renderOverview(
   </section>`;
 }
 
-/** Opens the window of a child's homework, from the overview's day on. */
-export function openHomework(
+/** Opens the window of a child's important notes, from the overview's day on. */
+export function openImportant(
   item: OverviewChild,
   _ctx: ViewContext,
   state: CardState,
@@ -617,25 +612,25 @@ export function openHomework(
 ): void {
   state.openModal(key, (ctx, close) => {
     const face = state.face(item.child);
-    const days = [...new Set(item.homework.map((due) => due.day))];
-    const from = item.homeworkFrom;
+    const days = [...new Set(item.important.map((due) => due.day))];
+    const from = item.importantFrom;
     return modal(
-      html`${head(ctx.t("homeworkTitle", { name: face.name }), [ctx.t("homeworkFrom", { day: whenText(from, ctx) })], [], ctx, close, faceImage(face, "window-face"))}
+      html`${head(ctx.t("importantTitle", { name: face.name }), [ctx.t("importantFrom", { day: whenText(from, ctx) })], [], ctx, close, faceImage(face, "window-face"))}
         ${days.map((day) =>
           section(
             `${capitalize(daysBetween(ctx.today, day) < 7 ? whenText(day, ctx) : formatWeekday(day, ctx.language), ctx.language)} · ${formatShortDate(day, ctx.language)}`,
             [],
-            html`<ul class="hw-due">
-              ${item.homework
+            html`<ul class="note-due">
+              ${item.important
                 .filter((due) => due.day === day)
                 .map(
                   (due) =>
                     html`<li>
-                      <span class="hw-head"
+                      <span class="note-head"
                         >${due.note.subject ? label(aula(due.note.subject.name, ctx), "subject") : nothing}
-                        ${due.note.title ? html`<span class="hw-title">${aula(due.note.title, ctx)}</span>` : nothing}</span
+                        ${due.note.title ? html`<span class="note-title">${aula(due.note.title, ctx)}</span>` : nothing}</span
                       >
-                      ${due.note.text ? html`<p class="hw-text">${aula(due.note.text, ctx)}</p>` : nothing}
+                      ${due.note.text ? html`<p class="note-text">${aula(due.note.text, ctx)}</p>` : nothing}
                     </li>`,
                 )}
             </ul>`,
@@ -647,10 +642,10 @@ export function openHomework(
             type="button"
             @click=${() => {
               close();
-              state.navigate(options.paths.homework);
+              state.navigate(options.paths.important);
             }}
           >
-            ${ctx.t("homeworkAll")}
+            ${ctx.t("importantAll")}
           </button>
         </div>`,
       close,

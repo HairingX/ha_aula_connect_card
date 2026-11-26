@@ -1,5 +1,5 @@
 /**
- * The homework page, `custom:aula-connect-homework-card`: a week's homework for the children the
+ * The Important page, `custom:aula-connect-important-card`: what the week plan marks as important for the children the
  * children's bar shows, by the day it is due, browsed a week at a time.
  *
  * @packageDocumentation
@@ -11,19 +11,19 @@ import type { ViewContext } from "../core/context.ts";
 import type { StoreSnapshot } from "../core/store.ts";
 import type { DayRange, HomeAssistant } from "../core/types.ts";
 import type { CommonConfig } from "../config/common.ts";
-import { familyForm, HOMEWORK_CARD, resolveHomeworkConfig } from "../config/family.ts";
+import { familyForm, IMPORTANT_CARD, resolveImportantConfig } from "../config/family.ts";
 import type { ConfigForm } from "../config/form.ts";
 import type { Hold } from "../model/child.ts";
-import { homeworkPageView, type HomeworkPageView } from "../model/homework-page.ts";
+import { importantPageView, type ImportantPageView } from "../model/important-page.ts";
 import { extraWeeks } from "../model/week-view.ts";
 import { AulaCard, stub } from "../ui/card.ts";
-import { renderHomeworkPage, type HomeworkBrowser } from "../ui/homework-page.ts";
+import { renderWeekplanPage, type ImportantBrowser } from "../ui/important-page.ts";
 import { base, blocks, family, weekStyles } from "../ui/styles.ts";
 
-/** The homework page. */
-export class AulaConnectHomeworkCard
-  extends AulaCard<CommonConfig, HomeworkPageView>
-  implements HomeworkBrowser
+/** The Important page. */
+export class AulaConnectImportantCard
+  extends AulaCard<CommonConfig, ImportantPageView>
+  implements ImportantBrowser
 {
   /** The card's styles. */
   static override styles = base + blocks + weekStyles + family;
@@ -31,12 +31,12 @@ export class AulaConnectHomeworkCard
 
   /** Returns the form of the visual editor. */
   static getConfigForm(): ConfigForm {
-    return familyForm(HOMEWORK_CARD);
+    return familyForm(IMPORTANT_CARD);
   }
 
   /** Returns a configuration that works as it is: the defaults follow later versions. */
   static getStubConfig(hass?: HomeAssistant): Promise<{ type: string }> {
-    return stub(HOMEWORK_CARD, hass);
+    return stub(IMPORTANT_CARD, hass);
   }
 
   /** Returns the card's size in a sections view: the section's whole width. */
@@ -64,7 +64,7 @@ export class AulaConnectHomeworkCard
   }
 
   protected override resolve(raw: unknown): CommonConfig {
-    return resolveHomeworkConfig(raw);
+    return resolveImportantConfig(raw);
   }
 
   protected override view(
@@ -72,16 +72,16 @@ export class AulaConnectHomeworkCard
     config: CommonConfig,
     ctx: ViewContext,
     hold: Hold,
-  ): HomeworkPageView {
-    return homeworkPageView(snapshot, config, ctx, hold, this.#offset);
+  ): ImportantPageView {
+    return importantPageView(snapshot, config, ctx, hold, this.#offset);
   }
 
   protected override content(
-    view: HomeworkPageView,
+    view: ImportantPageView,
     _config: CommonConfig,
     ctx: ViewContext,
   ): TemplateResult {
-    return renderHomeworkPage(view, ctx, this);
+    return renderWeekplanPage(view, ctx, this);
   }
 
   protected override emptySize(): number {

@@ -6,7 +6,7 @@
  */
 
 import { configRecord, resolveCommon, type CommonConfig } from "./common.ts";
-import type { NotesShown } from "../model/homework-view.ts";
+import type { NotesShown } from "../model/weekplan-view.ts";
 import { configForm, type ConfigForm } from "./form.ts";
 
 /** The week plan card's element. */

@@ -75,13 +75,13 @@ function dayColumn(day: string, ctx: ViewContext): TemplateResult {
  */
 function blocks(row: DayRowView, child: Child, ctx: ViewContext, state: CardState): unknown {
   const { content } = row;
-  // A week plan not yet in Aula is said first, where its homework would be, whatever the order.
+  // A week plan not yet in Aula is said first, where its important notes would be, whatever the order.
   const plan = {
     ...row.plan,
     blocks: row.plan.blocks
-      .filter((block) => block.empty !== "noHomework")
+      .filter((block) => block.empty !== "noImportant")
       .sort((a, b) => Number(b.empty === "planMissing") - Number(a.empty === "planMissing")),
-    noHomework: row.plan.noHomework === "noHomework" ? undefined : row.plan.noHomework,
+    noImportant: row.plan.noImportant === "noImportant" ? undefined : row.plan.noImportant,
   };
   const header = row.facts.filter((fact) => fact.kind === "birthday" || isHolidayEvent(fact.event));
   const shown = factStack(header, ctx);
@@ -154,14 +154,14 @@ function summary(
   if (extra.length === 0) {
     if (shown("timetable"))
       facts.push(content.hours ? hours(content.hours, ctx) : ctx.t("allCancelled"));
-    if (row.plan.homework.length > 0)
+    if (row.plan.important.length > 0)
       facts.push(
         html`<span class="count" aria-label=${ctx.t("blockTask")}
-          >${icon(BLOCK_ICONS.task)}${row.plan.homework.length}</span
+          >${icon(BLOCK_ICONS.task)}${row.plan.important.length}</span
         >`,
       );
     // Where the flags are counted, a week plan not yet in Aula is a question, not none.
-    else if (row.plan.noHomework === "planMissing")
+    else if (row.plan.noImportant === "planMissing")
       facts.push(
         html`<span
           class="count missing"

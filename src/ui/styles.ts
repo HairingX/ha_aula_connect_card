@@ -122,7 +122,7 @@ export const base = css`
   .not-yet {
     color: var(--aula-text-2);
   }
-  /* A week plan not yet in Aula: its homework is unknown, so it is said as plainly as homework. */
+  /* A week plan not yet in Aula: what is important in it is unknown, said as plainly as nothing important. */
   .empty.missing {
     display: flex;
     gap: var(--aula-space-2);
@@ -687,8 +687,8 @@ export const blocks = css`
     --aula-n: 1;
   }
 
-  /* Never clamped: homework is what the family acts on. */
-  .homework {
+  /* Never clamped: what is important is what the family acts on. */
+  .important {
     display: flex;
     flex-direction: column;
     border: 1px solid var(--aula-line);
@@ -705,23 +705,23 @@ export const blocks = css`
   .hw + .hw {
     border-top: 1px solid var(--aula-line);
   }
-  .hw-head {
+  .note-head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--aula-space-1) var(--aula-space-2);
   }
-  .hw-title {
+  .note-title {
     font-weight: var(--aula-medium);
   }
-  .hw-text {
+  .note-text {
     line-height: var(--aula-paragraph);
     white-space: pre-line;
     overflow-wrap: anywhere;
   }
 
   /* Husk heads Vigtigt: each thing in its subject's colour, as its part of the day's bar. */
-  .hw-pack {
+  .note-pack {
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
@@ -765,7 +765,7 @@ export const blocks = css`
     grid-template-columns: auto 1fr;
     gap: var(--aula-space-3);
   }
-  [data-block="timetable"] + [data-block="task"] .homework {
+  [data-block="timetable"] + [data-block="task"] .important {
     display: contents;
   }
   [data-block="timetable"] + [data-block="task"] .vital-flag {
@@ -776,7 +776,7 @@ export const blocks = css`
     padding: 0;
     border: 0;
   }
-  [data-block="timetable"] + [data-block="task"] .hw-pack {
+  [data-block="timetable"] + [data-block="task"] .note-pack {
     order: -1;
     grid-column: 1 / -1;
     padding-bottom: var(--aula-space-3);
@@ -1412,28 +1412,28 @@ export const dayStyles = css`
   }
 `;
 
-/** The homework card. */
-export const homeworkStyles = css`
-  .homework-card {
+/** The week plan card. */
+export const weekplanStyles = css`
+  .weekplan-card {
     container: child / inline-size;
     gap: var(--aula-space-6);
   }
   /* What the week plan marks stands on a surface; its other notes follow quietly below. */
-  .part > .homework + .plan {
+  .part > .important + .plan {
     margin-top: var(--aula-space-4);
   }
   .strip .who-name {
     font-size: var(--aula-font-l);
   }
-  .homework-card > .strip {
+  .weekplan-card > .strip {
     display: none;
   }
-  .hw-days {
+  .note-days {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-6);
   }
-  .hw-day {
+  .note-day {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-2);
@@ -1449,7 +1449,7 @@ export const homeworkStyles = css`
     font-size: var(--aula-font-l);
     font-weight: var(--aula-medium);
   }
-  .hw-day.focus .day-title {
+  .note-day.focus .day-title {
     font-size: var(--aula-font-xl);
   }
   .day-head ha-icon {
@@ -1467,18 +1467,18 @@ export const homeworkStyles = css`
   }
   /* One child's days stand side by side in calendar order where there is room. */
   @container child (min-width: 600px) {
-    .normal .n-1 .hw-days {
+    .normal .n-1 .note-days {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: var(--aula-space-6) var(--aula-space-8);
       align-items: start;
     }
-    .homework-card > .fold > summary .chevron {
+    .weekplan-card > .fold > summary .chevron {
       margin-inline-start: 0;
     }
   }
   @container child (min-width: 720px) {
-    .large .n-1 .hw-days {
+    .large .n-1 .note-days {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
       gap: var(--aula-space-6) var(--aula-space-8);
@@ -1505,7 +1505,7 @@ export const homeworkStyles = css`
       display: grid;
     }
   }
-  .homework-card.tworow > .strip {
+  .weekplan-card.tworow > .strip {
     display: none;
   }
 `;
@@ -1733,7 +1733,7 @@ export const weekStyles = css`
     gap: var(--aula-space-3);
     padding: var(--aula-space-3);
   }
-  /* A step above the day's block headers, as the homework card's focus day. */
+  /* A step above the day's block headers, as the week plan card's focus day. */
   .open-title,
   .weekend-title {
     font-size: var(--aula-font-xl);
@@ -1763,11 +1763,11 @@ export const weekStyles = css`
     padding-top: var(--aula-space-2);
   }
   /* An open day's Husk sits close under its bar, the timetable's line moving below it. */
-  .day-body [data-block="timetable"]:has(+ [data-block="task"] .hw-pack) {
+  .day-body [data-block="timetable"]:has(+ [data-block="task"] .note-pack) {
     padding-bottom: 0;
     border-bottom: 0;
   }
-  .day-body [data-block="timetable"] + [data-block="task"]:has(.hw-pack) {
+  .day-body [data-block="timetable"] + [data-block="task"]:has(.note-pack) {
     margin-top: calc(-1 * var(--aula-space-3));
   }
   .weekend-day + .weekend-day {
@@ -1807,7 +1807,7 @@ export const weekStyles = css`
 `;
 
 /**
- * The family's cards: children's faces, the children's bar, the overview's looks, the homework
+ * The family's cards: children's faces, the children's bar, the overview's looks, the Important
  * page and the cards that act on Aula. Colour is only the subjects' and a warning's.
  */
 export const family = css`
@@ -2357,9 +2357,9 @@ export const family = css`
     --mdc-icon-size: 1.15em;
     color: inherit;
   }
-  .ov-homework,
+  .ov-important,
   .ov-soon,
-  .board-homework {
+  .board-important {
     display: flex;
     align-items: center;
     gap: var(--aula-space-2);
@@ -2377,11 +2377,11 @@ export const family = css`
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
   }
-  .ov-homework ha-icon:first-child,
-  .board-homework ha-icon {
+  .ov-important ha-icon:first-child,
+  .board-important ha-icon {
     color: var(--aula-text);
   }
-  .ov-homework.none {
+  .ov-important.none {
     background: none;
     box-shadow: inset 0 0 0 1px var(--aula-line);
     color: var(--aula-text-2);
@@ -2389,11 +2389,11 @@ export const family = css`
     cursor: default;
   }
   @media (hover: hover) {
-    button:is(.ov-homework, .ov-soon, .board-homework, .presence, .ov-tile):hover {
+    button:is(.ov-important, .ov-soon, .board-important, .presence, .ov-tile):hover {
       background: var(--aula-fill-strong);
     }
   }
-  button:is(.ov-homework, .ov-soon, .board-homework, .presence, .ov-tile):active {
+  button:is(.ov-important, .ov-soon, .board-important, .presence, .ov-tile):active {
     background: var(--aula-fill-strong);
   }
   .presence {
@@ -2543,7 +2543,7 @@ export const family = css`
     color: var(--aula-text-2);
     font-size: var(--aula-font-l);
   }
-  .board-homework {
+  .board-important {
     width: auto;
     align-self: flex-start;
     padding: 0 var(--aula-space-4) 0 var(--aula-space-3);
@@ -2657,12 +2657,12 @@ export const family = css`
   .ov-minis .face + .face {
     margin-inline-start: -6px;
   }
-  .hw-due {
+  .note-due {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-3);
   }
-  .hw-due > li {
+  .note-due > li {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-1);
@@ -2690,10 +2690,10 @@ export const family = css`
     .look-rows .ov-top .face {
       --aula-face: calc(48px * var(--aula-scale));
     }
-    .look-rows .ov-row > :not(.ov-top, .ov-pack, .ov-homework) {
+    .look-rows .ov-row > :not(.ov-top, .ov-pack, .ov-important) {
       grid-column: 2;
     }
-    .look-rows .ov-row > :is(.ov-pack, .ov-homework) {
+    .look-rows .ov-row > :is(.ov-pack, .ov-important) {
       grid-column: 3;
     }
     .ov-nav {
@@ -2702,38 +2702,38 @@ export const family = css`
     }
   }
 
-  /* The homework page. */
-  .hw-page {
+  /* The Important page. */
+  .note-page {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-4);
   }
-  .hw-pager {
+  .note-pager {
     display: flex;
     align-items: center;
     gap: var(--aula-space-1);
     margin: calc(-1 * var(--aula-space-2)) calc(-1 * var(--aula-space-2)) 0;
   }
-  .hw-week {
+  .note-week {
     display: flex;
     flex: 1;
     flex-direction: column;
     align-items: center;
     text-align: center;
   }
-  .hw-week b {
+  .note-week b {
     font-size: var(--aula-font-l);
     font-weight: var(--aula-medium);
   }
-  .hw-week .quiet {
+  .note-week .quiet {
     font-size: var(--aula-font-s);
   }
-  .hw-page .hw-day {
+  .note-page .note-day {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-2);
   }
-  .hw-day-head {
+  .note-day-head {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
@@ -2741,20 +2741,20 @@ export const family = css`
     font-size: var(--aula-font-l);
     font-weight: var(--aula-medium);
   }
-  .hw-day-head .quiet {
+  .note-day-head .quiet {
     font-size: var(--aula-font-s);
     font-weight: var(--aula-normal);
   }
-  .hw-list {
+  .note-list {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-2);
   }
-  .fold .hw-list {
+  .fold .note-list {
     padding-top: var(--aula-space-2);
     opacity: 0.75;
   }
-  .hw-entry {
+  .note-entry {
     display: flex;
     align-items: flex-start;
     gap: var(--aula-space-3);
@@ -2763,30 +2763,30 @@ export const family = css`
     border-radius: var(--aula-radius);
     background: var(--aula-fill-faint);
   }
-  .hw-entry .face {
+  .note-entry .face {
     --aula-face: calc(32px * var(--aula-scale));
     box-shadow: none;
   }
-  .hw-entry-text {
+  .note-entry-text {
     display: flex;
     flex: 1;
     flex-direction: column;
     gap: var(--aula-space-1);
     min-width: 0;
   }
-  .hw-who {
+  .note-who {
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
     font-weight: var(--aula-medium);
   }
-  .hw-none {
+  .note-none {
     display: flex;
     align-items: center;
     gap: var(--aula-space-2);
     color: var(--aula-text-2);
   }
   @container aula (min-width: 720px) {
-    .hw-page .hw-list {
+    .note-page .note-list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(calc(320px * var(--aula-scale)), 1fr));
     }

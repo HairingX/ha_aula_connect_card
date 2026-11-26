@@ -10,8 +10,8 @@ afterEach(() => {
 
 describe("going to another view", () => {
   it("goes to a view of the dashboard shown, or to an address as it is", () => {
-    expect(viewPath("lektier", "/aula/aula")).toBe("/aula/lektier");
-    expect(viewPath("lektier", "/")).toBe("/lovelace/lektier");
+    expect(viewPath("vigtigt", "/aula/aula")).toBe("/aula/vigtigt");
+    expect(viewPath("vigtigt", "/")).toBe("/lovelace/vigtigt");
     expect(viewPath("/other/view", "/aula/aula")).toBe("/other/view");
   });
 

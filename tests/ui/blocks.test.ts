@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { ORDERED, DEFAULT_ORDER } from "../../src/model/blocks.ts";
 import { dayCardView } from "../../src/model/day-view.ts";
-import { emptyText, homeworkList } from "../../src/ui/blocks.ts";
+import { emptyText, importantList } from "../../src/ui/blocks.ts";
 import { present } from "../fake-hass.ts";
 import { scenarioNamed } from "../fixtures/scenarios.ts";
 import { contextOf, noHold, snapshotOf } from "../fixtures/snapshot.ts";
@@ -26,9 +26,9 @@ const [group] = dayCardView(
 ).groups;
 const content = present(group?.children[0]?.content);
 
-function shown(notes: Parameters<typeof homeworkList>[0]): HTMLElement {
+function shown(notes: Parameters<typeof importantList>[0]): HTMLElement {
   const container = document.createElement("div");
-  render(homeworkList(notes, ctx), container);
+  render(importantList(notes, ctx), container);
   return container;
 }
 
@@ -42,16 +42,16 @@ describe("a block a child has nothing for", () => {
   });
 });
 
-describe("a homework note", () => {
+describe("an important note", () => {
   it("shows only the parts it has: no head without a subject or a title, no empty text", () => {
-    const note = present(content.homework[0]);
+    const note = present(content.important[0]);
     const list = shown([
       { ...note, subject: undefined, title: undefined },
       { ...note, title: "Glosetest", text: "" },
     ]);
     const [bare, titled] = list.querySelectorAll(".hw");
-    expect(bare?.querySelector(".hw-head")).toBeNull();
-    expect(titled?.querySelector(".hw-text")).toBeNull();
-    expect(titled?.querySelector(".hw-title")?.textContent).toBe("Glosetest");
+    expect(bare?.querySelector(".note-head")).toBeNull();
+    expect(titled?.querySelector(".note-text")).toBeNull();
+    expect(titled?.querySelector(".note-title")?.textContent).toBe("Glosetest");
   });
 });

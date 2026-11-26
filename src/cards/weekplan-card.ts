@@ -18,15 +18,15 @@ import {
   type WeekplanCardConfig,
 } from "../config/weekplan.ts";
 import type { Hold } from "../model/child.ts";
-import { homeworkCardView, type HomeworkCardView } from "../model/homework-view.ts";
+import { weekplanCardView, type WeekplanCardView } from "../model/weekplan-view.ts";
 import { AulaCard, stub } from "../ui/card.ts";
-import { renderHomework } from "../ui/homework.ts";
-import { base, blocks, homeworkStyles } from "../ui/styles.ts";
+import { renderWeekplan } from "../ui/weekplan.ts";
+import { base, blocks, weekplanStyles } from "../ui/styles.ts";
 
 /** The week plan card. */
-export class AulaConnectWeekplanCard extends AulaCard<WeekplanCardConfig, HomeworkCardView> {
+export class AulaConnectWeekplanCard extends AulaCard<WeekplanCardConfig, WeekplanCardView> {
   /** The card's styles. */
-  static override styles = base + blocks + homeworkStyles;
+  static override styles = base + blocks + weekplanStyles;
 
   /** Returns the form of the visual editor. */
   static getConfigForm(): ConfigForm {
@@ -52,16 +52,16 @@ export class AulaConnectWeekplanCard extends AulaCard<WeekplanCardConfig, Homewo
     config: WeekplanCardConfig,
     ctx: ViewContext,
     hold: Hold,
-  ): HomeworkCardView {
-    return homeworkCardView(snapshot, config, ctx, hold);
+  ): WeekplanCardView {
+    return weekplanCardView(snapshot, config, ctx, hold);
   }
 
   protected override content(
-    view: HomeworkCardView,
+    view: WeekplanCardView,
     _config: WeekplanCardConfig,
     ctx: ViewContext,
   ): TemplateResult {
-    return renderHomework(view, ctx, this);
+    return renderWeekplan(view, ctx, this);
   }
 
   protected override emptySize(): number {

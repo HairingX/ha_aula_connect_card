@@ -1,5 +1,5 @@
 /**
- * The blocks of a day, each with its own look: homework on one surface, the things to bring as
+ * The blocks of a day, each with its own look: what is important on one surface, the things to bring as
  * rows, the timetable ruled, the plan as open text, events as icon rows. A block holds a part for
  * each child it is shown for.
  *
@@ -93,33 +93,33 @@ function title(id: BlockId, ctx: ViewContext): string {
   }
 }
 
-function homeworkItems(notes: readonly NoteView[], ctx: ViewContext): unknown {
+function importantItems(notes: readonly NoteView[], ctx: ViewContext): unknown {
   return notes.map(
     (note) =>
       html`<li class="hw">
         ${
           note.subject || note.title
-            ? html`<div class="hw-head">
+            ? html`<div class="note-head">
                 ${note.subject ? label(aula(note.subject.name, ctx), "subject") : nothing}
-                ${note.title ? html`<span class="hw-title">${aula(note.title, ctx)}</span>` : nothing}
+                ${note.title ? html`<span class="note-title">${aula(note.title, ctx)}</span>` : nothing}
               </div>`
             : nothing
         }
-        ${note.text ? html`<p class="hw-text">${aula(note.text, ctx)}</p>` : nothing}
+        ${note.text ? html`<p class="note-text">${aula(note.text, ctx)}</p>` : nothing}
       </li>`,
   );
 }
 
-/** Shows homework notes on one surface: the subject as a label, Meebook's title, the text. */
-export function homeworkList(notes: readonly NoteView[], ctx: ViewContext): TemplateResult {
-  return html`<ul class="homework">
-    ${homeworkItems(notes, ctx)}
+/** Shows important notes on one surface: the subject as a label, Meebook's title, the text. */
+export function importantList(notes: readonly NoteView[], ctx: ViewContext): TemplateResult {
+  return html`<ul class="important">
+    ${importantItems(notes, ctx)}
   </ul>`;
 }
 
 /**
  * Says why a part has nothing. A week plan not yet in Aula stands out, with its icon: its
- * homework is unknown, not none.
+ * important notes are unknown, not none.
  */
 export function emptyNote(text: string, empty: EmptyKind | "none" | undefined): TemplateResult {
   const missing = empty === "planMissing";
@@ -139,13 +139,13 @@ export function emptyText(
     case "planMissing":
       return ctx.t("weekPlanNotYet", { n: String(content.planMissing) });
     case "noWeekPlan":
-      return ctx.t("noWeekPlanHomework");
+      return ctx.t("noWeekPlanImportant");
     case "noTimetable":
       return ctx.t("noLessons");
-    case "noHomework":
-      return ctx.t("noHomework");
+    case "noImportant":
+      return ctx.t("noImportant");
     default:
-      return ctx.t(id === "task" ? "noHomework" : id === "timetable" ? "noLessons" : "noPlan");
+      return ctx.t(id === "task" ? "noImportant" : id === "timetable" ? "noLessons" : "noPlan");
   }
 }
 
@@ -153,26 +153,26 @@ export function emptyText(
  * Shows Vigtigt on one surface: what the week plan marks, or why it marks nothing, then what to
  * bring, each thing in its subject's colour after "Husk:".
  */
-function important(part: Part, ctx: ViewContext): TemplateResult {
-  const { homework, noHomework, pack, subjects } = part.plan;
+function importantBlock(part: Part, ctx: ViewContext): TemplateResult {
+  const { important, noImportant, pack, subjects } = part.plan;
   return html`<div class="vital">
     ${
-      homework.length > 0 || noHomework
+      important.length > 0 || noImportant
         ? html`<span class="vital-flag" aria-hidden="true">${icon(BLOCK_ICONS.task)}</span>`
         : nothing
     }
-    <ul class="homework">
-      ${homeworkItems(homework, ctx)}
+    <ul class="important">
+      ${importantItems(important, ctx)}
       ${
-        homework.length === 0 && noHomework
+        important.length === 0 && noImportant
           ? html`<li class="hw">
-              ${emptyNote(emptyText("task", noHomework, part.content, ctx), noHomework)}
+              ${emptyNote(emptyText("task", noImportant, part.content, ctx), noImportant)}
             </li>`
           : nothing
       }
       ${
         pack.length > 0 || subjects.length > 0
-          ? html`<li class="hw hw-pack">
+          ? html`<li class="hw note-pack">
               <span class="pack-label">${ctx.t("remember")}</span>
               ${pack.map(
                 (row) =>
@@ -535,7 +535,7 @@ function body(
 ): unknown {
   switch (id) {
     case "task":
-      return important(part, ctx);
+      return importantBlock(part, ctx);
     case "timetable": {
       if (!unfolded) return bar(part, ctx);
       const { state } = options;

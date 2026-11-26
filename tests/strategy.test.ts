@@ -33,11 +33,11 @@ describe("the dashboard", () => {
     expect(generated.title).toBe("Aula");
     expect(generated.views.map((view) => [view.path, view.title, view.subview ?? false])).toEqual([
       ["aula", "Aula", false],
-      ["lektier", "Lektier", true],
+      ["vigtigt", "Vigtigt", true],
       ["ugeplan", "Ugeplan", true],
       ["uge", "Uge", true],
     ]);
-    const [main, homework] = generated.views;
+    const [main, important] = generated.views;
     expect(main?.sections).toEqual([
       {
         type: "grid",
@@ -56,9 +56,9 @@ describe("the dashboard", () => {
         ],
       },
     ]);
-    expect(homework?.sections[0]?.cards).toEqual([
+    expect(important?.sections[0]?.cards).toEqual([
       { type: "custom:aula-connect-children-card", look_switch: false },
-      { type: "custom:aula-connect-homework-card" },
+      { type: "custom:aula-connect-important-card" },
     ]);
   });
 
@@ -74,7 +74,7 @@ describe("the dashboard", () => {
         ],
       },
     ]);
-    expect(generated.views[1]?.title).toBe("Homework");
+    expect(generated.views[1]?.title).toBe("Important");
     expect(dashboard({ sick: false }, "da").views[0]?.sections[1]?.cards).toHaveLength(2);
   });
 });

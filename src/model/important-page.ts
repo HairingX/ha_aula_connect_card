@@ -1,5 +1,5 @@
 /**
- * The homework page: a week's homework for the children shown, by the day it is due, the days
+ * The Important page: a week's important notes for the children shown, by the day it is due, the days
  * before today folded, browsed a week at a time.
  *
  * @packageDocumentation
@@ -10,11 +10,11 @@ import { addDays, startOfWeek, weekNumber } from "../core/dates.ts";
 import { extraKey, type StoreSnapshot } from "../core/store.ts";
 import type { Child, Day } from "../core/types.ts";
 import { basisFor, childBases, type ChildBasis, type Hold, type ViewOptions } from "./child.ts";
-import { isHomework, noteView, type NoteView } from "./notes.ts";
+import { isImportant, noteView, type NoteView } from "./notes.ts";
 import { extraWeeks } from "./week-view.ts";
 
-/** A child's homework, and the day it is due. */
-export interface HomeworkItem {
+/** A child's important note, and the day it is for. */
+export interface ImportantItem {
   /** The child. */
   readonly child: Child;
   /** The note. */
@@ -23,8 +23,8 @@ export interface HomeworkItem {
   readonly day: Day;
 }
 
-/** The homework page. */
-export interface HomeworkPageView {
+/** The Important page. */
+export interface ImportantPageView {
   /** The week's Monday. */
   readonly week: Day;
   /** The week's number. */
@@ -35,11 +35,11 @@ export interface HomeworkPageView {
   readonly loading: boolean;
   /** Why a child's data for the week could not be had. */
   readonly error: unknown;
-  /** The homework due before today, in the week of today. */
-  readonly earlier: readonly HomeworkItem[];
-  /** The days with homework due, from today in the week of today, each with its homework. */
-  readonly days: readonly { readonly day: Day; readonly items: readonly HomeworkItem[] }[];
-  /** The children with no homework due on those days. */
+  /** The important notes for the days before today, in the week of today. */
+  readonly earlier: readonly ImportantItem[];
+  /** The days with important notes, from today in the week of today, each with its notes. */
+  readonly days: readonly { readonly day: Day; readonly items: readonly ImportantItem[] }[];
+  /** The children with no important note on those days. */
   readonly none: readonly Child[];
   /** The configured child ids no child has. */
   readonly missing: readonly number[];
@@ -47,12 +47,12 @@ export interface HomeworkPageView {
   readonly size: number;
 }
 
-function itemsOf(basis: ChildBasis, from: Day, to: Day): HomeworkItem[] {
+function itemsOf(basis: ChildBasis, from: Day, to: Day): ImportantItem[] {
   if (!basis.rules.weekPlan) return [];
   return basis.days
     .filter((view) => view.day >= from && view.day < to)
     .flatMap((view) =>
-      view.notes.filter(isHomework).map((note) => ({
+      view.notes.filter(isImportant).map((note) => ({
         child: basis.child,
         note: noteView(note, basis.rules.namer),
         day: view.day,
@@ -60,14 +60,14 @@ function itemsOf(basis: ChildBasis, from: Day, to: Day): HomeworkItem[] {
     );
 }
 
-/** Builds the homework page, `offset` weeks from this week. */
-export function homeworkPageView(
+/** Builds the Important page, `offset` weeks from this week. */
+export function importantPageView(
   snapshot: StoreSnapshot,
   options: ViewOptions,
   ctx: ViewContext,
   hold: Hold,
   offset: number,
-): HomeworkPageView {
+): ImportantPageView {
   const { bases, missing } = childBases(snapshot, options, ctx, hold);
   const week = addDays(startOfWeek(ctx.today), 7 * offset);
   const end = addDays(week, 7);

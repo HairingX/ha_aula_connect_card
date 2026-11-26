@@ -1,5 +1,5 @@
 /**
- * The configuration of the family's cards: the children's bar, the overview, the homework page,
+ * The configuration of the family's cards: the children's bar, the overview, the Important page,
  * and the cards that act on Aula for the family.
  *
  * @packageDocumentation
@@ -13,8 +13,8 @@ import { configForm, type ConfigForm, type FieldName } from "./form.ts";
 export const CHILDREN_CARD = "aula-connect-children-card";
 /** The overview's element. */
 export const OVERVIEW_CARD = "aula-connect-overview-card";
-/** The homework page's element. */
-export const HOMEWORK_CARD = "aula-connect-homework-card";
+/** The Important page's element. */
+export const IMPORTANT_CARD = "aula-connect-important-card";
 /** The card that reports a child sick. */
 export const SICK_CARD = "aula-connect-sick-card";
 /** The card that answers vacation requests. */
@@ -32,8 +32,8 @@ export interface PersonFor {
 
 /** The views the overview's tiles go to, relative to the dashboard unless they begin with "/". */
 export interface Paths {
-  /** The homework page. */
-  readonly homework: string;
+  /** The Important page. */
+  readonly important: string;
   /** The week plan. */
   readonly weekplan: string;
   /** The week. */
@@ -41,7 +41,7 @@ export interface Paths {
 }
 
 /** The views the dashboard strategy makes, and the overview goes to by default. */
-export const DEFAULT_PATHS: Paths = { homework: "lektier", weekplan: "ugeplan", week: "uge" };
+export const DEFAULT_PATHS: Paths = { important: "vigtigt", weekplan: "ugeplan", week: "uge" };
 
 /** The children's bar's configuration. */
 export interface ChildrenBarConfig extends CommonConfig {
@@ -117,11 +117,11 @@ export function parseFlag(value: unknown, name: string): boolean {
 /** Reads `paths`: the views the overview's tiles go to. */
 export function parsePaths(value: unknown): Paths {
   if (absent(value)) return DEFAULT_PATHS;
-  if (!isRecord(value)) throw new Error("paths: must be a mapping of homework, weekplan and week");
+  if (!isRecord(value)) throw new Error("paths: must be a mapping of important, weekplan and week");
   const paths = { ...DEFAULT_PATHS };
   for (const [key, path] of Object.entries(value)) {
     if (!(key in DEFAULT_PATHS))
-      throw new Error(`paths: unknown key "${key}"; the keys are homework, weekplan and week`);
+      throw new Error(`paths: unknown key "${key}"; the keys are important, weekplan and week`);
     if (absent(path)) continue;
     if (typeof path !== "string") throw new Error(`paths.${key}: must be a view's path`);
     paths[key as keyof Paths] = path.trim();
@@ -179,11 +179,11 @@ export function resolveOverviewConfig(config: unknown, lenient = false): Overvie
 }
 
 /**
- * Checks the homework page's configuration and fills in its defaults.
+ * Checks the Important page's configuration and fills in its defaults.
  *
  * @throws Error naming the first invalid key.
  */
-export function resolveHomeworkConfig(config: unknown, lenient = false): CommonConfig {
+export function resolveImportantConfig(config: unknown, lenient = false): CommonConfig {
   return resolveCommon(configRecord(config), lenient);
 }
 
@@ -205,7 +205,7 @@ export function resolveActionConfig(config: unknown, lenient = false): ActionCon
 export type FamilyCard =
   | typeof CHILDREN_CARD
   | typeof OVERVIEW_CARD
-  | typeof HOMEWORK_CARD
+  | typeof IMPORTANT_CARD
   | typeof SICK_CARD
   | typeof VACATION_REQUESTS_CARD
   | typeof VACATION_CARD;
@@ -222,7 +222,7 @@ const FORMS: Readonly<Record<FamilyCard, readonly FieldName[]>> = {
     "packing_group",
     "subject_names_group",
   ],
-  [HOMEWORK_CARD]: ["children", "size", "subject_names_group"],
+  [IMPORTANT_CARD]: ["children", "size", "subject_names_group"],
   [SICK_CARD]: ["children", "sick_message", "sender", "size"],
   [VACATION_REQUESTS_CARD]: ["children", "sender", "size"],
   [VACATION_CARD]: ["children", "sender", "size"],
@@ -231,7 +231,7 @@ const FORMS: Readonly<Record<FamilyCard, readonly FieldName[]>> = {
 const RESOLVE: Readonly<Record<FamilyCard, (config: unknown, lenient: boolean) => unknown>> = {
   [CHILDREN_CARD]: resolveChildrenConfig,
   [OVERVIEW_CARD]: resolveOverviewConfig,
-  [HOMEWORK_CARD]: resolveHomeworkConfig,
+  [IMPORTANT_CARD]: resolveImportantConfig,
   [SICK_CARD]: resolveActionConfig,
   [VACATION_REQUESTS_CARD]: resolveActionConfig,
   [VACATION_CARD]: resolveActionConfig,
