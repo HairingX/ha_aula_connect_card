@@ -8,6 +8,7 @@
 import { LOOKS, type Look } from "../core/selection.ts";
 import { configRecord, isRecord, resolveCommon, type CommonConfig } from "./common.ts";
 import { configForm, type ConfigForm, type FieldName } from "./form.ts";
+import { LOOK_DEFAULTS, MAX_NOTES, type BoardSettings, type LookSettings } from "./looks.ts";
 
 /** The children's bar's element. */
 export const CHILDREN_CARD = "aula-connect-children-card";
@@ -70,10 +71,12 @@ export interface OverviewConfig extends ActionConfig {
   readonly paths: Paths;
   /** Icons for things to bring, by the thing, over the built-in ones. */
   readonly packIcons: Readonly<Record<string, string>>;
-  /** Whether what is important is said in a line that opens it, or shown for its first day in full. */
-  readonly important: "compact" | "full";
-  /** Whether the board shows a child's school day only as times, or also on a clock face. */
-  readonly clock: "digital" | "analog";
+  /** How the rows show what is important. */
+  readonly rows: LookSettings;
+  /** How the columns show what is important. */
+  readonly columns: LookSettings;
+  /** How the board shows what is important, and the school hours. */
+  readonly board: BoardSettings;
 }
 
 /** The thread a child's illness is written about in. */
@@ -187,30 +190,83 @@ export function parsePaths(value: unknown): Paths {
   return paths;
 }
 
-/** Reads `important`: how the overview shows what is important, `compact` by default. */
-export function parseImportant(value: unknown): "compact" | "full" {
-  if (absent(value)) return "compact";
-  if (value !== "compact" && value !== "full")
-    throw new Error("important: must be compact or full");
-  return value;
+function oneOf<T extends string>(
+  value: unknown,
+  name: string,
+  values: readonly [T, T],
+  fallback: T,
+): T {
+  if (absent(value)) return fallback;
+  const found = values.find((item) => item === value);
+  if (found === undefined) throw new Error(`${name}: must be ${values[0]} or ${values[1]}`);
+  return found;
 }
 
-/** Reads `clock`: how the board shows the school day, `digital` by default. */
-export function parseClock(value: unknown): "digital" | "analog" {
-  if (absent(value)) return "digital";
-  if (value !== "digital" && value !== "analog")
-    throw new Error("clock: must be digital or analog");
-  return value;
+/**
+ * Reads how a look of the overview, `look`, is set: `important` and `important_max`, and the
+ * board's `clock`; what is left out is the look's default.
+ */
+export function parseLookSettings(value: unknown, look: "rows" | "columns"): LookSettings;
+export function parseLookSettings(value: unknown, look: "board"): BoardSettings;
+export function parseLookSettings(
+  value: unknown,
+  look: "rows" | "columns" | "board",
+): LookSettings | BoardSettings {
+  const defaults: LookSettings & Partial<BoardSettings> = LOOK_DEFAULTS[look];
+  if (absent(value)) return defaults;
+  if (!isRecord(value)) throw new Error(`${look}: must be a mapping of its settings`);
+  const keys =
+    defaults.clock === undefined
+      ? ["important", "important_max"]
+      : ["important", "important_max", "clock"];
+  const unknown = Object.keys(value).find((key) => !keys.includes(key));
+  if (unknown !== undefined)
+    throw new Error(`${look}: unknown key "${unknown}"; the keys are ${keys.join(", ")}`);
+  const max = value.important_max;
+  if (
+    !absent(max) &&
+    (typeof max !== "number" || !Number.isInteger(max) || max < 1 || max > MAX_NOTES)
+  )
+    throw new Error(`${look}.important_max: must be a whole number from 1 to ${String(MAX_NOTES)}`);
+  const settings: LookSettings = {
+    important: oneOf(value.important, `${look}.important`, ["compact", "full"], defaults.important),
+    max: typeof max === "number" ? max : defaults.max,
+  };
+  return defaults.clock === undefined
+    ? settings
+    : {
+        ...settings,
+        clock: oneOf(value.clock, `${look}.clock`, ["digital", "analog"], defaults.clock),
+      };
 }
 
-/** Reads `pack_icons`: things to bring and their mdi icons. */
-export function parsePackIcons(value: unknown): Record<string, string> {
+/**
+ * Reads `pack_icons`: things to bring and their mdi icons, as a list of `thing` and `icon`, or a
+ * mapping of things to icons. With `lenient`, an entry still being filled in is left out.
+ */
+export function parsePackIcons(value: unknown, lenient = false): Record<string, string> {
   if (absent(value)) return {};
-  if (!isRecord(value)) throw new Error("pack_icons: must be a mapping of things to icons");
+  let entries: [string, unknown, string][];
+  if (Array.isArray(value))
+    entries = (value as unknown[]).map((item, index) => {
+      const name = `pack_icons[${String(index)}]`;
+      if (!isRecord(item)) throw new Error(`${name}: must be a mapping of thing and icon`);
+      return [typeof item.thing === "string" ? item.thing : "", item.icon, name];
+    });
+  else if (isRecord(value))
+    entries = Object.entries(value).map(([thing, icon]) => [thing, icon, `pack_icons.${thing}`]);
+  else throw new Error("pack_icons: must be a list of things and icons");
   const icons: Record<string, string> = {};
-  for (const [thing, icon] of Object.entries(value)) {
-    if (typeof icon !== "string" || !/^mdi:[a-z0-9-]+$/.test(icon.trim()))
-      throw new Error(`pack_icons.${thing}: must be an icon, such as mdi:tshirt-crew-outline`);
+  for (const [thing, icon, name] of entries) {
+    const valid = typeof icon === "string" && /^mdi:[a-z0-9-]+$/.test(icon.trim());
+    if (thing.trim() === "" || !valid) {
+      if (lenient) continue;
+      throw new Error(
+        thing.trim() === ""
+          ? `${name}.thing: must be a thing to bring, such as Idrætstaske`
+          : `${name}: must be an icon, such as mdi:tshirt-crew-outline`,
+      );
+    }
     icons[thing.trim().toLowerCase()] = icon.trim();
   }
   return icons;
@@ -248,9 +304,10 @@ export function resolveOverviewConfig(config: unknown, lenient = false): Overvie
     ...resolveActionConfig(raw, lenient),
     look: parseLook(raw.look),
     paths: parsePaths(raw.paths),
-    packIcons: parsePackIcons(raw.pack_icons),
-    important: parseImportant(raw.important),
-    clock: parseClock(raw.clock),
+    packIcons: parsePackIcons(raw.pack_icons, lenient),
+    rows: parseLookSettings(raw.rows, "rows"),
+    columns: parseLookSettings(raw.columns, "columns"),
+    board: parseLookSettings(raw.board, "board"),
   };
 }
 
@@ -292,8 +349,9 @@ const FORMS: Readonly<Record<FamilyCard, readonly FieldName[]>> = {
   [OVERVIEW_CARD]: [
     "children",
     "look",
-    "important",
-    "clock",
+    "rows",
+    "columns",
+    "board",
     "switch_time",
     "size",
     "sick_write",

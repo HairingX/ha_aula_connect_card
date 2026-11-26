@@ -21,6 +21,7 @@ import {
 import type { Look } from "../core/selection.ts";
 import type { Child, Day, Vacation } from "../core/types.ts";
 import { ABSENCE_ICON, type Paths } from "../config/family.ts";
+import type { BoardSettings, LookSettings } from "../config/looks.ts";
 import type { RequestGroup, VacationGroup } from "../model/absence.ts";
 import { isHolidayEvent } from "../model/days.ts";
 import type { LessonRow, TimetableRow } from "../model/blocks.ts";
@@ -86,10 +87,12 @@ export interface OverviewOptions {
   readonly sick: SickOptions;
   /** What it knows of Fravær. */
   readonly absence: AbsenceView;
-  /** Whether what is important is said in a line that opens it, or shown for its first day in full. */
-  readonly important: "compact" | "full";
-  /** Whether the board shows a child's school hours only as times, or also on a clock. */
-  readonly clock: "digital" | "analog";
+  /** How each look shows what is important, and the board the school hours. */
+  readonly looks: {
+    readonly rows: LookSettings;
+    readonly columns: LookSettings;
+    readonly board: BoardSettings;
+  };
 }
 
 /** A subject's icon on the board, by its key; a book for a subject not in it. */
@@ -122,6 +125,7 @@ export const SUBJECT_ICONS: Readonly<Record<string, string>> = {
 
 /** A thing to bring's icon, by a word in it; the first that matches is taken. */
 export const PACK_ICONS: readonly (readonly [RegExp, string])[] = [
+  [/taske|bag/, "mdi:bag-personal"],
   [/badetøj|svøm|swim/, "mdi:swim"],
   [/håndklæde|towel/, "mdi:shower"],
   [/sko|støvle|shoe|boot/, "mdi:shoe-sneaker"],
@@ -131,9 +135,21 @@ export const PACK_ICONS: readonly (readonly [RegExp, string])[] = [
   [/bog|hæfte|atlas|book/, "mdi:book-open-variant"],
   [/regn|rain|paraply|umbrella/, "mdi:umbrella-outline"],
   [/computer|ipad|tablet|laptop|pc/, "mdi:laptop"],
+  [/penge|money|cash/, "mdi:cash"],
   [/penalhus|blyant|pen/, "mdi:pencil-outline"],
   [/drikkedunk|vand|water|bottle/, "mdi:cup-water"],
   [/cykel|hjelm|bike|helmet/, "mdi:bike"],
+  [/tisse|toilet|wc/, "mdi:toilet"],
+  [/briller|glasses/, "mdi:glasses"],
+  [/nøgle|key/, "mdi:key"],
+  [/høretelefon|headphone/, "mdi:headphones"],
+  [/lommeregner|calculator/, "mdi:calculator"],
+  [/lineal|ruler/, "mdi:ruler"],
+  [/saks|scissors/, "mdi:scissors-cutting"],
+  [/tandbørste|toothbrush/, "mdi:toothbrush"],
+  [/billet|ticket/, "mdi:ticket"],
+  [/telefon|mobil|phone/, "mdi:cellphone"],
+  [/bold|fodbold|ball/, "mdi:soccer"],
 ];
 
 /** Returns a thing to bring's icon: the configured one, else by a word in it, else a bag. */
@@ -294,22 +310,27 @@ function dueItem(due: ImportantDue, ctx: ViewContext): TemplateResult {
 }
 
 /**
- * Shows what is important for the first day that has some, in full, and a way to the rest; or
- * that nothing is important.
+ * Shows what is important for the first day that has some, in full, `look.max` of its notes until
+ * the rest are unfolded, and a way to the later days; or that nothing is important.
  */
 function importantFull(
   item: OverviewChild,
   ctx: ViewContext,
   state: CardState,
   options: OverviewOptions,
+  look: LookSettings,
 ): TemplateResult {
   const key = `important|${String(item.child.child_id)}`;
+  const unfold = `unfold|${String(item.child.child_id)}`;
   const [first] = item.important;
   if (!first)
     return html`<p class="ov-important none">
       ${icon("mdi:flag-outline")}<span>${ctx.t("importantNone")}</span>
     </p>`;
   const later = item.important.filter((due) => due.day !== first.day).length;
+  const day = item.important.filter((due) => due.day === first.day);
+  const open = state.isOpen(unfold, false);
+  const hidden = day.length - look.max;
   return html`<section class="ov-important-full">
     <h4 class="ov-important-head">
       ${icon("mdi:flag-outline")}<span
@@ -317,8 +338,24 @@ function importantFull(
       >
     </h4>
     <ul class="note-due">
-      ${item.important.filter((due) => due.day === first.day).map((due) => dueItem(due, ctx))}
+      ${(open ? day : day.slice(0, look.max)).map((due) => dueItem(due, ctx))}
     </ul>
+    ${
+      hidden > 0
+        ? html`<button
+            class="text-button ov-important-unfold"
+            type="button"
+            aria-expanded=${open ? "true" : "false"}
+            @click=${() => {
+              state.toggle(unfold, false);
+            }}
+          >
+            ${open ? ctx.t("showLess") : ctx.t("showMoreCount", { n: hidden })}${icon(
+              open ? "mdi:chevron-up" : "mdi:chevron-down",
+            )}
+          </button>`
+        : nothing
+    }
     ${
       later > 0
         ? html`<button
@@ -343,7 +380,8 @@ function importantButton(
   state: CardState,
   options: OverviewOptions,
 ): TemplateResult {
-  if (options.important === "full") return importantFull(item, ctx, state, options);
+  if (options.looks.rows.important === "full")
+    return importantFull(item, ctx, state, options, options.looks.rows);
   const key = `important|${String(item.child.child_id)}`;
   const [first] = item.important;
   if (!first)
@@ -413,7 +451,8 @@ function boardClock(
     options.absence.ongoing.has(item.child.child_id) ||
     presence?.kind === "sick" ||
     presence?.kind === "ask";
-  if (options.clock !== "analog" || !span || away) return presencePill(item, ctx, state, options);
+  if (options.looks.board.clock !== "analog" || !span || away)
+    return presencePill(item, ctx, state, options);
   const label = ctx.t("clockLabel", {
     span: `${timeText(span.start, ctx)}–${timeText(span.end, ctx)}`,
     now: formatTime(ctx.now, ctx.language, ctx.zone, ctx.amPm),
@@ -443,6 +482,23 @@ function firstLessons(timetable: readonly TimetableRow[]): LessonRow[] {
     seen.add(row.subject.key);
     return true;
   });
+}
+
+// A thing to bring wears its subject's colour and icon, as a child who cannot read sees by them
+// what it is for.
+function packTile(
+  thing: string,
+  subject: SubjectLabel,
+  ctx: ViewContext,
+  options: OverviewOptions,
+): TemplateResult {
+  return html`<li class="board-thing" style=${subjectColor(subject)}>
+    <span class="board-thing-for">${icon(subjectIcon(subject))}</span>
+    ${icon(packIcon(thing, options.packIcons))}<span class=${thing.length > 8 ? "long" : ""}
+      >${aula(thing, ctx)}</span
+    >
+    <span class="sr">${ctx.t("packFor", { subject: subject.name })}</span>
+  </li>`;
 }
 
 function subjectTile(
@@ -485,12 +541,13 @@ function rows(
       (item, index) =>
         html`<section class="ov-row">
           <div class="ov-top">
-            ${who(item, state)}
-            <span class="ov-hours"
-              >${dayLine(item, ctx, view.sameDay !== undefined)}${hoursOf(item, ctx)}</span
+            ${who(item, state)} ${hoursBig(item, ctx)}
+            <span class="ov-status"
+              ><span class="ov-hours"
+                >${dayLine(item, ctx, view.sameDay !== undefined)}${hoursOf(item, ctx)}</span
+              >
+              ${sickLabel(item, ctx)} ${presencePill(item, ctx, state, options)}</span
             >
-            ${hoursBig(item, ctx)} ${sickLabel(item, ctx)}
-            ${presencePill(item, ctx, state, options)}
           </div>
           ${waiting(item, ctx)}
           ${bars[index] ? html`<div class="ov-bar">${renderDayBar(bars[index], ctx, axis, { state, child: item.child, key: `bar|${String(item.child.child_id)}` })}</div>` : nothing}
@@ -508,7 +565,9 @@ function soonList(
   state: CardState,
   options: OverviewOptions,
 ): unknown {
-  const shown = item.important.slice(0, 4);
+  if (options.looks.columns.important === "full")
+    return importantFull(item, ctx, state, options, options.looks.columns);
+  const shown = item.important.slice(0, options.looks.columns.max);
   if (shown.length === 0)
     return html`<p class="ov-important none">
       ${icon("mdi:flag-outline")}<span>${ctx.t("importantNone")}</span>
@@ -577,7 +636,9 @@ function panel(
 ): TemplateResult {
   const { content } = item;
   const lessons = firstLessons(content?.timetable ?? []);
-  const things = (content?.pack ?? []).flatMap((packed) => packed.items);
+  const things = (content?.pack ?? []).flatMap((packed) =>
+    packed.items.map((thing) => ({ thing, subject: packed.subject })),
+  );
   const today = item.focus.day === ctx.today;
   const key = `important|${String(item.child.child_id)}`;
   const [first] = item.important;
@@ -597,14 +658,14 @@ function panel(
               things.length === 0
                 ? html`<p class="board-none">${ctx.t("nothingToPack")}</p>`
                 : html`<ul class="board-tiles">
-                    ${things.map((thing) => html`<li class="board-thing">${icon(packIcon(thing, options.packIcons))}<span class=${thing.length > 8 ? "long" : ""}>${aula(thing, ctx)}</span></li>`)}
+                    ${things.map(({ thing, subject }) => packTile(thing, subject, ctx, options))}
                   </ul>`
             }`
         : nothing
     }
     ${
-      options.important === "full"
-        ? importantFull(item, ctx, state, options)
+      options.looks.board.important === "full"
+        ? importantFull(item, ctx, state, options, options.looks.board)
         : first
           ? html`<button
               class="board-important"

@@ -6,9 +6,8 @@ import {
   familyForm,
   IMPORTANT_CARD,
   OVERVIEW_CARD,
-  parseClock,
   parseFlag,
-  parseImportant,
+  parseLookSettings,
   parseLook,
   parsePackIcons,
   parsePaths,
@@ -104,8 +103,27 @@ describe("the family's cards' configuration", () => {
       "people[0].person: must be a person, such as person.ida",
     ],
     [() => parseLook("grid"), "look: must be rows, columns or board"],
-    [() => parseImportant("all"), "important: must be compact or full"],
-    [() => parseClock("round"), "clock: must be digital or analog"],
+    [() => parseLookSettings("full", "rows"), "rows: must be a mapping of its settings"],
+    [
+      () => parseLookSettings({ important: "all" }, "board"),
+      "board.important: must be compact or full",
+    ],
+    [
+      () => parseLookSettings({ clock: "round" }, "board"),
+      "board.clock: must be digital or analog",
+    ],
+    [
+      () => parseLookSettings({ clock: "analog" }, "rows"),
+      'rows: unknown key "clock"; the keys are important, important_max',
+    ],
+    [
+      () => parseLookSettings({ important_max: 0 }, "columns"),
+      "columns.important_max: must be a whole number from 1 to 20",
+    ],
+    [
+      () => parseLookSettings({ important_max: "3" }, "board"),
+      "board.important_max: must be a whole number from 1 to 20",
+    ],
     [() => parseSickThreads("501"), "sick_threads: must be a list of children and threads"],
     [() => parseSickThreads([501]), "sick_threads[0]: must be a mapping of child and thread"],
     [
@@ -134,7 +152,16 @@ describe("the family's cards' configuration", () => {
       () => parsePaths({ week: 3 }),
       "paths.week: must be a view's path, or false to leave the tile out",
     ],
-    [() => parsePackIcons(["x"]), "pack_icons: must be a mapping of things to icons"],
+    [() => parsePackIcons("x"), "pack_icons: must be a list of things and icons"],
+    [() => parsePackIcons(["x"]), "pack_icons[0]: must be a mapping of thing and icon"],
+    [
+      () => parsePackIcons([{ icon: "mdi:bike" }]),
+      "pack_icons[0].thing: must be a thing to bring, such as Idrætstaske",
+    ],
+    [
+      () => parsePackIcons([{ thing: "Cykel", icon: "bike" }]),
+      "pack_icons[0]: must be an icon, such as mdi:tshirt-crew-outline",
+    ],
     [
       () => parsePackIcons({ fløjte: "music" }),
       "pack_icons.fløjte: must be an icon, such as mdi:tshirt-crew-outline",
@@ -149,11 +176,31 @@ describe("the family's cards' configuration", () => {
   });
 
   it("shows what is important compact unless asked for in full", () => {
-    expect(parseImportant(undefined)).toBe("compact");
-    expect(parseImportant("full")).toBe("full");
-    expect(resolveOverviewConfig({ important: "full" }).important).toBe("full");
-    expect(resolveOverviewConfig({}).clock).toBe("digital");
-    expect(parseClock("analog")).toBe("analog");
+    expect(resolveOverviewConfig({})).toMatchObject({
+      rows: { important: "compact", max: 3 },
+      columns: { important: "compact", max: 3 },
+      board: { important: "full", max: 3, clock: "digital" },
+    });
+    expect(
+      resolveOverviewConfig({
+        rows: { important: "full", important_max: 5 },
+        board: { important: "compact", clock: "analog" },
+        columns: null,
+      }),
+    ).toMatchObject({
+      rows: { important: "full", max: 5 },
+      columns: { important: "compact", max: 3 },
+      board: { important: "compact", max: 3, clock: "analog" },
+    });
+    expect(
+      parsePackIcons(
+        [
+          { thing: "Cykel", icon: "mdi:bicycle" },
+          { thing: "", icon: "" },
+        ],
+        true,
+      ),
+    ).toEqual({ cykel: "mdi:bicycle" });
   });
 
   it("reads each child's thread as numbers, whether written as text or not", () => {
@@ -191,8 +238,9 @@ describe("the family's cards' editor", () => {
       [
         "children",
         "look",
-        "important",
-        "clock",
+        "rows",
+        "columns",
+        "board",
         "switch_time",
         "size",
         "sick_write",

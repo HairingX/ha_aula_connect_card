@@ -207,7 +207,7 @@ menu opens its settings in Home Assistant's own form, as the cards' editors do. 
 set once for the whole dashboard and given to every card that has them: the children, whether it
 has the sick card and the vacations, the [things to bring](#things-to-bring), the
 [subject names](#subject-names), when the next school day takes over (`switch_time`), the people
-standing in for children, how what is important is shown on the overview, the message about an
+standing in for children, how each of the overview's looks shows what is important, the message about an
 illness, the thread each child's is written in, whether a report goes on to it, and the guardian
 to act as. In YAML:
 
@@ -220,10 +220,15 @@ strategy:
   packing:
     - subject: Idræt
       items: [Idrætstøj, Idrætstaske]
-  pack_icons: # YAML only, as in the overview
-    idrætstaske: mdi:bag-personal-outline
-  important: compact # full shows the first day's notes whole on the overview
-  clock: digital # analog adds a clock of the school hours on the board
+  pack_icons: # an icon for a thing to bring, over the built-in ones
+    - thing: Idrætstaske
+      icon: mdi:bag-personal
+  board: # each look of the overview set apart; see the overview
+    important: full
+    important_max: 3
+    clock: analog
+  rows:
+    important: compact
 ```
 
 The dashboard is made anew each time it is opened, so it follows the cards' later versions. To
@@ -285,23 +290,27 @@ what is coming the next seven days once, with the faces of the children it is fo
 registered among it.
 
 The overview is a snapshot of the day that matters; the week card is for browsing. A tap on a
-lesson or an event in a child's bar opens its window, as in the school day card. What is
-important is one line that opens it day by day, or with `important: full` the first day's notes
-shown whole, with the rest a tap away. A tap on the presence opens the day's times, and reports
+lesson or an event in a child's bar opens its window, as in the school day card. A tap on the presence opens the day's times, and reports
 the child sick from there, where Aula Connect's options allow it; a tap on a request answers it.
 On a screen wide enough, the tiles and **Det sker** stand in a column at the right, apart from the
 children.
 
 Three looks, chosen in the children's bar or kept with `look`:
 
-- **Rækker** (`rows`): a row per child; on the wall, the face, the bar and what to bring side by
-  side, with the school hours in large.
+- **Rækker** (`rows`): a row per child, its hours and presence on one line; on the wall, the
+  face, the bar and what to bring side by side, with the school hours in large.
 - **Kolonner** (`columns`): a column per child, with what is important soon listed.
 - **Tavle** (`board`): large tiles for the children themselves: the school hours, from and to,
   in large under the name; today's subjects in the order of the day, a tap on one opening its
-  lesson; and the things to pack. With `clock: analog` a clock beside the name marks the school
-  hours on its rim, where the hour hand goes while school goes on, and shows the time now; a
-  child away or sick has its presence there instead.
+  lesson; and the things to pack, each in its subject's colour and with its icon, so that a
+  child who cannot read sees what it is for. With `clock: analog` a clock beside the name marks
+  the school hours on its rim, a mark across it at each end reaching in toward the hours, and
+  shows the time now; a child away or sick has its presence there instead.
+
+Each look is set apart, under `rows`, `columns` and `board`: `important` is `compact`, one line
+that opens what is important day by day, or `full`, the first day's notes shown, `important_max`
+of them before **Vis 2 mere** unfolds the rest, and the later days a tap away. By default the
+board shows them in full and the rows and columns compact, three at most.
 
 ```yaml
 type: custom:aula-connect-overview-card
@@ -312,8 +321,18 @@ paths: # the views the tiles go to; false leaves a tile out
   week: uge
   absence: fravaer
 pack_icons: # over the built-in icons, by the thing
-  blokfløjte: mdi:music
+  - thing: Blokfløjte
+    icon: mdi:music
+board:
+  important: full # compact or full
+  important_max: 3 # notes shown before "Vis 2 mere"
+  clock: analog # digital or analog
+rows:
+  important: compact
 ```
+
+A thing to bring without an icon of its own gets one by a word in it - a bag for a taske, a bike
+for a cykel, a cup for a drikkedunk, a toilet for tisse - and a bag where none is known.
 
 ## Important card
 
@@ -395,32 +414,32 @@ children whose entry does; otherwise the card says they are turned off.
 
 ## Configuration
 
-| Option                 | Cards                    | Default                                | What it does                                                                                                                                                           |
-| ---------------------- | ------------------------ | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `children`             | all                      | every child                            | The children to show, by Aula's child id, in this order.                                                                                                               |
-| `group_by`             | school day, week plan    | `child`                                | `child`: each child's own in a [column of its own](#several-children). `block` (school day) or `day` (week plan): the children lined up, block by block or day by day. |
-| `switch_time`          | all                      | `"12:00"`                              | When the next school day takes over from today. `"00:00"` keeps today all day.                                                                                         |
-| `size`                 | all                      | `normal`                               | `large` for a wall screen: text 1.5 times as large, and the wall's sizes from a 480 px card.                                                                           |
-| `subject_names`        | all                      | none                                   | [Names, colours and merging](#subject-names) for lesson titles, over the built-in ones.                                                                                |
-| `expand_abbreviations` | all                      | `true`                                 | `false` shows the subjects' abbreviations as Aula has them, in place of the [built-in names](#subject-names).                                                          |
-| `info_lines`           | all                      | `6`                                    | The lines of a note shown before "Vis mere", 0 to 50; `0` shows every note whole.                                                                                      |
-| `notes`                | week plan                | `all`                                  | `all`, `tasks` (what is marked important) or `comments` (the notes): what the card shows of the week plan.                                                             |
-| `order`                | school day, week         | none; week: `[timetable]`              | The blocks to put first, in this order: `task`, `timetable`, `comment`. The rest follow the standard order: Vigtigt with Husk in it, Skema, Noter.                     |
-| `show`                 | school day, week         | everything shown                       | Hide a block with `false`: `task`, `timetable`, `comment`; `pack: false` leaves Husk out of Vigtigt, `events: false` the events, `birthdays: false` the birthdays.     |
-| `timetable`            | school day, week         | `compact`                              | `compact` shows the timetable as a bar; `full` opens it whole, still to be folded.                                                                                     |
-| `packing`              | school day, week         | none                                   | [Things to bring](#things-to-bring) when a subject is on the timetable.                                                                                                |
-| `weeks`                | week                     | `2`                                    | `1` shows the week of the day that matters now, `2` this week and next.                                                                                                |
-| `people`               | children's bar           | none                                   | A `person` whose name and picture stand in for a child's, on every card of the page.                                                                                   |
-| `look_switch`          | children's bar           | `true`                                 | `false` leaves out the switch between the overview's looks.                                                                                                            |
-| `look`                 | overview                 | the bar's                              | `rows`, `columns` or `board`, kept whatever the children's bar chooses.                                                                                                |
-| `paths`                | overview                 | `vigtigt`, `ugeplan`, `uge`, `fravaer` | The views the tiles go to: `important`, `weekplan`, `week`, `absence`; relative to the dashboard unless they begin with `/`; `false` leaves a tile out.                |
-| `pack_icons`           | overview                 | none                                   | An mdi icon for a thing to bring, by the thing, over the built-in ones.                                                                                                |
-| `important`            | overview                 | `compact`                              | `compact`: one line that opens what is important. `full`: the first day's notes shown whole.                                                                           |
-| `clock`                | overview                 | `digital`                              | `digital`: the board shows the school hours as times. `analog`: a clock of them beside the name too.                                                                   |
-| `sick_message`         | overview, sick           | a sentence                             | The message about the illness; `{name}` is the child's first name.                                                                                                     |
-| `sick_threads`         | overview, sick           | the one written in last                | The thread each child's illness is written about in: `child` and `thread`, Aula's ids.                                                                                 |
-| `sick_write`           | overview, sick           | `true`                                 | `false` ends a report at the report, the message a tap away.                                                                                                           |
-| `sender`               | overview, sick, vacation | the one used last                      | The guardian to act as, by the name Aula Connect gives the entry.                                                                                                      |
+| Option                 | Cards                    | Default                                                 | What it does                                                                                                                                                           |
+| ---------------------- | ------------------------ | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `children`             | all                      | every child                                             | The children to show, by Aula's child id, in this order.                                                                                                               |
+| `group_by`             | school day, week plan    | `child`                                                 | `child`: each child's own in a [column of its own](#several-children). `block` (school day) or `day` (week plan): the children lined up, block by block or day by day. |
+| `switch_time`          | all                      | `"12:00"`                                               | When the next school day takes over from today. `"00:00"` keeps today all day.                                                                                         |
+| `size`                 | all                      | `normal`                                                | `large` for a wall screen: text 1.5 times as large, and the wall's sizes from a 480 px card.                                                                           |
+| `subject_names`        | all                      | none                                                    | [Names, colours and merging](#subject-names) for lesson titles, over the built-in ones.                                                                                |
+| `expand_abbreviations` | all                      | `true`                                                  | `false` shows the subjects' abbreviations as Aula has them, in place of the [built-in names](#subject-names).                                                          |
+| `info_lines`           | all                      | `6`                                                     | The lines of a note shown before "Vis mere", 0 to 50; `0` shows every note whole.                                                                                      |
+| `notes`                | week plan                | `all`                                                   | `all`, `tasks` (what is marked important) or `comments` (the notes): what the card shows of the week plan.                                                             |
+| `order`                | school day, week         | none; week: `[timetable]`                               | The blocks to put first, in this order: `task`, `timetable`, `comment`. The rest follow the standard order: Vigtigt with Husk in it, Skema, Noter.                     |
+| `show`                 | school day, week         | everything shown                                        | Hide a block with `false`: `task`, `timetable`, `comment`; `pack: false` leaves Husk out of Vigtigt, `events: false` the events, `birthdays: false` the birthdays.     |
+| `timetable`            | school day, week         | `compact`                                               | `compact` shows the timetable as a bar; `full` opens it whole, still to be folded.                                                                                     |
+| `packing`              | school day, week         | none                                                    | [Things to bring](#things-to-bring) when a subject is on the timetable.                                                                                                |
+| `weeks`                | week                     | `2`                                                     | `1` shows the week of the day that matters now, `2` this week and next.                                                                                                |
+| `people`               | children's bar           | none                                                    | A `person` whose name and picture stand in for a child's, on every card of the page.                                                                                   |
+| `look_switch`          | children's bar           | `true`                                                  | `false` leaves out the switch between the overview's looks.                                                                                                            |
+| `look`                 | overview                 | the bar's                                               | `rows`, `columns` or `board`, kept whatever the children's bar chooses.                                                                                                |
+| `paths`                | overview                 | `vigtigt`, `ugeplan`, `uge`, `fravaer`                  | The views the tiles go to: `important`, `weekplan`, `week`, `absence`; relative to the dashboard unless they begin with `/`; `false` leaves a tile out.                |
+| `pack_icons`           | overview                 | none                                                    | An mdi icon for a thing to bring, as a list of `thing` and `icon`, over the built-in ones.                                                                             |
+| `rows`, `columns`      | overview                 | `important: compact`, `important_max: 3`                | How the look shows what is important: `compact`, or `full` with `important_max` notes before "Vis … mere".                                                             |
+| `board`                | overview                 | `important: full`, `important_max: 3`, `clock: digital` | As `rows`, and `clock`: `analog` adds a clock of the school hours beside the name.                                                                                     |
+| `sick_message`         | overview, sick           | a sentence                                              | The message about the illness; `{name}` is the child's first name.                                                                                                     |
+| `sick_threads`         | overview, sick           | the one written in last                                 | The thread each child's illness is written about in: `child` and `thread`, Aula's ids.                                                                                 |
+| `sick_write`           | overview, sick           | `true`                                                  | `false` ends a report at the report, the message a tap away.                                                                                                           |
+| `sender`               | overview, sick, vacation | the one used last                                       | The guardian to act as, by the name Aula Connect gives the entry.                                                                                                      |
 
 A school day card in YAML, every option at its default but the children:
 

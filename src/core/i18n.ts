@@ -119,6 +119,8 @@ const TEXTS = {
   room: ["Room", "Lokale"],
   showMore: ["Show more", "Vis mere"],
   showLess: ["Show less", "Vis mindre"],
+  showMoreCount: ["Show {n} more", "Vis {n} mere"],
+  packFor: ["for {subject}", "til {subject}"],
   showTimetable: ["Show full timetable", "Vis hele skemaet"],
   allDay: ["All day", "Hele dagen"],
   birthdayOf: [
@@ -487,6 +489,13 @@ const TEXTS = {
     "Ting der skal med, når faget er på skemaet.",
   ],
   editorPackingList: ["Subjects and things", "Fag og ting"],
+  editorPackIcons: ["Icons for things", "Ikoner til ting"],
+  editorPackIconsHelper: [
+    "A thing without one gets an icon by its name, such as a bike for Cykel, else a bag.",
+    "En ting uden ikon får et efter navnet, fx en cykel til Cykel, ellers en taske.",
+  ],
+  editorPackIconThing: ["Thing", "Ting"],
+  editorPackIcon: ["Icon", "Ikon"],
   editorPackingSubject: ["Subject", "Fag"],
   editorPackingItems: ["Things", "Ting"],
   editorSubjectNames: ["Subject names", "Fagnavne"],
@@ -538,7 +547,12 @@ const TEXTS = {
     "Compact: one line that opens it. In full: the next day's shown on the overview itself.",
     "Samlet: én linje, der åbner det. Vis alt: næste dags vigtige står direkte på oversigten.",
   ],
-  editorClock: ["School hours on the board", "Skoletid på tavlen"],
+  editorImportantMax: ["Notes shown", "Noter vist"],
+  editorImportantMaxHelper: [
+    'How many are shown before "Show more".',
+    'Hvor mange der vises før "Vis mere".',
+  ],
+  editorClock: ["School hours", "Skoletid"],
   editorClockHelper: [
     "Digital: the times under the name. Analog: a clock beside them too, marking the school hours.",
     "Digital: tiderne under navnet. Analog: også et ur, der viser skoletiden.",

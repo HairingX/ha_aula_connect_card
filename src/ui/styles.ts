@@ -2442,7 +2442,16 @@ export const family = css`
     align-items: center;
     gap: var(--aula-space-2);
   }
-  .ov-top > .presence,
+  /* The hours and the presence share a line, the presence at its end. */
+  .ov-status {
+    display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--aula-space-1) var(--aula-space-2);
+    min-width: 0;
+  }
+  .ov-status > .presence,
   .ov-col-head > :is(.presence, .ov-clock) {
     margin-inline-start: auto;
   }
@@ -2508,12 +2517,16 @@ export const family = css`
     fill: none;
     stroke: var(--aula-accent);
     stroke-width: 8;
-    stroke-linecap: round;
+    stroke-linecap: butt;
   }
-  .clock-end {
-    fill: var(--aula-surface);
-    stroke: var(--aula-accent);
-    stroke-width: 2.5;
+  .clock-tick {
+    stroke: var(--aula-text-2);
+    stroke-width: 1;
+  }
+  .clock-mark {
+    stroke: var(--aula-text);
+    stroke-width: 2;
+    stroke-linecap: round;
   }
   .clock-hour {
     fill: var(--aula-text);
@@ -2746,7 +2759,24 @@ export const family = css`
     color: inherit;
   }
   .board-thing {
-    box-shadow: inset 0 0 0 2px var(--aula-text);
+    position: relative;
+    box-shadow: inset 0 0 0 calc(4px * var(--aula-scale)) var(--subject, var(--aula-text));
+  }
+  .board-thing-for {
+    position: absolute;
+    top: 6cqi;
+    left: 6cqi;
+    display: grid;
+    place-items: center;
+    width: 26cqi;
+    height: 26cqi;
+    border-radius: 50%;
+    background: var(--subject, var(--aula-fill-strong));
+    color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0);
+  }
+  .board-thing .board-thing-for ha-icon {
+    --mdc-icon-size: 16cqi;
+    color: inherit;
   }
   .board-thing ha-icon {
     color: var(--aula-text);
@@ -2956,7 +2986,7 @@ export const family = css`
       flex-direction: column;
       align-items: flex-start;
     }
-    .look-rows .ov-top > .presence {
+    .look-rows .ov-status > .presence {
       margin-inline-start: 0;
     }
     .look-rows .ov-top .face {

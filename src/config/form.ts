@@ -18,6 +18,7 @@ import type { Child, Thread } from "../core/types.ts";
 import { BLOCKS, ORDERED, type BlockId } from "../model/blocks.ts";
 import { subjectNamer } from "../model/subjects.ts";
 import { configRecord } from "./common.ts";
+import { LOOK_DEFAULTS, MAX_NOTES, type LookSettings } from "./looks.ts";
 
 /** A field or group of Home Assistant's form, as far as the cards use them. */
 export type FormSchema =
@@ -88,11 +89,13 @@ const LABELS: Readonly<Record<string, TextKey>> = {
   notes: "editorNotes",
   group_by: "editorGroupBy",
   packing: "editorPackingList",
+  pack_icons: "editorPackIcons",
   subject_names: "editorSubjectNamesList",
   expand_abbreviations: "editorExpand",
   people: "editorPeople",
   look: "editorLook",
   important: "editorImportant",
+  important_max: "editorImportantMax",
   clock: "editorClock",
   look_switch: "editorLookSwitch",
   sick_message: "editorSickMessage",
@@ -114,10 +117,12 @@ const HELPERS: Readonly<Record<string, TextKey>> = {
   notes: "editorNotesHelper",
   group_by: "editorGroupByHelper",
   packing_group: "editorPackingHelper",
+  pack_icons: "editorPackIconsHelper",
   subject_names_group: "editorSubjectNamesHelper",
   people: "editorPeopleHelper",
   look: "editorLookHelper",
   important: "editorImportantHelper",
+  important_max: "editorImportantMaxHelper",
   clock: "editorClockHelper",
   sick_message: "editorSickMessageHelper",
   sick_write: "editorSickWriteHelper",
@@ -147,8 +152,9 @@ export type FieldName =
   | "subject_names_group"
   | "people"
   | "look"
-  | "important"
-  | "clock"
+  | "rows"
+  | "columns"
+  | "board"
   | "look_switch"
   | "sick_message"
   | "sick_write"
@@ -175,6 +181,45 @@ function threadChoices(children: readonly Child[]): { value: string; label: stri
       .filter(Boolean)
       .join(" · "),
   }));
+}
+
+// A look of the overview's own settings, in a group that edits the mapping named after the look.
+function lookGroup(
+  name: "rows" | "columns" | "board",
+  title: string,
+  icon: string,
+  defaults: LookSettings,
+  t: Translate,
+  more: readonly FormSchema[] = [],
+): FormSchema {
+  return {
+    name,
+    type: "expandable",
+    flatten: false,
+    title,
+    icon,
+    schema: [
+      {
+        name: "important",
+        default: defaults.important,
+        selector: {
+          select: {
+            mode: "list",
+            options: [
+              { value: "compact", label: t("importantCompact") },
+              { value: "full", label: t("importantFullLabel") },
+            ],
+          },
+        },
+      },
+      {
+        name: "important_max",
+        default: defaults.max,
+        selector: { number: { min: 1, max: MAX_NOTES, mode: "box" } },
+      },
+      ...more,
+    ],
+  };
 }
 
 function fields(t: Translate): Record<FieldName, FormSchema> {
@@ -327,6 +372,27 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
             },
           },
         },
+        {
+          name: "pack_icons",
+          selector: {
+            object: {
+              multiple: true,
+              label_field: "thing",
+              fields: {
+                thing: {
+                  label: t("editorPackIconThing"),
+                  required: true,
+                  selector: { text: {} },
+                },
+                icon: {
+                  label: t("editorPackIcon"),
+                  required: true,
+                  selector: { icon: {} },
+                },
+              },
+            },
+          },
+        },
       ],
     },
     people: {
@@ -371,30 +437,29 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
         },
       },
     },
-    important: {
-      name: "important",
-      selector: {
-        select: {
-          mode: "list",
-          options: [
-            { value: "compact", label: t("importantCompact") },
-            { value: "full", label: t("importantFullLabel") },
-          ],
+    rows: lookGroup("rows", t("lookRows"), "mdi:view-agenda-outline", LOOK_DEFAULTS.rows, t),
+    columns: lookGroup(
+      "columns",
+      t("lookColumns"),
+      "mdi:view-column-outline",
+      LOOK_DEFAULTS.columns,
+      t,
+    ),
+    board: lookGroup("board", t("lookBoard"), "mdi:view-grid-outline", LOOK_DEFAULTS.board, t, [
+      {
+        name: "clock",
+        default: LOOK_DEFAULTS.board.clock,
+        selector: {
+          select: {
+            mode: "list",
+            options: [
+              { value: "digital", label: t("clockDigital") },
+              { value: "analog", label: t("clockAnalog") },
+            ],
+          },
         },
       },
-    },
-    clock: {
-      name: "clock",
-      selector: {
-        select: {
-          mode: "list",
-          options: [
-            { value: "digital", label: t("clockDigital") },
-            { value: "analog", label: t("clockAnalog") },
-          ],
-        },
-      },
-    },
+    ]),
     look_switch: { name: "look_switch", default: true, selector: { boolean: {} } },
     sick: { name: "sick", default: true, selector: { boolean: {} } },
     vacation: { name: "vacation", default: true, selector: { boolean: {} } },

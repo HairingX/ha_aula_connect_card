@@ -45,8 +45,9 @@ describe("the dashboard's editor", () => {
       "children",
       "sick",
       "vacation",
-      "important",
-      "clock",
+      "board",
+      "rows",
+      "columns",
       "packing_group",
       "subject_names_group",
       "switch_time",
@@ -121,8 +122,11 @@ describe("the dashboard's configuration", () => {
       assertDashboardConfig({ people: "Ida" });
     }).toThrow("people");
     expect(() => {
-      assertDashboardConfig({ pack_icons: [] });
+      assertDashboardConfig({ pack_icons: "Cykel" });
     }).toThrow("pack_icons");
+    expect(() => {
+      assertDashboardConfig({ board: { clock: "round" } });
+    }).toThrow("board.clock");
     expect(() => {
       assertDashboardConfig({ sick_message: 3 });
     }).toThrow("sick_message");

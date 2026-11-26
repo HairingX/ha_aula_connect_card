@@ -12,8 +12,7 @@ import {
   IMPORTANT_CARD,
   OVERVIEW_CARD,
   parseFlag,
-  parseClock,
-  parseImportant,
+  parseLookSettings,
   parsePackIcons,
   parsePeople,
   parseSickThreads,
@@ -36,8 +35,9 @@ export type SharedKey =
   | "sick_message"
   | "sick_threads"
   | "sender"
-  | "important"
-  | "clock";
+  | "rows"
+  | "columns"
+  | "board";
 
 /** The keys each card of the dashboard takes from the dashboard's configuration. */
 export const SHARED: Readonly<Record<string, readonly SharedKey[]>> = {
@@ -52,8 +52,9 @@ export const SHARED: Readonly<Record<string, readonly SharedKey[]>> = {
     "sick_message",
     "sick_threads",
     "sender",
-    "important",
-    "clock",
+    "rows",
+    "columns",
+    "board",
   ],
   [IMPORTANT_CARD]: ["switch_time", "subject_names", "expand_abbreviations"],
   [WEEKPLAN_CARD]: ["switch_time", "subject_names", "expand_abbreviations"],
@@ -81,13 +82,14 @@ export function assertDashboardConfig(config: unknown, lenient = false): void {
   parseFlag(raw.sick, "sick");
   parseFlag(raw.vacation, "vacation");
   parsePeople(raw.people, lenient);
-  parsePackIcons(raw.pack_icons);
+  parsePackIcons(raw.pack_icons, lenient);
   parseText(raw.sick_message, "sick_message");
   parseSickThreads(raw.sick_threads, lenient);
   parseFlag(raw.sick_write, "sick_write");
   parseText(raw.sender, "sender");
-  parseImportant(raw.important);
-  parseClock(raw.clock);
+  parseLookSettings(raw.rows, "rows");
+  parseLookSettings(raw.columns, "columns");
+  parseLookSettings(raw.board, "board");
 }
 
 /** Returns the dashboard's form for the visual editor: the parts it has, then the cards' settings. */
@@ -97,8 +99,9 @@ export function dashboardForm(): ConfigForm {
       "children",
       "sick",
       "vacation",
-      "important",
-      "clock",
+      "board",
+      "rows",
+      "columns",
       "packing_group",
       "subject_names_group",
       "switch_time",
