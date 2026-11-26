@@ -308,8 +308,9 @@ Three looks, chosen in the children's bar or kept with `look`:
 - **Tavle** (`board`): large tiles for the children themselves, read from across the room: the
   school hours, from and to, in large under the name; today's subjects in the order of the day,
   a tap on one opening its lesson; and the things to pack, each in its subject's colour and with
-  its icon, so that a child who cannot read sees what it is for. A tile's icon is always large
-  and its word whole: a tile is as wide as its word needs. With `clock: analog` a clock beside
+  its icon, so that a child who cannot read sees what it is for. A tile's icon is large beside
+  its word, which is the card's own large text and always whole: a tile is as wide as its word
+  needs. With `clock: analog` a clock beside
   the name marks the school hours on its rim, a mark across it at each end reaching in toward the
   hours, and shows the time now; a tap shows it large, and any tap closes it. A child away or
   sick has its presence there instead.

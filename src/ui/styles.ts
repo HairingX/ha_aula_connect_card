@@ -2724,8 +2724,8 @@ export const family = css`
     flex-wrap: wrap;
     gap: var(--aula-space-2);
   }
-  /* Children read the board from across the room: the icon is always large, the word always whole
-     and large, and a tile grows wider for a long word rather than shrink it. */
+  /* A child reads a tile by its icon, large beside the word at the card's own size; the word is
+     always whole, and a tile grows wider for a long word rather than shrink it. */
   .board-subject,
   .board-thing {
     display: flex;
@@ -2734,21 +2734,21 @@ export const family = css`
     justify-content: center;
     gap: var(--aula-space-1);
     box-sizing: border-box;
-    min-width: calc(120px * var(--aula-scale));
+    min-width: calc(88px * var(--aula-scale));
     max-width: 100%;
-    height: calc(120px * var(--aula-scale));
-    padding: var(--aula-space-2) var(--aula-space-3);
+    height: calc(88px * var(--aula-scale));
+    padding: var(--aula-space-1) var(--aula-space-2);
     border: 0;
-    border-radius: calc(14px * var(--aula-scale));
+    border-radius: calc(12px * var(--aula-scale));
     font: inherit;
-    font-size: calc(22px * var(--aula-scale));
+    font-size: var(--aula-font-l);
     font-weight: var(--aula-bold);
     line-height: 1.1;
     text-align: center;
   }
   .board-subject > ha-icon,
   .board-thing > ha-icon {
-    --mdc-icon-size: calc(64px * var(--aula-scale));
+    --mdc-icon-size: calc(44px * var(--aula-scale));
   }
   .board-subject > span,
   .board-thing > span:not(.sr) {
@@ -2768,22 +2768,22 @@ export const family = css`
   }
   .board-thing {
     position: relative;
-    box-shadow: inset 0 0 0 calc(4px * var(--aula-scale)) var(--subject, var(--aula-text));
+    box-shadow: inset 0 0 0 calc(3px * var(--aula-scale)) var(--subject, var(--aula-text));
   }
   .board-thing-for {
     position: absolute;
-    top: calc(8px * var(--aula-scale));
-    left: calc(8px * var(--aula-scale));
+    top: calc(6px * var(--aula-scale));
+    left: calc(6px * var(--aula-scale));
     display: grid;
     place-items: center;
-    width: calc(30px * var(--aula-scale));
-    height: calc(30px * var(--aula-scale));
+    width: calc(22px * var(--aula-scale));
+    height: calc(22px * var(--aula-scale));
     border-radius: 50%;
     background: var(--subject, var(--aula-fill-strong));
     color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0);
   }
   .board-thing .board-thing-for ha-icon {
-    --mdc-icon-size: calc(20px * var(--aula-scale));
+    --mdc-icon-size: calc(14px * var(--aula-scale));
     color: inherit;
   }
   .board-thing > ha-icon {

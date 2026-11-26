@@ -296,3 +296,14 @@ describe("a window", () => {
     );
   });
 });
+
+describe("the board", () => {
+  it("writes a tile's word at the card's own large size, its icon large beside it", () => {
+    const tile = declared(family, ".board-subject");
+    expect(tile).toContain("font-size: var(--aula-font-l)");
+    expect(tile).toContain("height: calc(88px * var(--aula-scale))");
+    expect(declared(family, ".board-subject > ha-icon")).toContain(
+      "--mdc-icon-size: calc(44px * var(--aula-scale))",
+    );
+  });
+});
