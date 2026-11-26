@@ -665,7 +665,8 @@ function glance(arg: { tag: string; screen: number; packing: boolean }): string[
 
 /**
  * Runs in the page: tells what is wrong with a card's layout, if anything. No text may reach past
- * the card's content box or its column, unless an element within clips it; children set side by
+ * the card's content box or its column, the overview's side column among them, unless an element
+ * within clips it; children set side by
  * side have their names on one line; no time of day is broken across lines; no line ends with a
  * dot or a dash; no word is broken where the line had room for it whole; and no thing to bring
  * is cut short.
@@ -693,7 +694,7 @@ function layout({ tag, box }: { tag: string; box: string }): string[] {
         clip = Math.min(clip, element.getBoundingClientRect().right);
       element = element.parentElement;
     }
-    const cell = parent.closest(".part, .kid, .children > .child");
+    const cell = parent.closest(".part, .kid, .children > .child, .ov-main, .ov-aside");
     const edge = Math.min(right, cell ? cell.getBoundingClientRect().right : right);
     const range = document.createRange();
     range.selectNodeContents(node);

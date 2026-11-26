@@ -219,7 +219,7 @@ describe("the overview", () => {
     const { card } = await mount(OVERVIEW, "thu-1000", { today: todayOf, states: STATES });
     expect(texts(card, ".ov-title")).toEqual(["I dag torsdag 29. oktober"]);
     expect(texts(card, ".ov-name")).toEqual(["Ida", "Oskar"]);
-    expect(texts(card, ".presence")).toEqual(["I skole til 12.55", "Kommer 07.45"]);
+    expect(texts(card, ".presence")).toEqual(["I skole", "Kommer 07.45"]);
     expect(texts(card, ".ov-important")).toEqual([
       "1 vigtig ting til i dag · 2 til i morgen",
       "1 vigtig ting til mandag",
@@ -269,7 +269,7 @@ describe("the overview", () => {
     });
     await tap(card, ".presence", "I skole");
     expect(windowText(card)).toContain("Ida i dag");
-    expect(windowText(card)).toContain("Nu I skole til 12.55");
+    expect(windowText(card)).toContain("Nu I skole");
     expect(windowText(card)).toContain("Planlagt 07.00–15.30");
     expect(windowText(card)).toContain("I dag kom 07.05");
     expect(windowText(card)).toContain("Hentes af Mor");
@@ -343,6 +343,61 @@ describe("the overview", () => {
     expect(texts(card, ".board-head")[0]).toBe("I dag har du");
     await tap(card, ".board-important");
     expect(windowText(card)).toContain("Vigtigt for Ida");
+  });
+
+  it("says on the board from when to when, and opens a subject's first lesson from its tile", async () => {
+    setLook("board");
+    const { card } = await mount(OVERVIEW, "thu-1000", { today: todayOf });
+    expect(texts(card, ".ov-free")).toEqual(["08.00–12.55", "08.00–14.30"]);
+    expect(all(card, ".ov-clock")).toEqual([]);
+    expect(texts(card, ".presence")).toEqual(["I skole", "Kommer 07.45"]);
+    expect(texts(card, "button.board-subject")).toEqual([
+      "Idræt",
+      "Dansk",
+      "Engelsk",
+      "Matematik",
+      "Tysk",
+      "Geografi",
+      "KLT",
+    ]);
+    expect(texts(card, ".board-subject span.long")).toEqual(["Matematik"]);
+    await tap(card, "button.board-subject", "Dansk");
+    expect(windowText(card)).toContain("Dansk");
+    expect(windowText(card)).toContain("10.05");
+  });
+
+  it("shows a child's school hours on a clock where asked, which opens its presence", async () => {
+    setLook("board");
+    const { card } = await mount(OVERVIEW, "thu-1000", {
+      today: (child) => (child.child_id === 1001 ? todayOf(child) : sickToday(child)),
+      config: { clock: "analog" },
+    });
+    expect(all(card, "button.ov-clock").map((clock) => clock.getAttribute("aria-label"))).toEqual([
+      "Skole 08.00–\u206012.55; klokken er 10.00",
+    ]);
+    expect(all(card, ".ov-clock .clock-hour")).toHaveLength(12);
+    expect(texts(card, ".presence")).toEqual(["Syg"]);
+    await tap(card, "button.ov-clock");
+    expect(windowText(card)).toContain("Ida i dag");
+  });
+
+  it("shows the clock without a presence to open, and the vacation instead of it", async () => {
+    setLook("board");
+    const { card } = await mount(OVERVIEW, "thu-1000", {
+      config: { clock: "analog" },
+      commands: {
+        "aula_connect/vacations": (message) =>
+          message.child_id === 1002
+            ? {
+                vacations: [
+                  { id: 1, start: "2026-10-29", end: "2026-10-30", comment: "", editable: true },
+                ],
+              }
+            : { vacations: [] },
+      },
+    });
+    expect(all(card, "span.ov-clock[role=img]")).toHaveLength(1);
+    expect(texts(card, ".presence")).toEqual(["Ferie/fri til fre. 30. okt."]);
   });
 
   it("names a board's day tomorrow by its weekday, and a long subject by its abbreviation", async () => {
@@ -691,7 +746,7 @@ describe("Fravær on the overview", () => {
       sick: { route: "aula", today: false, since: "2026-10-28", wrote_yesterday: false },
     });
     const { card } = await mount(OVERVIEW, "thu-1000", { today: yesterday, commands: quiet });
-    expect(texts(card, ".presence")).toEqual(["I skole til 12.55", "Syg i går – stadig syg?"]);
+    expect(texts(card, ".presence")).toEqual(["I skole", "Syg i går – stadig syg?"]);
     await tap(card, ".presence.ask");
     expect(windowText(card)).toContain("Meld Oskar syg");
     unmountAll();

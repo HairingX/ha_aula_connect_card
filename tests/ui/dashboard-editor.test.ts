@@ -46,6 +46,7 @@ describe("the dashboard's editor", () => {
       "sick",
       "vacation",
       "important",
+      "clock",
       "packing_group",
       "subject_names_group",
       "switch_time",

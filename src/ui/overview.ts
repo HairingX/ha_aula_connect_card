@@ -23,6 +23,7 @@ import type { Child, Day, Vacation } from "../core/types.ts";
 import { ABSENCE_ICON, type Paths } from "../config/family.ts";
 import type { RequestGroup, VacationGroup } from "../model/absence.ts";
 import { isHolidayEvent } from "../model/days.ts";
+import type { LessonRow, TimetableRow } from "../model/blocks.ts";
 import { allowing } from "../model/family.ts";
 import { dayBar, type DayBar } from "../model/daybar.ts";
 import type {
@@ -35,6 +36,7 @@ import type {
 import { subjectKey, type SubjectLabel } from "../model/subjects.ts";
 import { renderDayBar, subjectColor, type BarAxis } from "./blocks.ts";
 import type { CardState } from "./card.ts";
+import { schoolClock } from "./clock.ts";
 import {
   aula,
   childState,
@@ -86,6 +88,8 @@ export interface OverviewOptions {
   readonly absence: AbsenceView;
   /** Whether what is important is said in a line that opens it, or shown for its first day in full. */
   readonly important: "compact" | "full";
+  /** Whether the board shows a child's school hours only as times, or also on a clock. */
+  readonly clock: "digital" | "analog";
 }
 
 /** A subject's icon on the board, by its key; a book for a subject not in it. */
@@ -389,11 +393,83 @@ function waiting(item: OverviewChild, ctx: ViewContext): unknown {
     : childState(item.state, ctx.t);
 }
 
-function endsBig(item: OverviewChild, ctx: ViewContext): unknown {
+// From when to when, in large: what a child reads first.
+function hoursBig(item: OverviewChild, ctx: ViewContext): unknown {
   const span = item.content?.hours;
-  return span
-    ? html`<span class="ov-free">${ctx.t("endsAtBig", { time: timeText(span.end, ctx) })}</span>`
-    : nothing;
+  return span ? html`<span class="ov-free">${timeSpan(span.start, span.end, ctx)}</span>` : nothing;
+}
+
+// A clock of the school hours stands in for the presence where the child has school and is not
+// away from it; it opens the presence as the presence does.
+function boardClock(
+  item: OverviewChild,
+  ctx: ViewContext,
+  state: CardState,
+  options: OverviewOptions,
+): unknown {
+  const span = item.content?.hours;
+  const { presence } = item;
+  const away =
+    options.absence.ongoing.has(item.child.child_id) ||
+    presence?.kind === "sick" ||
+    presence?.kind === "ask";
+  if (options.clock !== "analog" || !span || away) return presencePill(item, ctx, state, options);
+  const label = ctx.t("clockLabel", {
+    span: `${timeText(span.start, ctx)}–${timeText(span.end, ctx)}`,
+    now: formatTime(ctx.now, ctx.language, ctx.zone, ctx.amPm),
+  });
+  const face = schoolClock(span.start, span.end, ctx);
+  if (!presence) return html`<span class="ov-clock" role="img" aria-label=${label}>${face}</span>`;
+  const key = `presence|${String(item.child.child_id)}`;
+  return html`<button
+    class="ov-clock"
+    type="button"
+    aria-haspopup="dialog"
+    aria-label=${label}
+    data-detail=${key}
+    @click=${() => {
+      openPresence(item, presence, state, options, key);
+    }}
+  >
+    ${face}
+  </button>`;
+}
+
+// The lessons held, a subject once, in the order of the timetable: each tile opens its first.
+function firstLessons(timetable: readonly TimetableRow[]): LessonRow[] {
+  const seen = new Set<string>();
+  return timetable.filter((row): row is LessonRow => {
+    if (row.kind !== "lesson" || row.cancelled || seen.has(row.subject.key)) return false;
+    seen.add(row.subject.key);
+    return true;
+  });
+}
+
+function subjectTile(
+  item: OverviewChild,
+  lesson: LessonRow,
+  ctx: ViewContext,
+  state: CardState,
+): TemplateResult {
+  const { subject } = lesson;
+  const name = subject.name.length > 10 ? subject.short : subject.name;
+  const key = `tile|${String(item.child.child_id)}|${subject.key}`;
+  return html`<li>
+    <button
+      class="board-subject"
+      style=${subjectColor(subject)}
+      type="button"
+      aria-haspopup="dialog"
+      data-detail=${key}
+      @click=${() => {
+        state.showDetail({ kind: "lesson", row: lesson }, key);
+      }}
+    >
+      ${icon(subjectIcon(subject))}<span class=${name.length > 8 ? "long" : ""}
+        >${aula(name, ctx)}</span
+      >
+    </button>
+  </li>`;
 }
 
 function rows(
@@ -413,7 +489,8 @@ function rows(
             <span class="ov-hours"
               >${dayLine(item, ctx, view.sameDay !== undefined)}${hoursOf(item, ctx)}</span
             >
-            ${endsBig(item, ctx)} ${sickLabel(item, ctx)} ${presencePill(item, ctx, state, options)}
+            ${hoursBig(item, ctx)} ${sickLabel(item, ctx)}
+            ${presencePill(item, ctx, state, options)}
           </div>
           ${waiting(item, ctx)}
           ${bars[index] ? html`<div class="ov-bar">${renderDayBar(bars[index], ctx, axis, { state, child: item.child, key: `bar|${String(item.child.child_id)}` })}</div>` : nothing}
@@ -499,35 +576,28 @@ function panel(
   options: OverviewOptions,
 ): TemplateResult {
   const { content } = item;
-  const subjects = content?.subjects ?? [];
+  const lessons = firstLessons(content?.timetable ?? []);
   const things = (content?.pack ?? []).flatMap((packed) => packed.items);
   const today = item.focus.day === ctx.today;
   const key = `important|${String(item.child.child_id)}`;
   const [first] = item.important;
   return html`<section class="ov-panel">
-    <div class="ov-col-head">${who(item, state)} ${presencePill(item, ctx, state, options)}</div>
-    ${endsBig(item, ctx)} ${sickLabel(item, ctx)} ${waiting(item, ctx)}
+    <div class="ov-col-head">${who(item, state)} ${boardClock(item, ctx, state, options)}</div>
+    ${hoursBig(item, ctx)} ${sickLabel(item, ctx)} ${waiting(item, ctx)}
     ${
       content
         ? html`<span class="board-head"
               >${today ? ctx.t("boardToday") : ctx.t("boardTomorrow", { day: capitalize(formatWeekday(content.view.day, ctx.language), ctx.language) })}</span
             >
             <ul class="board-tiles">
-              ${subjects.map(
-                (subject) =>
-                  html`<li class="board-subject" style=${subjectColor(subject)}>
-                    ${icon(subjectIcon(subject))}<span
-                      >${aula(subject.name.length > 10 ? subject.short : subject.name, ctx)}</span
-                    >
-                  </li>`,
-              )}
+              ${lessons.map((lesson) => subjectTile(item, lesson, ctx, state))}
             </ul>
             <span class="board-head">${ctx.t("boardPack")}</span>
             ${
               things.length === 0
                 ? html`<p class="board-none">${ctx.t("nothingToPack")}</p>`
                 : html`<ul class="board-tiles">
-                    ${things.map((thing) => html`<li class="board-thing">${icon(packIcon(thing, options.packIcons))}<span>${aula(thing, ctx)}</span></li>`)}
+                    ${things.map((thing) => html`<li class="board-thing">${icon(packIcon(thing, options.packIcons))}<span class=${thing.length > 8 ? "long" : ""}>${aula(thing, ctx)}</span></li>`)}
                   </ul>`
             }`
         : nothing

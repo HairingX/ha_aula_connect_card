@@ -6,6 +6,7 @@ import {
   familyForm,
   IMPORTANT_CARD,
   OVERVIEW_CARD,
+  parseClock,
   parseFlag,
   parseImportant,
   parseLook,
@@ -104,6 +105,7 @@ describe("the family's cards' configuration", () => {
     ],
     [() => parseLook("grid"), "look: must be rows, columns or board"],
     [() => parseImportant("all"), "important: must be compact or full"],
+    [() => parseClock("round"), "clock: must be digital or analog"],
     [() => parseSickThreads("501"), "sick_threads: must be a list of children and threads"],
     [() => parseSickThreads([501]), "sick_threads[0]: must be a mapping of child and thread"],
     [
@@ -150,6 +152,8 @@ describe("the family's cards' configuration", () => {
     expect(parseImportant(undefined)).toBe("compact");
     expect(parseImportant("full")).toBe("full");
     expect(resolveOverviewConfig({ important: "full" }).important).toBe("full");
+    expect(resolveOverviewConfig({}).clock).toBe("digital");
+    expect(parseClock("analog")).toBe("analog");
   });
 
   it("reads each child's thread as numbers, whether written as text or not", () => {
@@ -188,6 +192,7 @@ describe("the family's cards' editor", () => {
         "children",
         "look",
         "important",
+        "clock",
         "switch_time",
         "size",
         "sick_write",

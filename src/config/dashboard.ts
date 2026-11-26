@@ -12,6 +12,7 @@ import {
   IMPORTANT_CARD,
   OVERVIEW_CARD,
   parseFlag,
+  parseClock,
   parseImportant,
   parsePackIcons,
   parsePeople,
@@ -35,7 +36,8 @@ export type SharedKey =
   | "sick_message"
   | "sick_threads"
   | "sender"
-  | "important";
+  | "important"
+  | "clock";
 
 /** The keys each card of the dashboard takes from the dashboard's configuration. */
 export const SHARED: Readonly<Record<string, readonly SharedKey[]>> = {
@@ -51,6 +53,7 @@ export const SHARED: Readonly<Record<string, readonly SharedKey[]>> = {
     "sick_threads",
     "sender",
     "important",
+    "clock",
   ],
   [IMPORTANT_CARD]: ["switch_time", "subject_names", "expand_abbreviations"],
   [WEEKPLAN_CARD]: ["switch_time", "subject_names", "expand_abbreviations"],
@@ -84,6 +87,7 @@ export function assertDashboardConfig(config: unknown, lenient = false): void {
   parseFlag(raw.sick_write, "sick_write");
   parseText(raw.sender, "sender");
   parseImportant(raw.important);
+  parseClock(raw.clock);
 }
 
 /** Returns the dashboard's form for the visual editor: the parts it has, then the cards' settings. */
@@ -94,6 +98,7 @@ export function dashboardForm(): ConfigForm {
       "sick",
       "vacation",
       "important",
+      "clock",
       "packing_group",
       "subject_names_group",
       "switch_time",

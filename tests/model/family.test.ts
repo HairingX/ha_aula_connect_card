@@ -160,7 +160,7 @@ describe("a child's presence", () => {
     [
       "at school while it goes on",
       { presence: { status: 3, check_in: "07:05" } },
-      { kind: "school", key: "presenceSchool", time: "12:55" },
+      { kind: "school", key: "presenceSchool", time: undefined },
     ],
     ["on a trip", { presence: { status: 4 } }, { kind: "away", key: "presenceTrip" }],
     ["sleeping", { presence: { status: 5 } }, { kind: "here", key: "presenceSleeping" }],
@@ -234,7 +234,7 @@ describe("the overview", () => {
       ["Ida", ["2026-10-29", "2026-10-30", "2026-10-30", "2026-11-02", "2026-11-03", "2026-11-04"]],
       ["Oskar", ["2026-11-02", "2026-11-04"]],
     ]);
-    expect(view.children[0]?.presence).toMatchObject({ kind: "school", time: "12:55" });
+    expect(view.children[0]?.presence).toMatchObject({ kind: "school", time: undefined });
     expect(view.children[1]?.presence).toMatchObject({ kind: "coming", time: "07:45" });
     expect(view.children[0]?.content?.view.day).toBe("2026-10-29");
     expect(

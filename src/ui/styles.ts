@@ -2362,8 +2362,9 @@ export const family = css`
     flex-direction: column;
     gap: var(--aula-space-4);
   }
-  /* A wide card: the children's day the whole height, the pages and what is coming beside it. */
-  @container aula (min-width: 1100px) {
+  /* A wide card: the children's day the whole height, the pages and what is coming beside it. Its
+     width is in the card's own text size, so that the wall's larger text needs a wider card. */
+  @container aula (min-width: 78em) {
     .overview {
       display: grid;
       grid-template-columns: minmax(0, 1fr) calc(320px * var(--aula-scale));
@@ -2442,7 +2443,7 @@ export const family = css`
     gap: var(--aula-space-2);
   }
   .ov-top > .presence,
-  .ov-col-head > .presence {
+  .ov-col-head > :is(.presence, .ov-clock) {
     margin-inline-start: auto;
   }
   .ov-who {
@@ -2475,6 +2476,65 @@ export const family = css`
   .large .ov-free,
   .ov-panel .ov-free {
     display: block;
+  }
+  .large .ov-row .ov-hours > .span {
+    display: none;
+  }
+  .ov-clock {
+    flex: none;
+    width: calc(112px * var(--aula-scale));
+    height: calc(112px * var(--aula-scale));
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: inherit;
+  }
+  button.ov-clock {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ov-clock-face {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .clock-rim {
+    fill: var(--aula-fill-muted);
+    stroke: var(--aula-line);
+    stroke-width: 1;
+  }
+  .clock-school {
+    fill: none;
+    stroke: var(--aula-accent);
+    stroke-width: 8;
+    stroke-linecap: round;
+  }
+  .clock-end {
+    fill: var(--aula-surface);
+    stroke: var(--aula-accent);
+    stroke-width: 2.5;
+  }
+  .clock-hour {
+    fill: var(--aula-text);
+    font-size: 9.5px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+  .clock-hour-hand,
+  .clock-minute-hand {
+    stroke: var(--aula-text);
+    stroke-linecap: round;
+  }
+  .clock-hour-hand {
+    stroke-width: 5;
+  }
+  .clock-minute-hand {
+    stroke-width: 2.5;
+  }
+  .clock-pin {
+    fill: var(--aula-text);
   }
   .ov-pack {
     display: flex;
@@ -2634,26 +2694,49 @@ export const family = css`
     font-size: var(--aula-font-2xl);
   }
   .board-tiles {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(calc(104px * var(--aula-scale)), 1fr));
     gap: var(--aula-space-2);
+    max-width: calc(4 * 150px * var(--aula-scale));
   }
+  /* A tile's icon and word grow with the tile, as children read them from across the room; the
+     tile's own sizes cannot be in its own container's units. */
   .board-subject,
   .board-thing {
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: var(--aula-space-1);
     box-sizing: border-box;
-    min-width: calc(84px * var(--aula-scale));
-    min-height: calc(84px * var(--aula-scale));
-    padding: var(--aula-space-1);
-    border-radius: calc(12px * var(--aula-scale));
-    font-size: var(--aula-font-s);
-    font-weight: var(--aula-medium);
+    aspect-ratio: 1;
+    width: 100%;
+    padding: var(--aula-space-2);
+    border: 0;
+    border-radius: calc(14px * var(--aula-scale));
+    font: inherit;
+    font-weight: var(--aula-bold);
+    line-height: 1.1;
     text-align: center;
-    --mdc-icon-size: calc(44px * var(--aula-scale));
+  }
+  .board-subject ha-icon,
+  .board-thing ha-icon {
+    --mdc-icon-size: 46cqi;
+  }
+  .board-subject > span,
+  .board-thing > span {
+    max-width: 100%;
+    font-size: 17cqi;
+    overflow-wrap: anywhere;
+  }
+  .board-subject > span.long,
+  .board-thing > span.long {
+    font-size: 13cqi;
+  }
+  button.board-subject {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
   }
   .board-subject {
     background: var(--subject, var(--aula-fill-strong));

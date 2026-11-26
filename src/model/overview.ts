@@ -175,7 +175,7 @@ export function presenceOf(
       return view("away", "presenceAbsent");
     case 3:
       if (span && ctx.minute >= minutes(span.start) && ctx.minute < minutes(span.end))
-        return view("school", "presenceSchool", span.end);
+        return view("school", "presenceSchool");
       if (span && ctx.minute >= minutes(span.end) && presence.planned_out)
         return view("here", "presenceUntil", presence.planned_out);
       return presence.check_in

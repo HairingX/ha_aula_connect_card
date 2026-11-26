@@ -89,6 +89,7 @@ export class AulaConnectOverviewCard extends AulaCard<OverviewConfig, OverviewVi
       sick: sickOptions(config),
       absence: this.#absence(view, config, ctx),
       important: config.important,
+      clock: config.clock,
     });
   }
 

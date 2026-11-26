@@ -223,6 +223,7 @@ strategy:
   pack_icons: # YAML only, as in the overview
     idrætstaske: mdi:bag-personal-outline
   important: compact # full shows the first day's notes whole on the overview
+  clock: digital # analog adds a clock of the school hours on the board
 ```
 
 The dashboard is made anew each time it is opened, so it follows the cards' later versions. To
@@ -269,7 +270,7 @@ look_switch: true
 `custom:aula-connect-overview-card` shows each child's day that matters now at a glance: its
 hours, its day as a bar on one axis for all the children, what to bring with an icon for each
 thing, and what the week plan marks as important from that day on. Beside the name, the child's
-presence today as the institution registers it: at school until the day ends, here since a time,
+presence today as the institution registers it: at school, here since a time,
 coming, gone home, or sick; **Ferie/fri til fre. 30. okt.** on a vacation registered; and
 **Syg i går – stadig syg?** for a child sick the school day before, until it is checked in or
 `switch_time` comes, as Aula takes a report back by itself the next day. After `switch_time` it
@@ -294,10 +295,13 @@ children.
 Three looks, chosen in the children's bar or kept with `look`:
 
 - **Rækker** (`rows`): a row per child; on the wall, the face, the bar and what to bring side by
-  side, with the time school ends in large.
+  side, with the school hours in large.
 - **Kolonner** (`columns`): a column per child, with what is important soon listed.
-- **Tavle** (`board`): large tiles for the children themselves: today's subjects and the things
-  to pack.
+- **Tavle** (`board`): large tiles for the children themselves: the school hours, from and to,
+  in large under the name; today's subjects in the order of the day, a tap on one opening its
+  lesson; and the things to pack. With `clock: analog` a clock beside the name marks the school
+  hours on its rim, where the hour hand goes while school goes on, and shows the time now; a
+  child away or sick has its presence there instead.
 
 ```yaml
 type: custom:aula-connect-overview-card
@@ -412,6 +416,7 @@ children whose entry does; otherwise the card says they are turned off.
 | `paths`                | overview                 | `vigtigt`, `ugeplan`, `uge`, `fravaer` | The views the tiles go to: `important`, `weekplan`, `week`, `absence`; relative to the dashboard unless they begin with `/`; `false` leaves a tile out.                |
 | `pack_icons`           | overview                 | none                                   | An mdi icon for a thing to bring, by the thing, over the built-in ones.                                                                                                |
 | `important`            | overview                 | `compact`                              | `compact`: one line that opens what is important. `full`: the first day's notes shown whole.                                                                           |
+| `clock`                | overview                 | `digital`                              | `digital`: the board shows the school hours as times. `analog`: a clock of them beside the name too.                                                                   |
 | `sick_message`         | overview, sick           | a sentence                             | The message about the illness; `{name}` is the child's first name.                                                                                                     |
 | `sick_threads`         | overview, sick           | the one written in last                | The thread each child's illness is written about in: `child` and `thread`, Aula's ids.                                                                                 |
 | `sick_write`           | overview, sick           | `true`                                 | `false` ends a report at the report, the message a tap away.                                                                                                           |

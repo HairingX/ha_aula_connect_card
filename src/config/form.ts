@@ -93,6 +93,7 @@ const LABELS: Readonly<Record<string, TextKey>> = {
   people: "editorPeople",
   look: "editorLook",
   important: "editorImportant",
+  clock: "editorClock",
   look_switch: "editorLookSwitch",
   sick_message: "editorSickMessage",
   sick_write: "editorSickWrite",
@@ -117,6 +118,7 @@ const HELPERS: Readonly<Record<string, TextKey>> = {
   people: "editorPeopleHelper",
   look: "editorLookHelper",
   important: "editorImportantHelper",
+  clock: "editorClockHelper",
   sick_message: "editorSickMessageHelper",
   sick_write: "editorSickWriteHelper",
   sick_threads: "editorSickThreadsHelper",
@@ -146,6 +148,7 @@ export type FieldName =
   | "people"
   | "look"
   | "important"
+  | "clock"
   | "look_switch"
   | "sick_message"
   | "sick_write"
@@ -376,6 +379,18 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
           options: [
             { value: "compact", label: t("importantCompact") },
             { value: "full", label: t("importantFullLabel") },
+          ],
+        },
+      },
+    },
+    clock: {
+      name: "clock",
+      selector: {
+        select: {
+          mode: "list",
+          options: [
+            { value: "digital", label: t("clockDigital") },
+            { value: "analog", label: t("clockAnalog") },
           ],
         },
       },

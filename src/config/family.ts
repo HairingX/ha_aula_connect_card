@@ -72,6 +72,8 @@ export interface OverviewConfig extends ActionConfig {
   readonly packIcons: Readonly<Record<string, string>>;
   /** Whether what is important is said in a line that opens it, or shown for its first day in full. */
   readonly important: "compact" | "full";
+  /** Whether the board shows a child's school day only as times, or also on a clock face. */
+  readonly clock: "digital" | "analog";
 }
 
 /** The thread a child's illness is written about in. */
@@ -193,6 +195,14 @@ export function parseImportant(value: unknown): "compact" | "full" {
   return value;
 }
 
+/** Reads `clock`: how the board shows the school day, `digital` by default. */
+export function parseClock(value: unknown): "digital" | "analog" {
+  if (absent(value)) return "digital";
+  if (value !== "digital" && value !== "analog")
+    throw new Error("clock: must be digital or analog");
+  return value;
+}
+
 /** Reads `pack_icons`: things to bring and their mdi icons. */
 export function parsePackIcons(value: unknown): Record<string, string> {
   if (absent(value)) return {};
@@ -240,6 +250,7 @@ export function resolveOverviewConfig(config: unknown, lenient = false): Overvie
     paths: parsePaths(raw.paths),
     packIcons: parsePackIcons(raw.pack_icons),
     important: parseImportant(raw.important),
+    clock: parseClock(raw.clock),
   };
 }
 
@@ -282,6 +293,7 @@ const FORMS: Readonly<Record<FamilyCard, readonly FieldName[]>> = {
     "children",
     "look",
     "important",
+    "clock",
     "switch_time",
     "size",
     "sick_write",
