@@ -58,6 +58,11 @@ how it is set up: the README.
     `same_institution`, `sick_today` and `would_send`, with the same errors; the report waits for
     it. `aula_connect/children` also gives each child's `picture_entity` and its entry's
     `guardian`.
+  - `aula_connect/posts` with `entry_id` answers with the login's newest posts: `last_seen` and
+    `posts`, each with `id`, `title`, `html`, `time`, `new` (written after the guardian last saw
+    the posts in Aula), `important` with `important_from` and `important_to`, `author`,
+    `institution`, `groups`, `comments` and `attachments` (`name`, `url`, `thumbnail`, `media`).
+    It only reads: a post is never marked seen.
   - All-day events have days (`YYYY-MM-DD`, the end the day after the last); lessons and other
     events have ISO date-times with offset. `teachers` are full names. A lesson's `status` is
     `normal`, `substitute`, or another value shown as it is.

@@ -1,0 +1,133 @@
+/**
+ * The news feed's template: a line for each post, the new and the important marked, and a window
+ * with the whole post on a tap.
+ *
+ * @packageDocumentation
+ */
+
+import { html, nothing, type TemplateResult } from "lit/html.js";
+
+import type { ViewContext } from "../core/context.ts";
+import {
+  capitalize,
+  daysBetween,
+  formatShortDate,
+  formatTime,
+  formatWeekday,
+} from "../core/dates.ts";
+import type { NewsItem, NewsView } from "../model/news.ts";
+import type { CardState } from "./card.ts";
+import { apiError, aula, icon, label, loading } from "./primitives.ts";
+import { head, modal, section } from "./window.ts";
+
+function when(item: NewsItem, ctx: ViewContext): string {
+  const ago = daysBetween(item.day, ctx.today);
+  if (ago === 0) return ctx.t("today");
+  if (ago === 1) return ctx.t("yesterday");
+  return ago < 7
+    ? capitalize(formatWeekday(item.day, ctx.language), ctx.language)
+    : formatShortDate(item.day, ctx.language);
+}
+
+function marks(item: NewsItem, ctx: ViewContext): TemplateResult[] {
+  return [
+    ...(item.fresh ? [label(ctx.t("newsNew"), "news-new")] : []),
+    ...(item.post.important
+      ? [label(html`${icon("mdi:flag")}${ctx.t("newsImportant")}`, "warning")]
+      : []),
+  ];
+}
+
+function openPost(item: NewsItem, state: CardState, key: string): void {
+  state.openModal(key, (ctx, close) => {
+    const { post } = item;
+    const at = formatTime(item.at, ctx.language, ctx.zone, ctx.amPm);
+    const meta = [
+      `${when(item, ctx)} ${at}`,
+      ...(post.author ? [aula(post.author, ctx)] : []),
+      ...(post.institution ? [aula(post.institution, ctx)] : []),
+    ];
+    const period =
+      post.important && post.important_to
+        ? ctx.t("newsImportantUntil", { day: formatShortDate(post.important_to, ctx.language) })
+        : "";
+    return modal(
+      html`${head(aula(post.title, ctx), meta, marks(item, ctx), ctx, close)}
+        ${period ? html`<p class="news-period">${period}</p>` : nothing}
+        <p class="news-text">${aula(item.text, ctx)}</p>
+        ${section(
+          ctx.t("newsAttachments"),
+          [],
+          post.attachments.length === 0
+            ? nothing
+            : html`<ul class="news-files">
+                ${post.attachments.map(
+                  (file) =>
+                    html`<li>
+                      ${icon(file.media ? "mdi:image-outline" : "mdi:file-outline")}
+                      ${
+                        file.url
+                          ? html`<a href=${file.url} target="_blank" rel="noopener noreferrer"
+                              >${aula(file.name, ctx)}</a
+                            >`
+                          : aula(file.name, ctx)
+                      }
+                    </li>`,
+                )}
+              </ul>`,
+        )}
+        ${post.groups.length > 0 ? section(ctx.t("newsGroups"), [], html`<p>${post.groups.join(", ")}</p>`) : nothing}`,
+      close,
+    );
+  });
+}
+
+/** Renders the news feed: at most `max` posts, the newest first. */
+export function renderNews(
+  view: NewsView,
+  ctx: ViewContext,
+  state: CardState,
+  max: number,
+): TemplateResult {
+  const shown = view.items.slice(0, max);
+  return html`<section class="news" aria-label=${ctx.t("navNews")}>
+    ${view.errors.length > 0 && view.items.length === 0 ? apiError(view.errors[0], ctx.t) : nothing}
+    ${view.loading ? loading(ctx.t) : nothing}
+    ${
+      !view.loading && view.items.length === 0 && view.errors.length === 0
+        ? html`<p class="empty">${ctx.t("newsNone")}</p>`
+        : nothing
+    }
+    <ul class="news-list">
+      ${shown.map((item) => {
+        const key = `post|${String(item.post.id)}`;
+        return html`<li>
+          <button
+            class="news-item ${item.fresh ? "is-new" : ""}"
+            type="button"
+            aria-haspopup="dialog"
+            data-detail=${key}
+            @click=${() => {
+              openPost(item, state, key);
+            }}
+          >
+            <span class="news-when">${when(item, ctx)}</span>
+            <span class="news-main">
+              <span class="news-title"
+                >${aula(item.post.title, ctx)}${marks(item, ctx).map((mark) => html` ${mark}`)}</span
+              >
+              <span class="news-excerpt">${aula(item.text.replace(/\s*\n+\s*/g, " "), ctx)}</span>
+              ${
+                item.post.author
+                  ? html`<span class="news-by">${aula(item.post.author, ctx)}</span>`
+                  : nothing
+              }
+            </span>
+            ${item.post.attachments.length > 0 ? icon("mdi:paperclip", "news-clip") : nothing}
+            ${icon("mdi:chevron-right", "chevron-end")}
+          </button>
+        </li>`;
+      })}
+    </ul>
+  </section>`;
+}

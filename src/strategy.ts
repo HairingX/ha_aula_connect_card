@@ -15,6 +15,8 @@ import {
   CHILDREN_CARD,
   DEFAULT_PATHS,
   IMPORTANT_CARD,
+  NEWS_CARD,
+  NEWS_ICON,
   OVERVIEW_CARD,
   SICK_CARD,
   VACATION_CARD,
@@ -154,6 +156,7 @@ export function dashboard(
       ...(acting.length > 0
         ? [page(t("navAbsence"), DEFAULT_PATHS.absence, ABSENCE_ICON, [bar(false)], acting)]
         : []),
+      page(t("navNews"), DEFAULT_PATHS.news, NEWS_ICON, [bar(false), of(NEWS_CARD)]),
     ],
   };
 }

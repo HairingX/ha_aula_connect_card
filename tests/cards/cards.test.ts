@@ -114,6 +114,11 @@ describe("registration", () => {
         "https://github.com/HairingX/ha_aula_connect_card#important-card",
       ],
       [
+        "aula-connect-news-card",
+        false,
+        "https://github.com/HairingX/ha_aula_connect_card#news-card",
+      ],
+      [
         "aula-connect-sick-card",
         true,
         "https://github.com/HairingX/ha_aula_connect_card#sick-card",

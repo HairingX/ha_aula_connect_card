@@ -392,3 +392,45 @@ export interface VacationRequest {
   /** The days asked about: Monday to Friday. */
   days: VacationDay[];
 }
+
+/** What is attached to a post: a file, a picture or a video. */
+export interface PostAttachment {
+  /** Its name. */
+  name: string;
+  /** Where it is, for a while: Aula's links to files expire. */
+  url: string | null;
+  /** A small picture of it, for a picture or a video. */
+  thumbnail: string | null;
+  /** Whether it is a picture or a video. */
+  media: boolean;
+}
+
+/** A post in Aula's news feed. */
+export interface Post {
+  /** Aula's id of it. */
+  id: number;
+  /** Its title. */
+  title: string;
+  /** Its text, as Aula's HTML; shown as plain text. */
+  html: string;
+  /** When it was written, an ISO date-time with offset. */
+  time: string;
+  /** Whether it was written after the guardian last saw the posts in Aula. */
+  new: boolean;
+  /** Whether it is marked important. */
+  important: boolean;
+  /** The first day it is important, where it says. */
+  important_from: Day | null;
+  /** The last day it is important, where it says. */
+  important_to: Day | null;
+  /** Who wrote it. */
+  author: string | null;
+  /** The institution its author is at. */
+  institution: string | null;
+  /** The groups it is shared with, by name. */
+  groups: string[];
+  /** How many comments it has. */
+  comments: number;
+  /** What is attached to it. */
+  attachments: PostAttachment[];
+}

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "../../src/index.ts";
 import { AulaConnectChildrenCard } from "../../src/cards/children-card.ts";
 import { AulaConnectImportantCard } from "../../src/cards/important-card.ts";
+import { AulaConnectNewsCard } from "../../src/cards/news-card.ts";
 import { AulaConnectOverviewCard } from "../../src/cards/overview-card.ts";
 import { AulaConnectSickCard } from "../../src/cards/sick-card.ts";
 import { AulaConnectVacationCard } from "../../src/cards/vacation-card.ts";
@@ -192,6 +193,11 @@ describe("the cards in a sections view", () => {
         { columns: "full", rows: "auto", min_columns: 4, min_rows: 2 },
         "aula-connect-vacation-card",
       ],
+      [
+        AulaConnectNewsCard,
+        { columns: "full", rows: "auto", min_columns: 6, min_rows: 4 },
+        "aula-connect-news-card",
+      ],
     ] as const) {
       expect(new element().getGridOptions()).toEqual(grid);
       expect(element.getConfigForm().schema[0]?.name).toBe("children");
@@ -205,6 +211,7 @@ describe("the cards in a sections view", () => {
     expect(new AulaConnectImportantCard().getCardSize()).toBe(6);
     expect(new AulaConnectSickCard().getCardSize()).toBe(3);
     expect(new AulaConnectVacationCard().getCardSize()).toBe(3);
+    expect(new AulaConnectNewsCard().getCardSize()).toBe(4);
   });
 
   it("send nothing without Home Assistant", async () => {
@@ -224,7 +231,7 @@ describe("the overview", () => {
       "1 vigtig ting til i dag · 2 til i morgen",
       "1 vigtig ting til mandag",
     ]);
-    expect(texts(card, ".ov-tile")).toEqual(["8 Vigtigt", "Ugeplan", "Uge", "Fravær"]);
+    expect(texts(card, ".ov-tile")).toEqual(["8 Vigtigt", "Ugeplan", "Uge", "Fravær", "Nyheder"]);
     expect(texts(card, ".ov-coming-text")).toEqual([
       "Skolefoto",
       "Alma har fødselsdag",
@@ -849,14 +856,16 @@ describe("Fravær on the overview", () => {
 
   it("leaves out the tiles set to false, and the window's way to the Important page", async () => {
     const { card } = await mount(OVERVIEW, "thu-1000", {
-      config: { paths: { important: false, absence: false } },
+      config: { paths: { important: false, absence: false, news: false } },
     });
     expect(texts(card, ".ov-tile")).toEqual(["Ugeplan", "Uge"]);
     await tap(card, ".ov-important");
     expect(all(card, "dialog .window-actions")).toEqual([]);
     unmountAll();
     const { card: bare } = await mount(OVERVIEW, "thu-1000", {
-      config: { paths: { important: false, weekplan: false, week: false, absence: false } },
+      config: {
+        paths: { important: false, weekplan: false, week: false, absence: false, news: false },
+      },
     });
     expect(all(bare, ".ov-nav")).toEqual([]);
   });

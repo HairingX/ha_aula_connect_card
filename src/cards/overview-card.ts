@@ -7,12 +7,12 @@
 
 import type { TemplateResult } from "lit/html.js";
 
-import { fetchVacationRequests, fetchVacations } from "../core/api.ts";
+import { fetchPosts, fetchVacationRequests, fetchVacations } from "../core/api.ts";
 import type { ViewContext } from "../core/context.ts";
 import { addDays } from "../core/dates.ts";
 import { selection } from "../core/selection.ts";
 import type { StoreSnapshot } from "../core/store.ts";
-import type { HomeAssistant, Vacation, VacationRequest } from "../core/types.ts";
+import type { HomeAssistant, Post, Vacation, VacationRequest } from "../core/types.ts";
 import {
   familyForm,
   OVERVIEW_CARD,
@@ -29,6 +29,7 @@ import {
 } from "../model/absence.ts";
 import type { Hold } from "../model/child.ts";
 import { senderOf } from "../model/family.ts";
+import { newsView, type NewsView } from "../model/news.ts";
 import { AHEAD_DAYS, overviewView, type OverviewView } from "../model/overview.ts";
 import { AulaCard, stub } from "../ui/card.ts";
 import { Loads } from "../ui/loads.ts";
@@ -44,6 +45,9 @@ export class AulaConnectOverviewCard extends AulaCard<OverviewConfig, OverviewVi
     this.requestUpdate();
   });
   readonly #vacations = new Loads<Vacation[]>(() => {
+    this.requestUpdate();
+  });
+  readonly #posts = new Loads<Post[]>(() => {
     this.requestUpdate();
   });
 
@@ -88,8 +92,21 @@ export class AulaConnectOverviewCard extends AulaCard<OverviewConfig, OverviewVi
       packIcons: config.packIcons,
       sick: sickOptions(config),
       absence: this.#absence(view, config, ctx),
+      news: config.paths.news === null ? 0 : this.#news(view, ctx).fresh,
       looks: { rows: config.rows, columns: config.columns, board: config.board },
     });
+  }
+
+  // A login's posts are read each quarter of an hour while the overview is shown.
+  #news(view: OverviewView, ctx: ViewContext): NewsView {
+    const entries = [
+      ...new Set(view.children.flatMap((item) => item.entries.map((entry) => entry.entry_id))),
+    ];
+    const quarter = `${ctx.today}|${String(Math.floor(ctx.minute / 15))}`;
+    return newsView(
+      entries.map((entry) => this.#posts.get(entry, quarter, () => fetchPosts(this.callWS, entry))),
+      ctx.zone,
+    );
   }
 
   // The requests are read each day, and again when the number awaiting an answer changes; the

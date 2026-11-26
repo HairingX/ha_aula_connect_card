@@ -20,7 +20,7 @@ import {
 } from "../core/dates.ts";
 import type { Look } from "../core/selection.ts";
 import type { Child, Day, Vacation } from "../core/types.ts";
-import { ABSENCE_ICON, type Paths } from "../config/family.ts";
+import { ABSENCE_ICON, NEWS_ICON, type Paths } from "../config/family.ts";
 import type { BoardSettings, LookSettings } from "../config/looks.ts";
 import type { RequestGroup, VacationGroup } from "../model/absence.ts";
 import { isHolidayEvent } from "../model/days.ts";
@@ -86,6 +86,8 @@ export interface OverviewOptions {
   readonly sick: SickOptions;
   /** What it knows of Fravær. */
   readonly absence: AbsenceView;
+  /** How many of the news feed's posts are new. */
+  readonly news: number;
   /** How each look shows what is important, and the board the school hours. */
   readonly looks: {
     readonly rows: LookSettings;
@@ -614,6 +616,7 @@ function nav(
     [options.paths.weekplan, "mdi:calendar-text-outline", ctx.t("navWeekPlan"), 0],
     [options.paths.week, "mdi:calendar-week", ctx.t("navWeek"), 0],
     [options.paths.absence, ABSENCE_ICON, ctx.t("navAbsence"), options.absence.requests.length],
+    [options.paths.news, NEWS_ICON, ctx.t("navNews"), options.news],
   ];
   const shown = tiles.flatMap(([path, ...rest]) =>
     path === null ? [] : [[path, ...rest] as const],

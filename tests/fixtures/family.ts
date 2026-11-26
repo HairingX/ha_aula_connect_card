@@ -139,3 +139,62 @@ export const REQUESTS = {
     },
   ],
 };
+
+/** The news feed's made-up posts, the newest first: one new and important, one with files. */
+export const POSTS = {
+  last_seen: "2026-10-27T12:00:00+01:00",
+  posts: [
+    {
+      id: 9001,
+      title: "Juleklip for hele skolen fredag",
+      html: "<p>Kære forældre</p><p>Fredag klipper hele skolen julepynt i 3. og 4. lektion. Husk en saks og gerne lidt glanspapir.</p><p>Hilsen kontoret</p>",
+      time: "2026-10-28T09:15:00+01:00",
+      new: true,
+      important: true,
+      important_from: "2026-10-28",
+      important_to: "2026-10-30",
+      author: "Kontoret",
+      institution: "Bakkedal Skole",
+      groups: ["Hele skolen"],
+      comments: 0,
+      attachments: [],
+    },
+    {
+      id: 9002,
+      title: "Kor for 3.-5. klasse",
+      html: "<p>Vil dit barn synge i kor? Vi øver tirsdage efter skole i musiklokalet.</p>",
+      time: "2026-10-27T14:02:00+01:00",
+      new: true,
+      important: false,
+      important_from: null,
+      important_to: null,
+      author: "Mette Juhl",
+      institution: "Bakkedal Skole",
+      groups: ["3.B", "4.A", "5.A"],
+      comments: 2,
+      attachments: [
+        {
+          name: "tilmelding.pdf",
+          url: "https://files.example.org/tilmelding.pdf",
+          thumbnail: null,
+          media: false,
+        },
+      ],
+    },
+    {
+      id: 9003,
+      title: "Skolefoto torsdag",
+      html: "<p>Fotografen kommer torsdag. Børnene skal ikke medbringe noget.</p>",
+      time: "2026-10-20T08:00:00+02:00",
+      new: false,
+      important: false,
+      important_from: null,
+      important_to: null,
+      author: "Karen Lund",
+      institution: "Bakkedal Skole",
+      groups: ["3.B"],
+      comments: 0,
+      attachments: [],
+    },
+  ],
+};

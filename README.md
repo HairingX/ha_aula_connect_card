@@ -5,7 +5,7 @@ Home Assistant dashboard cards for the Danish school platform Aula, from the
 matters now, **the week plan** for the days ahead, and **the week** day by day; and for the family,
 **the children's bar**, **an overview** of every child's day, **what is important**, and
 **Fravær**: the cards that **report a child sick**, and that **answer vacation requests** and
-**register vacations** in one. They are
+**register vacations** in one; and **the news feed**, Aula's posts read whole. They are
 made to be read on a phone in the evening and on a wall screen in the morning, in Danish or
 English. The school day cards only show; the family's cards act in Aula only on a tap, and only
 once what is sent has been seen. An [Aula dashboard](#dashboard) puts them together.
@@ -203,8 +203,8 @@ The **Aula Connect** dashboard is made from the cards, and shows on its first pa
 matters now: the children's bar and the overview, the whole width. What needs you comes to the
 overview by itself - a vacation request awaiting an answer, a child sick yesterday who may still
 be - and goes again once it is done. Under it the overview's pages are subviews, each under the
-children's bar: **Vigtigt**, **Ugeplan**, **Uge** and **Fravær**, with the sick card and the
-Ferie/fri card. Make a new dashboard and choose **Aula Connect**; **Rediger betjeningspanel** in its
+children's bar: **Vigtigt**, **Ugeplan**, **Uge**, **Fravær**, with the sick card and the
+Ferie/fri card, and **Nyheder**, with the news feed. Make a new dashboard and choose **Aula Connect**; **Rediger betjeningspanel** in its
 menu opens its settings in Home Assistant's own form, as the cards' editors do. The settings are
 set once for the whole dashboard and given to every card that has them: the children, whether it
 has the sick card and the vacations, the [things to bring](#things-to-bring), the
@@ -287,7 +287,8 @@ says that it is today's.
 
 Under the children, a vacation request awaiting an answer is a row, once for every child it is
 asked of: two at most, and a way to Fravær for the rest. Tiles go to what is important, the week
-plan, the week and Fravær, its badge counting the requests awaiting an answer; **Det sker** lists
+plan, the week, Fravær, its badge counting the requests awaiting an answer, and the news, its
+badge counting the posts new to you; **Det sker** lists
 what is coming the next seven days once, with the faces of the children it is for, a vacation
 registered among it.
 
@@ -332,6 +333,7 @@ paths: # the views the tiles go to; false leaves a tile out
   weekplan: ugeplan
   week: uge
   absence: fravaer
+  news: nyheder
 pack_icons: # over the built-in icons, by the thing
   - thing: Blokfløjte
     icon: mdi:music
@@ -355,6 +357,18 @@ homework, things to bring, things to decide - for the children the bar shows, by
 for, with the faces naming whose it is. The days before today are folded; the
 arrows browse a week at a time, and **I dag** comes back, as does the card after ten minutes
 without a touch.
+
+## News card
+
+![The news feed](docs/news-thu-1000-380-light-blue-da-2child.png)
+
+`custom:aula-connect-news-card` shows the newest posts of Aula's news feed ("Overblik") for the
+logins the children the bar shows are read through: each post's day, title, first words and
+author, **Ny** on a post written after you last saw the posts in Aula, and **Vigtigt** on one
+marked important. A post two guardians both get is shown once. A tap opens the post whole: its
+text, when it is important until, its files, which open in Aula's own storage, and the groups it
+is shared with. The posts are read when the card is shown, and each quarter of an hour; nothing is
+marked seen. A post's text is shown as plain text, never as markup.
 
 ## Sick card
 
@@ -444,7 +458,7 @@ children whose entry does; otherwise the card says they are turned off.
 | `people`               | children's bar           | none                                                    | A `person` whose name and picture stand in for a child's, on every card of the page.                                                                                   |
 | `look_switch`          | children's bar           | `true`                                                  | `false` leaves out the switch between the overview's looks.                                                                                                            |
 | `look`                 | overview                 | the bar's                                               | `rows`, `columns` or `board`, kept whatever the children's bar chooses.                                                                                                |
-| `paths`                | overview                 | `vigtigt`, `ugeplan`, `uge`, `fravaer`                  | The views the tiles go to: `important`, `weekplan`, `week`, `absence`; relative to the dashboard unless they begin with `/`; `false` leaves a tile out.                |
+| `paths`                | overview                 | `vigtigt`, `ugeplan`, `uge`, `fravaer`, `nyheder`       | The views the tiles go to: `important`, `weekplan`, `week`, `absence`, `news`; relative to the dashboard unless they begin with `/`; `false` leaves a tile out.        |
 | `pack_icons`           | overview                 | none                                                    | An mdi icon for a thing to bring, as a list of `thing` and `icon`, over the built-in ones.                                                                             |
 | `rows`, `columns`      | overview                 | `important: list`, `important_max: 3`                   | How the look shows what is important: `list`, the next `important_max` notes (1 to 99), or `button`, how much for when.                                                |
 | `board`                | overview                 | `important: list`, `important_max: 3`, `clock: digital` | As `rows`, and `clock`: `analog` adds a clock of the school hours beside the name.                                                                                     |
@@ -644,6 +658,8 @@ holds the day, each child's hours and what each child is to bring.
 - `aula_connect/vacations` with a child's `entry_id` and `child_id`;
   `aula_connect/vacation/add` with an `entry_id`, `child_ids`, `start`, `end` and a `comment`, and
   `aula_connect/vacation/delete` with an `entry_id` and a `vacation_id`, on a tap.
+- `aula_connect/posts` with an `entry_id`, by the news card and the overview, when shown and each
+  quarter of an hour.
 - `aula_connect/vacation_requests` with a child's `entry_id` and `child_id` - by the overview only
   while some await an answer - and
   `aula_connect/vacation_request/answer` with a `request_id`, the `days` and a `comment`, on a tap.

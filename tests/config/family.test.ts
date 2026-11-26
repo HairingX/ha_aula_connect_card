@@ -142,11 +142,11 @@ describe("the family's cards' configuration", () => {
     [() => parseFlag("yes", "look_switch"), "look_switch: must be true or false"],
     [
       () => parsePaths("vigtigt"),
-      "paths: must be a mapping of important, weekplan, week and absence",
+      "paths: must be a mapping of important, weekplan, week, absence and news",
     ],
     [
       () => parsePaths({ events: "x" }),
-      'paths: unknown key "events"; the keys are important, weekplan, week and absence',
+      'paths: unknown key "events"; the keys are important, weekplan, week, absence and news',
     ],
     [
       () => parsePaths({ week: 3 }),

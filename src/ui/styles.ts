@@ -3034,6 +3034,107 @@ export const family = css`
   .ov-nav.n-4 {
     --tiles: 4;
   }
+  .ov-nav.n-5 {
+    --tiles: 5;
+  }
+  /* The news feed: a post a line, its day at the left, the new marked in the accent and the
+     important in the flag's colour. */
+  .news-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .news-list > li + li {
+    border-top: 1px solid var(--aula-line);
+  }
+  .news-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--aula-space-3);
+    box-sizing: border-box;
+    width: 100%;
+    min-height: var(--aula-target);
+    padding: var(--aula-space-3) var(--aula-space-1);
+    border: 0;
+    background: none;
+    color: var(--aula-text);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  @media (hover: hover) {
+    .news-item:hover {
+      background: var(--aula-fill-faint);
+    }
+  }
+  .news-when {
+    flex: none;
+    width: calc(64px * var(--aula-scale));
+    padding-top: 2px;
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+  }
+  .is-new .news-when {
+    color: var(--aula-accent, var(--primary-color));
+    font-weight: var(--aula-bold);
+  }
+  .news-main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .news-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--aula-space-1) var(--aula-space-2);
+    font-weight: var(--aula-bold);
+  }
+  .news-excerpt {
+    overflow: hidden;
+    color: var(--aula-text-2);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .news-by {
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+  }
+  .label.news-new {
+    background: var(--aula-accent, var(--primary-color));
+    color: var(--text-primary-color, #fff);
+  }
+  .news-clip {
+    flex: none;
+    color: var(--aula-text-2);
+  }
+  .news-text {
+    margin: 0;
+    white-space: pre-line;
+  }
+  .news-period {
+    margin: 0;
+    color: var(--aula-warning);
+    font-weight: var(--aula-medium);
+  }
+  .news-files {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .news-files li {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-2);
+  }
   /* What awaits an answer, between the children and the pages: Aula's request, said once. */
   .ov-band {
     display: flex;

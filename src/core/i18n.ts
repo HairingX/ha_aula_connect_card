@@ -62,6 +62,11 @@ const TEXTS = {
     "Every child's day at a glance: presence, timetable, things to bring and what is important, the pages, and what is coming.",
     "Alle børnenes dag med et blik: fremmøde, skema, hvad der skal med og det vigtige, siderne, og hvad der sker.",
   ],
+  pickerNewsName: ["Aula Connect · News", "Aula Connect · Nyheder"],
+  pickerNewsDescription: [
+    "The newest posts of Aula's news feed, the new and the important marked.",
+    "De nyeste opslag fra Aulas nyhedsfeed, de nye og de vigtige markeret.",
+  ],
   pickerImportantPageName: ["Aula Connect · Important", "Aula Connect · Vigtigt"],
   pickerImportantPageDescription: [
     "What the week plan marks as important for every child, by the day it is for, a week at a time.",
@@ -240,6 +245,14 @@ const TEXTS = {
   navWeekPlan: ["Week plan", "Ugeplan"],
   navWeek: ["Week", "Uge"],
   navAbsence: ["Absence", "Fravær"],
+  navNews: ["News", "Nyheder"],
+  yesterday: ["Yesterday", "I går"],
+  newsNew: ["New", "Ny"],
+  newsImportant: ["Important", "Vigtigt"],
+  newsImportantUntil: ["Important until {day}", "Vigtigt til og med {day}"],
+  newsAttachments: ["Attached", "Vedhæftet"],
+  newsGroups: ["Shared with", "Delt med"],
+  newsNone: ["No posts", "Ingen opslag"],
   // The Important page
   regionImportantPage: ["Important – {names}", "Vigtigt – {names}"],
   earlierInWeek: ["Earlier this week ({n})", "Tidligere i ugen ({n})"],

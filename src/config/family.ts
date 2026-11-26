@@ -16,6 +16,8 @@ export const CHILDREN_CARD = "aula-connect-children-card";
 export const OVERVIEW_CARD = "aula-connect-overview-card";
 /** The Important page's element. */
 export const IMPORTANT_CARD = "aula-connect-important-card";
+/** The news feed's element. */
+export const NEWS_CARD = "aula-connect-news-card";
 /** The card that reports a child sick. */
 export const SICK_CARD = "aula-connect-sick-card";
 /** Ferie/fri: the vacations and the vacation requests. */
@@ -42,10 +44,15 @@ export interface Paths {
   readonly week: string | null;
   /** Fravær: sickness, vacations and vacation requests. */
   readonly absence: string | null;
+  /** The news feed. */
+  readonly news: string | null;
 }
 
 /** Fravær's icon, on the overview's tile and the dashboard's view. */
 export const ABSENCE_ICON = "mdi:calendar-account-outline";
+
+/** The news feed's icon, on the overview's tile and the dashboard's view. */
+export const NEWS_ICON = "mdi:newspaper-variant-outline";
 
 /** The views the dashboard strategy makes, and the overview goes to by default. */
 export const DEFAULT_PATHS: { readonly [key in keyof Paths]: string } = {
@@ -53,6 +60,7 @@ export const DEFAULT_PATHS: { readonly [key in keyof Paths]: string } = {
   weekplan: "ugeplan",
   week: "uge",
   absence: "fravaer",
+  news: "nyheder",
 };
 
 /** The children's bar's configuration. */
@@ -174,12 +182,12 @@ export function parseFlag(value: unknown, name: string): boolean {
 export function parsePaths(value: unknown): Paths {
   if (absent(value)) return DEFAULT_PATHS;
   if (!isRecord(value))
-    throw new Error("paths: must be a mapping of important, weekplan, week and absence");
+    throw new Error("paths: must be a mapping of important, weekplan, week, absence and news");
   const paths: { -readonly [key in keyof Paths]: string | null } = { ...DEFAULT_PATHS };
   for (const [key, path] of Object.entries(value)) {
     if (!(key in DEFAULT_PATHS))
       throw new Error(
-        `paths: unknown key "${key}"; the keys are important, weekplan, week and absence`,
+        `paths: unknown key "${key}"; the keys are important, weekplan, week, absence and news`,
       );
     if (absent(path)) continue;
     if (path === false) paths[key as keyof Paths] = null;
@@ -341,6 +349,7 @@ export type FamilyCard =
   | typeof CHILDREN_CARD
   | typeof OVERVIEW_CARD
   | typeof IMPORTANT_CARD
+  | typeof NEWS_CARD
   | typeof SICK_CARD
   | typeof VACATION_CARD;
 
@@ -362,6 +371,7 @@ const FORMS: Readonly<Record<FamilyCard, readonly FieldName[]>> = {
     "subject_names_group",
   ],
   [IMPORTANT_CARD]: ["children", "size", "subject_names_group"],
+  [NEWS_CARD]: ["children", "size"],
   [SICK_CARD]: ["children", "sick_write", "sick_message", "sick_threads", "sender", "size"],
   [VACATION_CARD]: ["children", "sender", "size"],
 };
@@ -370,6 +380,7 @@ const RESOLVE: Readonly<Record<FamilyCard, (config: unknown, lenient: boolean) =
   [CHILDREN_CARD]: resolveChildrenConfig,
   [OVERVIEW_CARD]: resolveOverviewConfig,
   [IMPORTANT_CARD]: resolveImportantConfig,
+  [NEWS_CARD]: resolveImportantConfig,
   [SICK_CARD]: resolveActionConfig,
   [VACATION_CARD]: resolveActionConfig,
 };

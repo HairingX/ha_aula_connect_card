@@ -38,8 +38,14 @@ describe("the dashboard", () => {
       ["ugeplan", "Ugeplan", true],
       ["uge", "Uge", true],
       ["fravaer", "Fravær", true],
+      ["nyheder", "Nyheder", true],
     ]);
-    const [main, important, , , absence] = generated.views;
+    const [main, important, , , absence, news] = generated.views;
+    expect(news?.icon).toBe("mdi:newspaper-variant-outline");
+    expect(news?.sections.flatMap((section) => section.cards.map((card) => card.type))).toEqual([
+      "custom:aula-connect-children-card",
+      "custom:aula-connect-news-card",
+    ]);
     expect(main?.sections).toEqual([
       {
         type: "grid",
@@ -86,6 +92,7 @@ describe("the dashboard", () => {
       "Important",
       "Week plan",
       "Week",
+      "News",
     ]);
     expect(
       dashboard({ sick: false }, "da").views[4]?.sections.map((section) => section.cards),

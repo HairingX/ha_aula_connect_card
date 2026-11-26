@@ -27,6 +27,8 @@ import {
   type Unsubscribe,
   type Vacation,
   type VacationDay,
+  type Post,
+  type PostAttachment,
   type VacationRequest,
   type WeekData,
 } from "./types.ts";
@@ -572,4 +574,46 @@ export function eventErrorText(error: unknown, t: Translate): string {
     default:
       return t("eventUnavailable");
   }
+}
+
+function attachment(item: Fields): PostAttachment | undefined {
+  if (!text(item.name)) return undefined;
+  return {
+    name: item.name,
+    url: text(item.url) ? item.url : null,
+    thumbnail: text(item.thumbnail) ? item.thumbnail : null,
+    media: item.media === true,
+  };
+}
+
+function post(item: Fields): Post | undefined {
+  if (typeof item.id !== "number" || !text(item.time)) return undefined;
+  const day = (value: unknown): string | null => (text(value) ? value : null);
+  return {
+    id: item.id,
+    title: or(item.title, ""),
+    html: or(item.html, ""),
+    time: item.time,
+    new: item.new === true,
+    important: item.important === true,
+    important_from: day(item.important_from),
+    important_to: day(item.important_to),
+    author: text(item.author) ? item.author : null,
+    institution: text(item.institution) ? item.institution : null,
+    groups: list(item.groups).filter(text),
+    comments: count(item.comments),
+    attachments: items(item.attachments, attachment),
+  };
+}
+
+/**
+ * Lists the newest posts of an entry's news feed, the newest first.
+ *
+ * @throws The websocket error.
+ */
+export async function fetchPosts(callWS: CallWS, entryId: string): Promise<Post[]> {
+  return items(
+    fields(await callWS({ type: "aula_connect/posts", entry_id: entryId }))?.posts,
+    post,
+  );
 }

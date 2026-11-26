@@ -27,6 +27,7 @@ import { childKey, type Child, type DayRange, type WeekData } from "../src/core/
 import { extraWeeks } from "../src/model/week-view.ts";
 import { scenarioNamed, SCENARIOS, type Scenario } from "../tests/fixtures/scenarios.ts";
 import {
+  POSTS,
   REQUESTS,
   STATES,
   THREADS,
@@ -78,6 +79,7 @@ const CARDS = {
   children: "aula-connect-children-card",
   overview: "aula-connect-overview-card",
   important: "aula-connect-important-card",
+  news: "aula-connect-news-card",
   sick: "aula-connect-sick-card",
   vacation: "aula-connect-vacation-card",
 } as const;
@@ -174,6 +176,8 @@ function family(width: number, large = false): Shot[] {
     shot("overview", "thu-1000", width, { ...look, dialog: IMPORTANT, tag: "important" }),
     shot("overview", "thu-1530", width, { ...look, dialog: PRESENCE, tag: "presence" }),
     shot("important", "thu-1000", width, look),
+    shot("news", "thu-1000", width, look),
+    shot("news", "thu-1000", width, { ...look, dialog: '[data-detail="post|9001"]', tag: "post" }),
     shot("sick", "thu-1000", width, look),
     shot("sick", "thu-1000", width, { ...look, dialog: SICK_ROW, tag: "step-1" }),
     shot("sick", "thu-1000", width, {
@@ -261,6 +265,7 @@ const SETS: Record<string, () => Shot[]> = {
     shot("overview", "thu-1000", 1216, { children: 2, large: true, tag: "rows" }),
     shot("overview", "thu-1000", 800, { children: 2, config: { look: "board" }, tag: "board" }),
     shot("important", "thu-1000", 380, { children: 2 }),
+    shot("news", "thu-1000", 380, { children: 2 }),
     shot("sick", "thu-1000", 380, {
       children: 2,
       dialog: SICK_ROW,
@@ -844,6 +849,7 @@ for (const item of shots) {
       "aula_connect/vacation/add": null,
       "aula_connect/vacation/delete": null,
       "aula_connect/vacation_requests": REQUESTS,
+      "aula_connect/posts": POSTS,
       "aula_connect/vacation_request/answer": null,
     },
     today: Object.fromEntries(
