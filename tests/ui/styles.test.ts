@@ -307,3 +307,18 @@ describe("the board", () => {
     );
   });
 });
+
+describe("a child's picture", () => {
+  it("is cut to its top, as Aula shows it, not its middle", () => {
+    expect(declared(family, ".face")).toContain("object-position: 50% 4%");
+  });
+});
+
+describe("a list of days", () => {
+  it("marks where it goes into another week with a line, the rows after it with none", () => {
+    expect(declared(family, ".week-break::after")).toContain(
+      "border-top: 2px solid var(--aula-accent)",
+    );
+    expect(declared(family, ".week-break + li:not(.x)")).toContain("border-top: 0");
+  });
+});

@@ -61,8 +61,9 @@ how it is set up: the README.
   - `aula_connect/posts` with `entry_id` answers with the login's newest posts: `last_seen` and
     `posts`, each with `id`, `title`, `html`, `time`, `new` (written after the guardian last saw
     the posts in Aula), `important` with `important_from` and `important_to`, `author`,
-    `institution`, `groups`, `comments` and `attachments` (`name`, `url`, `thumbnail`, `media`).
-    It only reads: a post is never marked seen.
+    `institution`, `groups`, `comments`, `attachments` (`name`, `url`, `thumbnail`, `media`) and
+    `children`, the ids of the children it is for, as Aula's filter of one child finds it; a post
+    that names none is for every child. It only reads: a post is never marked seen.
   - `aula_connect/opening_hours` with `entry_id`, `child_id`, `start` and `end` (both included, at
     most 62 days apart) answers with the child's institution's `closed_days` (`name`, `start`,
     `end`, both included) and its `days` from `start` to `end` (`date`, `closed`, and `open` and

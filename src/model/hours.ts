@@ -53,6 +53,8 @@ export interface HoursView {
   readonly loading: boolean;
   /** Why a child's hours could not be read. */
   readonly errors: readonly unknown[];
+  /** Whether more than one child is shown, so that each institution says whose it is. */
+  readonly several: boolean;
 }
 
 /** What came of one child's hours. */
@@ -166,5 +168,6 @@ export function hoursView(loads: readonly ChildHours[], today: Day): HoursView {
     errors: loads.flatMap((load) =>
       load.error !== undefined && load.data === undefined ? [load.error] : [],
     ),
+    several: loads.length > 1,
   };
 }

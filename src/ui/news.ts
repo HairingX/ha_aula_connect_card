@@ -17,7 +17,7 @@ import {
 } from "../core/dates.ts";
 import type { NewsItem, NewsView } from "../model/news.ts";
 import type { CardState } from "./card.ts";
-import { apiError, aula, icon, label, loading } from "./primitives.ts";
+import { apiError, aula, icon, label, loading, minis, names, weekBreak } from "./primitives.ts";
 import { head, modal, section } from "./window.ts";
 
 function when(item: NewsItem, ctx: ViewContext): string {
@@ -38,11 +38,36 @@ function marks(item: NewsItem, ctx: ViewContext): TemplateResult[] {
   ];
 }
 
-function openPost(item: NewsItem, state: CardState, key: string): void {
+function byLine(
+  item: NewsItem,
+  view: NewsView,
+  ctx: ViewContext,
+  state: CardState,
+): TemplateResult | typeof nothing {
+  const parts = [
+    ...(view.several ? [names(item.children, ctx)] : []),
+    ...(item.post.author ? [item.post.author] : []),
+  ];
+  if (parts.length === 0) return nothing;
+  return html`<span class="news-by"
+    >${
+      view.several
+        ? minis(
+            item.children.map((child) => state.face(child)),
+            ctx,
+            "news-faces",
+          )
+        : nothing
+    }<span>${aula(parts.join(" · "), ctx)}</span></span
+  >`;
+}
+
+function openPost(item: NewsItem, view: NewsView, state: CardState, key: string): void {
   state.openModal(key, (ctx, close) => {
     const { post } = item;
     const at = formatTime(item.at, ctx.language, ctx.zone, ctx.amPm);
     const meta = [
+      ...(view.several ? [names(item.children, ctx)] : []),
       `${when(item, ctx)} ${at}`,
       ...(post.author ? [aula(post.author, ctx)] : []),
       ...(post.institution ? [aula(post.institution, ctx)] : []),
@@ -99,34 +124,31 @@ export function renderNews(
         : nothing
     }
     <ul class="news-list">
-      ${shown.map((item) => {
+      ${shown.map((item, index) => {
         const key = `post|${String(item.post.id)}`;
-        return html`<li>
-          <button
-            class="news-item ${item.fresh ? "is-new" : ""}"
-            type="button"
-            aria-haspopup="dialog"
-            data-detail=${key}
-            @click=${() => {
-              openPost(item, state, key);
-            }}
-          >
-            <span class="news-when">${when(item, ctx)}</span>
-            <span class="news-main">
-              <span class="news-title"
-                >${aula(item.post.title, ctx)}${marks(item, ctx).map((mark) => html` ${mark}`)}</span
-              >
-              <span class="news-excerpt">${aula(item.text.replace(/\s*\n+\s*/g, " "), ctx)}</span>
-              ${
-                item.post.author
-                  ? html`<span class="news-by">${aula(item.post.author, ctx)}</span>`
-                  : nothing
-              }
-            </span>
-            ${item.post.attachments.length > 0 ? icon("mdi:paperclip", "news-clip") : nothing}
-            ${icon("mdi:chevron-right", "chevron-end")}
-          </button>
-        </li>`;
+        return html`${weekBreak(item.day, shown[index - 1]?.day, ctx, true)}
+          <li>
+            <button
+              class="news-item ${item.fresh ? "is-new" : ""}"
+              type="button"
+              aria-haspopup="dialog"
+              data-detail=${key}
+              @click=${() => {
+                openPost(item, view, state, key);
+              }}
+            >
+              <span class="news-when">${when(item, ctx)}</span>
+              <span class="news-main">
+                <span class="news-title"
+                  >${aula(item.post.title, ctx)}${marks(item, ctx).map((mark) => html` ${mark}`)}</span
+                >
+                <span class="news-excerpt">${aula(item.text.replace(/\s*\n+\s*/g, " "), ctx)}</span>
+                ${byLine(item, view, ctx, state)}
+              </span>
+              ${item.post.attachments.length > 0 ? icon("mdi:paperclip", "news-clip") : nothing}
+              ${icon("mdi:chevron-right", "chevron-end")}
+            </button>
+          </li>`;
       })}
     </ul>
   </section>`;

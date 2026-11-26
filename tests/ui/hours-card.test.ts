@@ -44,8 +44,9 @@ describe("the opening hours", () => {
       commands: { "aula_connect/opening_hours": () => OPENING_HOURS },
     });
     expect(card).toBeInstanceOf(AulaConnectHoursCard);
-    expect(texts(card, ".hours-only")).toEqual(["Bakkedal Skole"]);
-    expect(all(card, ".hours-place-head")).toEqual([]);
+    expect(all(card, ".hours-only")).toEqual([]);
+    expect(texts(card, ".hours-place-head .family-title")).toEqual(["Bakkedal Skole"]);
+    expect(texts(card, ".hours-place-head .family-sub")).toEqual(["Ida og Oskar"]);
     expect(texts(card, ".hours-today")).toEqual(["I dag 06.30–17.00"]);
     expect(texts(card, ".hours-week-head")).toEqual(["Denne uge", "Næste uge"]);
     expect(texts(card, ".hours-when")).toEqual(["Man–Tors", "Fre", "Man–Tors", "Fre"]);
@@ -56,7 +57,7 @@ describe("the opening hours", () => {
       "Lukket · Planlægningsdag",
     ]);
     expect(all(card, ".hours-days .is-today")).toHaveLength(1);
-    expect(texts(card, ".family-title")).toEqual([
+    expect(texts(card, ".family-rows .family-title")).toEqual([
       "Planlægningsdag",
       "Juleferie",
       "Vinterferie",
@@ -90,8 +91,11 @@ describe("the opening hours", () => {
       ],
     };
     const { card } = await mount(HOURS, "thu-1000", {
+      children: [IDA],
       commands: { "aula_connect/opening_hours": () => hours },
     });
+    expect(texts(card, ".hours-only")).toEqual(["Bakkedal Skole"]);
+    expect(all(card, ".hours-place-head")).toEqual([]);
     expect(texts(card, ".hours-today")).toEqual(["I dag Lukket · Efterårsferie"]);
     expect(all(card, ".hours-today.is-closed")).toHaveLength(1);
     expect(texts(card, ".hours-when")).toEqual(["Man–Fre", "Man–Tirs", "Ons", "Tors", "Lør"]);

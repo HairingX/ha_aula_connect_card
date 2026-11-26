@@ -607,6 +607,9 @@ function post(item: Fields): Post | undefined {
     groups: list(item.groups).filter(text),
     comments: count(item.comments),
     attachments: items(item.attachments, attachment),
+    children: list(item.children).filter(
+      (value): value is number => typeof value === "number" && Number.isInteger(value),
+    ),
   };
 }
 

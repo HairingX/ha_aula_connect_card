@@ -106,6 +106,7 @@ export class AulaConnectOverviewCard extends AulaCard<OverviewConfig, OverviewVi
     return newsView(
       entries.map((entry) => this.#posts.get(entry, quarter, () => fetchPosts(this.callWS, entry))),
       ctx.zone,
+      view.children.map((item) => item.child),
     );
   }
 

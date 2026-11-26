@@ -69,7 +69,16 @@ export class AulaConnectNewsCard extends AulaCard<CommonConfig, FamilyView> {
     const loads = entries.map((entry) =>
       this.#posts.get(entry, quarter, () => fetchPosts(this.callWS, entry)),
     );
-    return renderNews(newsView(loads, ctx.zone), ctx, this, MAX_POSTS);
+    return renderNews(
+      newsView(
+        loads,
+        ctx.zone,
+        view.children.map((item) => item.child),
+      ),
+      ctx,
+      this,
+      MAX_POSTS,
+    );
   }
 
   protected override emptySize(): number {

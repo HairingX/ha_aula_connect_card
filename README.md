@@ -291,7 +291,8 @@ asked of: two at most, and a way to Fravær for the rest. Tiles go to what is im
 plan, the week, Fravær, its badge counting the requests awaiting an answer, and the news, its
 badge counting the posts new to you; **Det sker** lists
 what is coming the next seven days once, with the faces of the children it is for, a vacation
-registered among it.
+registered among it. Where a list of days - Det sker, the important notes' window, the news -
+goes into another week, a thin line with the new week's number marks it.
 
 The overview is a snapshot of the day that matters; the week card is for browsing. A tap on a
 lesson or an event in a child's bar opens its window, as in the school day card. A tap on the presence opens the day's times, and reports
@@ -366,7 +367,9 @@ without a touch.
 `custom:aula-connect-news-card` shows the newest posts of Aula's news feed ("Overblik") for the
 logins the children the bar shows are read through: each post's day, title, first words and
 author, **Ny** on a post written after you last saw the posts in Aula, and **Vigtigt** on one
-marked important. A post two guardians both get is shown once. A tap opens the post whole: its
+marked important. Where the card shows more than one child, each post shows the faces and names
+of the children it is for, as Aula's own filter of the children finds it; a child hidden in the
+children's bar hides the posts for it alone. A post two guardians both get is shown once. A tap opens the post whole: its
 text, when it is important until, its files, which open in Aula's own storage, and the groups it
 is shared with. The posts are read when the card is shown, and each quarter of an hour; nothing is
 marked seen. A post's text is shown as plain text, never as markup.
@@ -380,7 +383,8 @@ bar shows go to, as Aula tells them: today's at the top, then this week's and ne
 alike told once ("Man–Tors 06.30–17.00"), a day closed with the reason Aula gives, and the days
 closed from today on, such as holidays and planning days, the four soonest shown and the rest
 folded. A weekend the institution is closed is left out. Children at the same institution share
-it; where they go to more than one, each is named with its children. The hours are read once a
+it; where the card shows more than one child, each institution shows the faces and names of its
+children. The hours are read once a
 day, for Monday this week to Sunday next week.
 
 ## Sick card

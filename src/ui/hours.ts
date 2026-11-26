@@ -132,7 +132,7 @@ function place(item: Place, ctx: ViewContext, state: CardState, many: boolean): 
 /** Renders the hours card: each institution the children go to, once. */
 export function renderHours(view: HoursView, ctx: ViewContext, state: CardState): TemplateResult {
   const { t } = ctx;
-  const only = view.places.length === 1 ? view.places[0] : undefined;
+  const only = view.places.length === 1 && !view.several ? view.places[0] : undefined;
   return html`<section class="family-card hours-card" aria-label=${t("hoursTitle")}>
     <h2 class="block-head">
       ${icon("mdi:clock-outline")}<span>${t("hoursTitle")}</span>

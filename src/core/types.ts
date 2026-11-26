@@ -433,6 +433,8 @@ export interface Post {
   comments: number;
   /** What is attached to it. */
   attachments: PostAttachment[];
+  /** The children it is for, by Aula's id; empty where Aula Connect does not say. */
+  children: number[];
 }
 
 /** A period an institution is closed, such as a holiday, by the name it gives it. */

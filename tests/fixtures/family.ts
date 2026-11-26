@@ -140,7 +140,10 @@ export const REQUESTS = {
   ],
 };
 
-/** The news feed's made-up posts, the newest first: one new and important, one with files. */
+/**
+ * The news feed's made-up posts, the newest first: one new and important for both children, one
+ * with files for Ida, one for Oskar.
+ */
 export const POSTS = {
   last_seen: "2026-10-27T12:00:00+01:00",
   posts: [
@@ -158,6 +161,7 @@ export const POSTS = {
       groups: ["Hele skolen"],
       comments: 0,
       attachments: [],
+      children: [1001, 1002],
     },
     {
       id: 9002,
@@ -180,6 +184,7 @@ export const POSTS = {
           media: false,
         },
       ],
+      children: [1001],
     },
     {
       id: 9003,
@@ -195,6 +200,7 @@ export const POSTS = {
       groups: ["3.B"],
       comments: 0,
       attachments: [],
+      children: [1002],
     },
   ],
 };

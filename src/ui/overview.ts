@@ -52,6 +52,7 @@ import {
   timeText,
   turnedOff,
   weekdayWord,
+  weekBreak,
 } from "./primitives.ts";
 import { openSick, sickLabel, type SickOptions } from "./sick.ts";
 import { requestRow } from "./vacation-requests.ts";
@@ -724,7 +725,10 @@ function comingList(
       rows.length === 0
         ? html`<p class="empty">${ctx.t("comingNone")}</p>`
         : html`<ul class="ov-coming-list">
-            ${rows.map((item) => item.row)}
+            ${rows.map(
+              (item, index) =>
+                html`${weekBreak(item.day, rows[index - 1]?.day, ctx, true)}${item.row}`,
+            )}
           </ul>`
     }
   </section>`;
@@ -828,22 +832,24 @@ export function openImportant(
     const marked = summaryDays(item.important, ctx);
     return modal(
       html`${head(ctx.t("importantTitle", { name: face.name }), [ctx.t("importantFrom", { day: whenText(ctx.today, ctx) })], [], ctx, close, faceImage(face, "window-face"))}
-      ${days.map((day) => {
+      ${days.map((day, index) => {
         const title = `${capitalize(daysBetween(ctx.today, day) < 7 ? whenText(day, ctx) : formatWeekday(day, ctx.language), ctx.language)} · ${formatShortDate(day, ctx.language)}`;
         const notes = html`<ul class="note-due">
           ${item.upcoming.filter((due) => due.day === day).map((due) => dueItem(due, ctx))}
         </ul>`;
-        return marked.includes(day)
-          ? html`<section
-              class="detail-section important-marked"
-              ?data-opens-at=${day === marked[0]}
-            >
-              <h3 class="detail-heading">
-                <span class="ov-important-mark">${icon("mdi:flag")}</span>${title}
-              </h3>
-              ${notes}
-            </section>`
-          : section(title, [], notes);
+        return html`${weekBreak(day, days[index - 1], ctx)}${
+          marked.includes(day)
+            ? html`<section
+                class="detail-section important-marked"
+                ?data-opens-at=${day === marked[0]}
+              >
+                <h3 class="detail-heading">
+                  <span class="ov-important-mark">${icon("mdi:flag")}</span>${title}
+                </h3>
+                ${notes}
+              </section>`
+            : section(title, [], notes)
+        }`;
       })}
       ${
         important === null

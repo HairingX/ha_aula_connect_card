@@ -19,6 +19,8 @@ import {
   formatWeekdayShort,
   daysBetween,
   instant,
+  startOfWeek,
+  weekNumber,
 } from "../core/dates.ts";
 import type { TextKey, Translate } from "../core/i18n.ts";
 import { glue } from "../core/text.ts";
@@ -434,4 +436,22 @@ export function names(children: readonly Child[], ctx: ViewContext): string {
 export function weekdayWord(day: Day, ctx: ViewContext): string {
   const short = formatWeekdayShort(day, ctx.language);
   return ctx.lang === "da" ? `${short.toLocaleLowerCase(ctx.language)}.` : short;
+}
+
+/**
+ * Shows where a list of days goes into another week: a thin line with the new week's number, in
+ * a list item where `item` is set. Nothing where `day` is in the week of `previous`, or there is
+ * no `previous`.
+ */
+export function weekBreak(
+  day: Day,
+  previous: Day | undefined,
+  ctx: ViewContext,
+  item = false,
+): TemplateResult | typeof nothing {
+  if (previous === undefined || startOfWeek(previous) === startOfWeek(day)) return nothing;
+  const text = ctx.t("weekNumber", { n: weekNumber(day) });
+  return item
+    ? html`<li class="week-break" role="separator"><span>${text}</span></li>`
+    : html`<div class="week-break" role="separator"><span>${text}</span></div>`;
 }

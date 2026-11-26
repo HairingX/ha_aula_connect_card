@@ -287,6 +287,10 @@ describe("the overview", () => {
       "I morgen · 30. okt.",
     ]);
     expect(all(card, "dialog [data-opens-at]")).toHaveLength(1);
+    expect(texts(card, "dialog .week-break")).toEqual(["Uge 45"]);
+    expect(
+      find(card, "dialog .week-break", undefined, HTMLElement).nextElementSibling?.textContent,
+    ).toContain("Mandag · 2. nov.");
   });
 
   it("opens the window at the first day marked, under its head, unless it comes first", async () => {

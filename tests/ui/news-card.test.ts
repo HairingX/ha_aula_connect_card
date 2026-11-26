@@ -56,8 +56,18 @@ describe("the news feed", () => {
       "Kære forældre Fredag klipper hele skolen julepynt i 3. og 4. lektion. Husk en saks og gerne lidt glanspapir. Hilsen kontoret",
     );
     expect(all(card, ".news-item.is-new")).toHaveLength(2);
+    expect(texts(card, ".news-list > li")).toContain("Uge 43");
+    expect(
+      find(card, ".week-break", undefined, HTMLElement).nextElementSibling?.textContent,
+    ).toContain("Skolefoto torsdag");
     expect(all(card, ".news-clip")).toHaveLength(1);
-    expect(texts(card, ".news-by")).toEqual(["Karen Lund", "Kontoret", "Mette Juhl", "Karen Lund"]);
+    expect(texts(card, ".news-by > span:last-child")).toEqual([
+      "Oskar · Karen Lund",
+      "Ida og Oskar · Kontoret",
+      "Ida · Mette Juhl",
+      "Oskar · Karen Lund",
+    ]);
+    expect(all(card, ".news-item")[2]?.querySelectorAll(".news-faces .face")).toHaveLength(1);
   });
 
   it("opens a post whole, with when it is important until, its files and its groups", async () => {
@@ -93,6 +103,7 @@ describe("the news feed", () => {
       attachments: [{ name: "billede.jpg", url: null, thumbnail: null, media: true }],
     };
     const { card } = await mount(NEWS, "thu-1000", {
+      children: [IDA],
       commands: { "aula_connect/posts": () => ({ posts: [bare] }) },
     });
     expect(all(card, ".news-by")).toEqual([]);
@@ -109,11 +120,14 @@ describe("the news feed", () => {
       children: [IDA, OSKAR, other],
       commands: {
         "aula_connect/posts": (message) =>
-          message.entry_id === "entry-b" ? { posts: [{ ...POSTS.posts[2], new: true }] } : POSTS,
+          message.entry_id === "entry-b"
+            ? { posts: [{ ...POSTS.posts[2], new: true, children: [IDA.child_id] }] }
+            : POSTS,
       },
     });
     expect(texts(card, ".news-title")).toHaveLength(3);
     expect(all(card, ".news-item.is-new")).toHaveLength(3);
+    expect(texts(card, ".news-by > span:last-child")[2]).toBe("Ida og Oskar · Karen Lund");
     expect(
       hass.callWS.mock.calls.filter(([message]) => message.type === "aula_connect/posts"),
     ).toHaveLength(2);
@@ -148,6 +162,25 @@ describe("the news feed", () => {
     });
     expect(texts(card, ".ov-tile").at(-1)).toBe("2 Nyheder");
   });
+
+  it("shows only the posts for the children shown, and then says no names", async () => {
+    const { card } = await mount(NEWS, "thu-1000", {
+      config: { children: [OSKAR.child_id] },
+      commands: { "aula_connect/posts": () => POSTS },
+    });
+    expect(texts(card, ".news-title")).toEqual([
+      "Juleklip for hele skolen fredag Ny Vigtigt",
+      "Skolefoto torsdag",
+    ]);
+    expect(texts(card, ".news-by > span:last-child")).toEqual(["Kontoret", "Karen Lund"]);
+    expect(all(card, ".news-faces")).toEqual([]);
+    unmountAll();
+    const { card: overview } = await mount(OVERVIEW, "thu-1000", {
+      config: { children: [OSKAR.child_id] },
+      commands: { "aula_connect/posts": () => POSTS },
+    });
+    expect(texts(overview, ".ov-tile").at(-1)).toBe("1 Nyheder");
+  });
 });
 
 describe("reading the posts", () => {
@@ -160,6 +193,7 @@ describe("reading the posts", () => {
               id: 1,
               time: "2026-10-29T08:00:00+01:00",
               groups: ["3.B", 7],
+              children: [1001, "1002", 1.5],
               attachments: [
                 { name: "a.pdf" },
                 { url: "x" },
@@ -190,6 +224,7 @@ describe("reading the posts", () => {
           { name: "a.pdf", url: null, thumbnail: null, media: false },
           { name: "b.jpg", url: "u", thumbnail: "t", media: true },
         ],
+        children: [1001],
       },
     ]);
   });
@@ -197,7 +232,18 @@ describe("reading the posts", () => {
   it("leaves out a post whose time is no time", () => {
     const post = { ...POSTS.posts[0], time: "soon" } as Post;
     expect(
-      newsView([{ data: [post], error: undefined, loading: false }], "Europe/Copenhagen").items,
+      newsView([{ data: [post], error: undefined, loading: false }], "Europe/Copenhagen", [IDA])
+        .items,
     ).toEqual([]);
+  });
+
+  it("takes a post that names no child as for every child", () => {
+    const post: Post = { ...present(POSTS.posts[2]), children: [] };
+    const [item] = newsView(
+      [{ data: [post], error: undefined, loading: false }],
+      "Europe/Copenhagen",
+      [IDA, OSKAR],
+    ).items;
+    expect(item?.children).toEqual([IDA, OSKAR]);
   });
 });

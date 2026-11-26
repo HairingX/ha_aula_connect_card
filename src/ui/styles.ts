@@ -1865,6 +1865,8 @@ export const family = css`
     height: var(--aula-face, calc(40px * var(--aula-scale)));
     border-radius: 50%;
     object-fit: cover;
+    /* As Aula shows a child's picture: an upright school photo has the face near its top. */
+    object-position: 50% 4%;
     background: var(--aula-fill-strong);
     font-size: calc(var(--aula-face, calc(40px * var(--aula-scale))) * 0.4);
     font-weight: var(--aula-bold);
@@ -3102,6 +3104,9 @@ export const family = css`
     white-space: nowrap;
   }
   .news-by {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-2);
     color: var(--aula-text-2);
     font-size: var(--aula-font-s);
   }
@@ -3402,5 +3407,32 @@ export const family = css`
   }
   .hours-closed-icon {
     color: var(--aula-text-2);
+  }
+  /* Where a list of days goes into another week: a thin line in the accent, the week's number at
+     its start. The row or section after it needs no line of its own. */
+  .week-break {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-2);
+    margin: var(--aula-space-2) 0 0;
+    padding: 0;
+    color: var(--aula-accent);
+    font-size: var(--aula-font-s);
+    font-weight: var(--aula-medium);
+    list-style: none;
+  }
+  .week-break::after {
+    flex: 1;
+    border-top: 2px solid var(--aula-accent);
+    content: "";
+  }
+  /* The lists draw a line between their rows; ":not(.x)" outranks it. */
+  li.week-break:not(.x),
+  .week-break + li:not(.x),
+  .week-break + .detail-section {
+    border-top: 0;
+  }
+  .week-break + .detail-section {
+    padding-top: var(--aula-space-2);
   }
 `;
