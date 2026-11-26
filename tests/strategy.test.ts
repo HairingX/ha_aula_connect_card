@@ -8,6 +8,7 @@ import {
   dashboard,
   registerStrategies,
 } from "../src/strategy.ts";
+import { AulaConnectDashboardEditor } from "../src/ui/dashboard-editor.ts";
 import { CHILDREN } from "./fixtures/week.ts";
 import { fakeHass } from "./fake-hass.ts";
 
@@ -76,6 +77,71 @@ describe("the dashboard", () => {
     ]);
     expect(generated.views[1]?.title).toBe("Important");
     expect(dashboard({ sick: false }, "da").views[0]?.sections[1]?.cards).toHaveLength(2);
+  });
+});
+
+describe("the dashboard's settings", () => {
+  it("gives each card the settings it has, and only those", () => {
+    const packing = [{ subject: "Idræt", items: ["Idrætstaske"] }];
+    const people = [{ child: "1001", person: "person.ida" }];
+    const generated = dashboard(
+      {
+        children: [1001],
+        packing,
+        people,
+        switch_time: "15:00",
+        sick_message: "{name} er syg.",
+        sender: "Lise",
+        pack_icons: { idrætstaske: "mdi:bag-personal" },
+        size: "large",
+      },
+      "da",
+    );
+    const types = (type: string): Record<string, unknown>[] =>
+      generated.views
+        .flatMap((view) => view.sections.flatMap((section) => section.cards))
+        .filter((item) => item.type === `custom:${type}`)
+        .map((item) => ({ ...item }));
+    expect(types("aula-connect-overview-card")).toEqual([
+      {
+        type: "custom:aula-connect-overview-card",
+        children: [1001],
+        switch_time: "15:00",
+        packing,
+        pack_icons: { idrætstaske: "mdi:bag-personal" },
+        sick_message: "{name} er syg.",
+        sender: "Lise",
+      },
+    ]);
+    expect(types("aula-connect-week-card")).toEqual([
+      { type: "custom:aula-connect-week-card", children: [1001], switch_time: "15:00", packing },
+    ]);
+    expect(types("aula-connect-sick-card")).toEqual([
+      {
+        type: "custom:aula-connect-sick-card",
+        children: [1001],
+        sick_message: "{name} er syg.",
+        sender: "Lise",
+      },
+    ]);
+    expect(types("aula-connect-vacation-card")).toEqual([
+      { type: "custom:aula-connect-vacation-card", children: [1001], sender: "Lise" },
+    ]);
+    expect(types("aula-connect-children-card")[0]).toEqual({
+      type: "custom:aula-connect-children-card",
+      children: [1001],
+      people,
+    });
+    expect(types("aula-connect-children-card")[1]).toMatchObject({ people, look_switch: false });
+  });
+
+  it("is edited in Home Assistant's own form, and suggests its title and icon", () => {
+    const editor = AulaConnectStrategy.getConfigElement();
+    expect(editor).toBeInstanceOf(AulaConnectDashboardEditor);
+    expect(AulaConnectStrategy.getCreateSuggestions()).toEqual({
+      title: "Aula",
+      icon: "mdi:school-outline",
+    });
   });
 });
 

@@ -195,7 +195,12 @@ above the children.
 The **Aula Connect** dashboard is made from the cards: a sections view with the children's bar
 and the overview, and beside them the sick card, the vacation requests and the vacations; under
 it the overview's pages as subviews, each under the children's bar: **Vigtigt**, **Ugeplan** and
-**Uge**. Make a new dashboard, open its raw configuration, and write:
+**Uge**. Make a new dashboard and choose **Aula Connect**; **Rediger betjeningspanel** in its
+menu opens its settings in Home Assistant's own form, as the cards' editors do. The settings are
+set once for the whole dashboard and given to every card that has them: the children, whether it
+has the sick card and the vacations, the [things to bring](#things-to-bring), the
+[subject names](#subject-names), when the next school day takes over (`switch_time`), the people
+standing in for children, the message about an illness and the guardian to act as. In YAML:
 
 ```yaml
 strategy:
@@ -203,10 +208,15 @@ strategy:
   children: [1001, 1002] # every child when left out
   sick: true # false leaves the sick card out
   vacation: true # false leaves the vacation requests and the vacations out
+  packing:
+    - subject: Idræt
+      items: [Idrætstøj, Idrætstaske]
+  pack_icons: # YAML only, as in the overview
+    idrætstaske: mdi:bag-personal-outline
 ```
 
 The dashboard is made anew each time it is opened, so it follows the cards' later versions. To
-change it beyond these options, take control of it in the dashboard's menu: Home Assistant writes
+change it beyond its settings, take control of it in the dashboard's menu: Home Assistant writes
 out what it made, to be edited as any dashboard.
 
 ### A child's section

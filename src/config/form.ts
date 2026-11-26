@@ -93,6 +93,8 @@ const LABELS: Readonly<Record<string, TextKey>> = {
   look_switch: "editorLookSwitch",
   sick_message: "editorSickMessage",
   sender: "editorSender",
+  sick: "editorDashboardSick",
+  vacation: "editorDashboardVacation",
 };
 
 const HELPERS: Readonly<Record<string, TextKey>> = {
@@ -137,7 +139,9 @@ export type FieldName =
   | "look"
   | "look_switch"
   | "sick_message"
-  | "sender";
+  | "sender"
+  | "sick"
+  | "vacation";
 
 function fields(t: Translate): Record<FieldName, FormSchema> {
   const children = knownChildren();
@@ -334,6 +338,8 @@ function fields(t: Translate): Record<FieldName, FormSchema> {
       },
     },
     look_switch: { name: "look_switch", default: true, selector: { boolean: {} } },
+    sick: { name: "sick", default: true, selector: { boolean: {} } },
+    vacation: { name: "vacation", default: true, selector: { boolean: {} } },
     sick_message: { name: "sick_message", selector: { text: { multiline: true } } },
     sender: {
       name: "sender",

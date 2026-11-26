@@ -492,6 +492,8 @@ const TEXTS = {
     "{name} er barnets fornavn. Tomt felt: standardbeskeden.",
   ],
   editorSender: ["Send as", "Send som"],
+  editorDashboardSick: ["Reporting sick", "Sygemelding"],
+  editorDashboardVacation: ["Vacations and vacation requests", "Ferie og ferieanmodninger"],
   editorSenderHelper: [
     "The guardian Aula is told it is from, where both have Aula Connect. Empty: the one used last.",
     "Den forælder, Aula får besked fra, hvor I begge har Aula Connect. Tomt felt: den sidst brugte.",

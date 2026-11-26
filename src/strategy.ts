@@ -22,9 +22,14 @@ import {
 import { WEEK_CARD } from "./config/week.ts";
 import { WEEKPLAN_CARD } from "./config/weekplan.ts";
 import { DOCUMENTATION } from "./cards/register.ts";
+import { sharedWith } from "./config/dashboard.ts";
+import { AulaConnectDashboardEditor, DASHBOARD_EDITOR } from "./ui/dashboard-editor.ts";
 
 /** The dashboard strategy's name, after `custom:`. */
 export const DASHBOARD_STRATEGY = "aula-connect";
+
+/** The dashboard's icon. */
+const ICON = "mdi:school-outline";
 
 /** The child's section strategy's name, after `custom:`. */
 export const CHILD_STRATEGY = "aula-connect-child";
@@ -60,17 +65,24 @@ export interface ViewConfig {
   readonly sections: readonly SectionConfig[];
 }
 
-/** What the dashboard strategy is configured with. */
+/** What the dashboard strategy is configured with: its parts, and the cards' shared settings. */
 interface DashboardOptions {
   readonly children?: unknown;
   readonly sick?: unknown;
   readonly vacation?: unknown;
+  readonly [shared: string]: unknown;
 }
 
-function card(type: string, children: unknown, extra: CardConfig = {}): CardConfig {
+function card(
+  type: string,
+  children: unknown,
+  extra: CardConfig = {},
+  shared: unknown = {},
+): CardConfig {
   return {
     type: `custom:${type}`,
     ...(Array.isArray(children) && children.length > 0 ? { children } : {}),
+    ...sharedWith(type, shared),
     ...extra,
   };
 }
@@ -89,7 +101,8 @@ function page(title: string, path: string, icon: string, cards: readonly CardCon
 
 /**
  * Builds the dashboard: the overview's view, with the children's bar over it and the cards that
- * act beside it, unless `sick` or `vacation` is false; and its pages, each under the bar.
+ * act beside it, unless `sick` or `vacation` is false; and its pages, each under the bar. Each card
+ * is given the settings of `config` it has.
  */
 export function dashboard(
   config: DashboardOptions,
@@ -97,13 +110,13 @@ export function dashboard(
 ): { title: string; views: ViewConfig[] } {
   const t = translator(language);
   const { children } = config;
+  const of = (type: string, extra: CardConfig = {}): CardConfig =>
+    card(type, children, extra, config);
   const bar = (looks: boolean): CardConfig =>
-    card(CHILDREN_CARD, children, looks ? {} : { look_switch: false });
+    of(CHILDREN_CARD, looks ? {} : { look_switch: false });
   const acting = [
-    ...(config.sick === false ? [] : [card(SICK_CARD, children)]),
-    ...(config.vacation === false
-      ? []
-      : [card(VACATION_REQUESTS_CARD, children), card(VACATION_CARD, children)]),
+    ...(config.sick === false ? [] : [of(SICK_CARD)]),
+    ...(config.vacation === false ? [] : [of(VACATION_REQUESTS_CARD), of(VACATION_CARD)]),
   ];
   return {
     title: "Aula",
@@ -111,26 +124,23 @@ export function dashboard(
       {
         title: "Aula",
         path: "aula",
-        icon: "mdi:school-outline",
+        icon: ICON,
         type: "sections",
         max_columns: 3,
         sections: [
-          { type: "grid", column_span: 2, cards: [bar(true), card(OVERVIEW_CARD, children)] },
+          { type: "grid", column_span: 2, cards: [bar(true), of(OVERVIEW_CARD)] },
           ...(acting.length > 0 ? [{ type: "grid" as const, cards: acting }] : []),
         ],
       },
       page(t("navImportant"), DEFAULT_PATHS.important, "mdi:flag-outline", [
         bar(false),
-        card(IMPORTANT_CARD, children),
+        of(IMPORTANT_CARD),
       ]),
       page(t("navWeekPlan"), DEFAULT_PATHS.weekplan, "mdi:calendar-text-outline", [
         bar(false),
-        card(WEEKPLAN_CARD, children),
+        of(WEEKPLAN_CARD),
       ]),
-      page(t("navWeek"), DEFAULT_PATHS.week, "mdi:calendar-week", [
-        bar(false),
-        card(WEEK_CARD, children),
-      ]),
+      page(t("navWeek"), DEFAULT_PATHS.week, "mdi:calendar-week", [bar(false), of(WEEK_CARD)]),
     ],
   };
 }
@@ -161,6 +171,16 @@ export async function childSection(
 
 /** The dashboard strategy's element: Home Assistant asks its class for the dashboard. */
 export class AulaConnectStrategy extends HTMLElement {
+  /** Returns the visual editor of the dashboard's configuration. */
+  static getConfigElement(): HTMLElement {
+    return document.createElement(DASHBOARD_EDITOR);
+  }
+
+  /** Suggests the new dashboard's title and icon. */
+  static getCreateSuggestions(): { title: string; icon: string } {
+    return { title: "Aula", icon: ICON };
+  }
+
   /** Builds the dashboard. */
   static generate(
     config: DashboardOptions,
@@ -210,6 +230,7 @@ export function registerStrategies(): boolean {
   if (customElements.get(tag)) return false;
   customElements.define(tag, AulaConnectStrategy);
   customElements.define(`ll-strategy-section-${CHILD_STRATEGY}`, AulaConnectChildStrategy);
+  customElements.define(DASHBOARD_EDITOR, AulaConnectDashboardEditor);
   (window.customStrategies ??= []).push(
     {
       type: DASHBOARD_STRATEGY,
