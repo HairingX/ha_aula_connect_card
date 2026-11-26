@@ -545,7 +545,7 @@ function rows(
       (item, index) =>
         html`<section class="ov-row">
           <div class="ov-top">
-            ${who(item, state)} ${hoursBig(item, ctx)}
+            <div class="ov-ident">${who(item, state)} ${hoursBig(item, ctx)}</div>
             <span class="ov-status"
               ><span class="ov-hours"
                 >${dayLine(item, ctx, view.sameDay !== undefined)}${hoursOf(item, ctx)}</span

@@ -297,8 +297,10 @@ children.
 
 Three looks, chosen in the children's bar or kept with `look`:
 
-- **Rækker** (`rows`): a row per child, its hours and presence on one line; on the wall, the
-  face, the bar and what to bring side by side, with the school hours in large.
+- **Rækker** (`rows`): a row per child: its hours and presence on one line over its bar, and what
+  to bring under it. On a wide screen the face and the name stand at the left, as wide as the
+  longest name, the children's bars lined up beside them, and what is important at the right; on
+  the wall the school hours stand in large under the name.
 - **Kolonner** (`columns`): a column per child, with what is important soon listed.
 - **Tavle** (`board`): large tiles for the children themselves, read from across the room: the
   school hours, from and to, in large under the name; today's subjects in the order of the day,

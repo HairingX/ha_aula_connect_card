@@ -2448,6 +2448,12 @@ export const family = css`
     align-items: center;
     gap: var(--aula-space-2);
   }
+  .ov-ident {
+    display: flex;
+    flex-direction: column;
+    gap: var(--aula-space-2);
+    min-width: 0;
+  }
   /* The hours and the presence share a line, the presence at its end. */
   .ov-status {
     display: flex;
@@ -3041,20 +3047,33 @@ export const family = css`
   }
   /* On a wide screen a child's row has its face, its day's bar, and what to bring side by side. */
   @container aula (min-width: 840px) {
+    /* The children's rows share their columns, so that their bars line up: the face and the name,
+       as wide as the widest; the hours, the bar and what to bring; and what is important. */
+    .look-rows .ov-rows {
+      display: grid;
+      grid-template-columns:
+        fit-content(calc(220px * var(--aula-scale))) minmax(0, 1fr)
+        calc(300px * var(--aula-scale));
+      column-gap: var(--aula-space-6);
+    }
     .look-rows .ov-row {
       display: grid;
-      grid-template-columns: calc(200px * var(--aula-scale)) minmax(0, 1fr) calc(
-          300px * var(--aula-scale)
-        );
+      grid-column: 1 / -1;
+      grid-template-columns: subgrid;
       grid-auto-flow: dense;
-      gap: var(--aula-space-2) var(--aula-space-6);
+      row-gap: var(--aula-space-2);
       align-items: start;
     }
     .look-rows .ov-top {
-      grid-column: 1;
+      display: contents;
+    }
+    .look-rows .ov-top > .ov-ident {
       grid-row: 1 / span 3;
-      flex-direction: column;
-      align-items: flex-start;
+      grid-column: 1;
+    }
+    .look-rows .ov-top > .ov-status {
+      grid-row: 1;
+      grid-column: 2;
     }
     .look-rows .ov-status > .presence {
       margin-inline-start: 0;
@@ -3062,10 +3081,11 @@ export const family = css`
     .look-rows .ov-top .face {
       --aula-face: calc(48px * var(--aula-scale));
     }
-    .look-rows .ov-row > :not(.ov-top, .ov-pack, .ov-important) {
+    .look-rows .ov-row > :not(.ov-top, .ov-important, .ov-important-full) {
       grid-column: 2;
     }
-    .look-rows .ov-row > :is(.ov-pack, .ov-important) {
+    .look-rows .ov-row > :is(.ov-important, .ov-important-full) {
+      grid-row: 1 / span 4;
       grid-column: 3;
     }
     .ov-nav {
