@@ -31,9 +31,10 @@ function blocks(file: string): Map<string, string> {
   );
 }
 
-/** Returns the declarations of a block's first `html { ... }` rule. */
+/** Returns the declarations of a block's first `html { ... }` rule, without a comment holding a link. */
 function body(css: string | undefined): string {
-  return /html\s*\{([\s\S]*?)\n {2}\}/.exec(css ?? "")?.[1] ?? "";
+  const found = /html\s*\{([\s\S]*?)\n {2}\}/.exec(css ?? "")?.[1] ?? "";
+  return found.replace(/^[ \t]*\/\*[^*]*https?:\/\/[^*]*\*\/[ \t]*\n/gm, "");
 }
 
 const core = blocks("core.globals.ts").get("coreStyles");

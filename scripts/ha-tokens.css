@@ -604,7 +604,6 @@
     --markdown-code-background-color: var(--primary-background-color);
     --bar-box-shadow: 0 2px 12px var(--shadow-color);
 
-    /* https://github.com/material-components/material-web/blob/master/docs/theming.md */
     --mdc-theme-primary: var(--primary-color);
     --mdc-theme-secondary: var(--accent-color);
     --mdc-theme-background: var(--primary-background-color);
