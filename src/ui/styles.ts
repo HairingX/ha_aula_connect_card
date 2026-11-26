@@ -295,6 +295,12 @@ export const base = css`
     white-space: normal;
     overflow-wrap: anywhere;
   }
+  /* A note's subject in its colour, as on the day's bar; the theme's own where it has none. */
+  .label.subject {
+    background: var(--subject, var(--aula-fill-muted));
+    color: lch(from var(--subject) calc((49.4 - l) * 1e9) 0 0);
+    font-weight: var(--aula-bold);
+  }
   .label.warning {
     background: var(--aula-warning-fill);
   }
@@ -2801,23 +2807,54 @@ export const family = css`
     color: var(--aula-text-2);
     font-size: var(--aula-font-l);
   }
+  /* What is important stands apart from the children's tiles: a heading marked in the colour of
+     what needs the family, and each note a card in its subject's colour. */
   .ov-important-full {
     display: flex;
     flex-direction: column;
     gap: var(--aula-space-2);
-    padding: var(--aula-space-3);
-    border-radius: var(--aula-radius);
-    background: var(--aula-fill-muted);
   }
   .ov-important-head {
     display: flex;
     align-items: center;
     gap: var(--aula-space-2);
     margin: 0;
-    font-size: var(--aula-font-m);
+    font-size: var(--aula-font-l);
     font-weight: var(--aula-bold);
   }
-  .ov-important-more {
+  .ov-important-mark {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: calc(32px * var(--aula-scale));
+    height: calc(32px * var(--aula-scale));
+    border-radius: 50%;
+    background: var(--aula-warning);
+    color: lch(from var(--aula-warning) calc((49.4 - l) * 1e9) 0 0);
+    --mdc-icon-size: calc(18px * var(--aula-scale));
+  }
+  .ov-important-mark ha-icon {
+    color: inherit;
+  }
+  .ov-important-count {
+    display: grid;
+    place-items: center;
+    min-width: calc(26px * var(--aula-scale));
+    height: calc(26px * var(--aula-scale));
+    padding: 0 var(--aula-space-2);
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: var(--aula-warning-fill);
+    font-size: var(--aula-font-s);
+  }
+  .note-due > li.due {
+    padding: var(--aula-space-3) var(--aula-space-3) var(--aula-space-3) var(--aula-space-4);
+    border-inline-start: calc(5px * var(--aula-scale)) solid var(--subject, var(--aula-line));
+    border-radius: var(--aula-radius);
+    background: color-mix(in srgb, var(--subject, var(--aula-text-2)) 14%, var(--aula-surface));
+  }
+  .ov-important-more,
+  .ov-important-unfold {
     align-self: flex-start;
   }
   .board-important {

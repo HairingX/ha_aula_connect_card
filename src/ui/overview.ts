@@ -35,7 +35,7 @@ import type {
   PresenceView,
 } from "../model/overview.ts";
 import { subjectKey, type SubjectLabel } from "../model/subjects.ts";
-import { renderDayBar, subjectColor, type BarAxis } from "./blocks.ts";
+import { renderDayBar, subjectColor, subjectLabel, type BarAxis } from "./blocks.ts";
 import type { CardState } from "./card.ts";
 import { schoolClock } from "./clock.ts";
 import {
@@ -45,7 +45,6 @@ import {
   faceImage,
   factStack,
   icon,
-  label,
   minis,
   names,
   segments,
@@ -299,10 +298,11 @@ function packChips(
   </p>`;
 }
 
+// A note is a card in its subject's colour, its subject named first.
 function dueItem(due: ImportantDue, ctx: ViewContext): TemplateResult {
-  return html`<li>
+  return html`<li class="due" style=${due.note.subject ? subjectColor(due.note.subject) : ""}>
     <span class="note-head"
-      >${due.note.subject ? label(aula(due.note.subject.name, ctx), "subject") : nothing}
+      >${due.note.subject ? subjectLabel(due.note.subject, ctx) : nothing}
       ${due.note.title ? html`<span class="note-title">${aula(due.note.title, ctx)}</span>` : nothing}</span
     >
     ${due.note.text ? html`<p class="note-text">${aula(due.note.text, ctx)}</p>` : nothing}
@@ -333,9 +333,9 @@ function importantFull(
   const hidden = day.length - look.max;
   return html`<section class="ov-important-full">
     <h4 class="ov-important-head">
-      ${icon("mdi:flag-outline")}<span
-        >${ctx.t("importantOn", { when: whenText(first.day, ctx) })}</span
-      >
+      <span class="ov-important-mark">${icon("mdi:flag")}</span
+      ><span>${ctx.t("importantOn", { when: whenText(first.day, ctx) })}</span>
+      <span class="ov-important-count">${day.length}</span>
     </h4>
     <ul class="note-due">
       ${(open ? day : day.slice(0, look.max)).map((due) => dueItem(due, ctx))}

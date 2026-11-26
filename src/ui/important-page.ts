@@ -17,8 +17,9 @@ import {
   formatWeekday,
 } from "../core/dates.ts";
 import type { ImportantItem, ImportantPageView } from "../model/important-page.ts";
+import { subjectLabel } from "./blocks.ts";
 import type { CardState } from "./card.ts";
-import { apiError, aula, faceImage, icon, label, loading, names } from "./primitives.ts";
+import { apiError, aula, faceImage, icon, loading, names } from "./primitives.ts";
 
 /** What the Important page's template asks the element besides what is open: the week shown. */
 export interface ImportantBrowser extends CardState {
@@ -34,7 +35,7 @@ function item(entry: ImportantItem, ctx: ViewContext, state: CardState): Templat
     <span class="note-entry-text">
       <span class="note-head"
         ><span class="note-who">${face.name}</span>
-        ${note.subject ? label(aula(note.subject.name, ctx), "subject") : nothing}
+        ${note.subject ? subjectLabel(note.subject, ctx) : nothing}
         ${note.title ? html`<span class="note-title">${aula(note.title, ctx)}</span>` : nothing}</span
       >
       ${note.text ? html`<span class="note-text">${aula(note.text, ctx)}</span>` : nothing}

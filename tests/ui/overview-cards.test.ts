@@ -418,7 +418,14 @@ describe("the overview", () => {
       today: todayOf,
       config: { rows: { important: "full" } },
     });
-    expect(texts(card, ".ov-important-head")).toEqual(["Vigtigt til i dag", "Vigtigt til mandag"]);
+    expect(texts(card, ".ov-important-head")).toEqual([
+      "Vigtigt til i dag 1",
+      "Vigtigt til mandag 1",
+    ]);
+    expect(all(card, ".due .label.subject").map((chip) => chip.getAttribute("style"))).toEqual([
+      "--subject: #e57373",
+      "--subject: #64b5f6",
+    ]);
     expect(texts(card, ".ov-important-full .note-text")[0]).toBe(
       "Lektie til i dag: Læsebogen s. 38+39",
     );
@@ -427,7 +434,10 @@ describe("the overview", () => {
     expect(windowText(card)).toContain("Vigtigt for Ida");
     setLook("board");
     await settled(card);
-    expect(texts(card, ".ov-important-head")).toEqual(["Vigtigt til i dag", "Vigtigt til mandag"]);
+    expect(texts(card, ".ov-important-head")).toEqual([
+      "Vigtigt til i dag 1",
+      "Vigtigt til mandag 1",
+    ]);
     expect(all(card, ".board-important")).toEqual([]);
   });
 

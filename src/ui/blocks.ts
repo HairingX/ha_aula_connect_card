@@ -100,7 +100,7 @@ function importantItems(notes: readonly NoteView[], ctx: ViewContext): unknown {
         ${
           note.subject || note.title
             ? html`<div class="note-head">
-                ${note.subject ? label(aula(note.subject.name, ctx), "subject") : nothing}
+                ${note.subject ? subjectLabel(note.subject, ctx) : nothing}
                 ${note.title ? html`<span class="note-title">${aula(note.title, ctx)}</span>` : nothing}
               </div>`
             : nothing
@@ -231,6 +231,13 @@ function subjectName(row: LessonRow, ctx: ViewContext): TemplateResult {
 /** The style that gives a subject's colour. */
 export function subjectColor(subject: SubjectLabel): string {
   return subject.color ? `--subject: ${subject.color}` : "";
+}
+
+/** Shows a note's subject as a label in the subject's colour, as its part of the day's bar. */
+export function subjectLabel(subject: SubjectLabel, ctx: ViewContext): TemplateResult {
+  return html`<span class="label subject" style=${subjectColor(subject)}
+    >${aula(subject.name, ctx)}</span
+  >`;
 }
 
 /**
