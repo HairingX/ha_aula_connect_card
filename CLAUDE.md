@@ -62,8 +62,8 @@ how it is set up: the README.
     `posts`, each with `id`, `title`, `html`, `time`, `new` (written after the guardian last saw
     the posts in Aula), `important` with `important_from` and `important_to`, `author`,
     `institution`, `groups`, `comments`, `attachments` (`name`, `url`, `thumbnail`, `media`) and
-    `children`, the ids of the children it is for, as Aula's filter of one child finds it; a post
-    that names none is for every child. It only reads: a post is never marked seen.
+    `children`, the ids of the children Aula relates it to; a post that names none is for every
+    child. It only reads: a post is never marked seen.
   - `aula_connect/opening_hours` with `entry_id`, `child_id`, `start` and `end` (both included, at
     most 62 days apart) answers with the child's institution's `closed_days` (`name`, `start`,
     `end`, both included) and its `days` from `start` to `end` (`date`, `closed`, and `open` and

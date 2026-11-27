@@ -368,7 +368,7 @@ without a touch.
 logins the children the bar shows are read through: each post's day, title, first words and
 author, **Ny** on a post written after you last saw the posts in Aula, and **Vigtigt** on one
 marked important. Where the card shows more than one child, each post shows the faces and names
-of the children it is for, as Aula's own filter of the children finds it; a child hidden in the
+of the children Aula relates it to; a child hidden in the
 children's bar hides the posts for it alone. A post two guardians both get is shown once. A tap opens the post whole: its
 text, when it is important until, its files, which open in Aula's own storage, and the groups it
 is shared with. The posts are read when the card is shown, and each quarter of an hour; nothing is
