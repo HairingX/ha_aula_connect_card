@@ -48,6 +48,7 @@ const OFF: Readonly<Record<Change, TextKey>> = {
   vacations: "vacationsOff",
   vacation_requests: "vacationRequestsOff",
   messages: "messagesOff",
+  mark_seen: "markSeenOff",
 };
 
 /** Shows, in one line, that a change in Aula is turned off in Aula Connect's options. */

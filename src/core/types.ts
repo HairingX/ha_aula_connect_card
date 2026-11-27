@@ -82,11 +82,18 @@ export interface HassEntity {
 }
 
 /** The changes in Aula an entry of Aula Connect can allow, each off until its options allow it. */
-export const CHANGES = ["sick_reports", "vacations", "vacation_requests", "messages"] as const;
+export const CHANGES = [
+  "sick_reports",
+  "vacations",
+  "vacation_requests",
+  "messages",
+  "mark_seen",
+] as const;
 
 /**
  * A change in Aula: reporting a child sick and taking it back, registering and deleting a
- * vacation, answering a vacation request, or writing in a thread about a child.
+ * vacation, answering a vacation request, writing in a thread about a child, or telling Aula a
+ * post has been seen.
  */
 export type Change = (typeof CHANGES)[number];
 

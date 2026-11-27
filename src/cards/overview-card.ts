@@ -28,7 +28,7 @@ import {
   type ChildReads,
 } from "../model/absence.ts";
 import type { Hold } from "../model/child.ts";
-import { senderOf } from "../model/family.ts";
+import { loginsOf, senderOf } from "../model/family.ts";
 import { newsView, type NewsView } from "../model/news.ts";
 import { AHEAD_DAYS, overviewView, type OverviewView } from "../model/overview.ts";
 import { AulaCard, stub } from "../ui/card.ts";
@@ -99,12 +99,12 @@ export class AulaConnectOverviewCard extends AulaCard<OverviewConfig, OverviewVi
 
   // A login's posts are read each quarter of an hour while the overview is shown.
   #news(view: OverviewView, ctx: ViewContext): NewsView {
-    const entries = [
-      ...new Set(view.children.flatMap((item) => item.entries.map((entry) => entry.entry_id))),
-    ];
     const quarter = `${ctx.today}|${String(Math.floor(ctx.minute / 15))}`;
     return newsView(
-      entries.map((entry) => this.#posts.get(entry, quarter, () => fetchPosts(this.callWS, entry))),
+      loginsOf(view.children).map((entry) => ({
+        entry,
+        ...this.#posts.get(entry.entry_id, quarter, () => fetchPosts(this.callWS, entry.entry_id)),
+      })),
       ctx.zone,
       view.children.map((item) => item.child),
     );

@@ -21,6 +21,8 @@ export interface NewsItem {
   readonly at: Date;
   /** Whether a guardian has not seen it in Aula yet. */
   readonly fresh: boolean;
+  /** The logins it is new to, each as one of its children. */
+  readonly from: readonly Child[];
   /** The children shown it is for. */
   readonly children: readonly Child[];
 }
@@ -41,6 +43,8 @@ export interface NewsView {
 
 /** What came of one login's posts. */
 export interface PostsLoad {
+  /** The login, as one of its children. */
+  readonly entry: Child;
   /** The posts that came; undefined until some have. */
   readonly data: readonly Post[] | undefined;
   /** Why the last request failed. */
@@ -77,6 +81,7 @@ export function newsView(
         day: dayOf(at, zone),
         at,
         fresh: post.new || (known?.fresh ?? false),
+        from: [...(known?.from ?? []), ...(post.new ? [load.entry] : [])],
         children,
       });
     }

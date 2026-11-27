@@ -45,9 +45,13 @@ export interface ChildVacations {
 }
 
 /** What a window that changes the vacations has come to. */
-interface Step {
+/** A step of a window that acts in Aula: on its way, failed, or done. */
+export interface Step {
+  /** Whether it is on its way. */
   busy: boolean;
+  /** Why it failed, the last time. */
   error: unknown;
+  /** Whether it is done. */
   done: boolean;
 }
 
@@ -59,7 +63,13 @@ interface Draft extends Step {
   comment: string;
 }
 
-function run(state: CardState, step: Step, action: () => Promise<void>, done: () => void): void {
+/** Does `action` once for `step`, showing it on its way, failed or done; `done` is called once it is. */
+export function run(
+  state: CardState,
+  step: Step,
+  action: () => Promise<void>,
+  done: () => void,
+): void {
   step.busy = true;
   step.error = undefined;
   state.requestUpdate();

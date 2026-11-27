@@ -22,6 +22,7 @@ export const EVERY_CHANGE: readonly Change[] = [
   "vacations",
   "vacation_requests",
   "messages",
+  "mark_seen",
 ];
 
 /** Two made-up children at a made-up school. */

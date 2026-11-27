@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import "../../src/index.ts";
 import { AulaConnectNewsCard } from "../../src/cards/news-card.ts";
-import { fetchPosts } from "../../src/core/api.ts";
+import { fetchPosts, markPostSeen } from "../../src/core/api.ts";
 import { forget } from "../../src/core/memory.ts";
 import { reloadSelection } from "../../src/core/selection.ts";
 import type { Post } from "../../src/core/types.ts";
@@ -183,6 +183,68 @@ describe("the news feed", () => {
   });
 });
 
+describe("marking a post read", () => {
+  it("tells Aula once, on a tap, through each login the post is new to, and reads the posts again", async () => {
+    const posts = vi.fn(() => POSTS);
+    const seen = vi.fn(() => ({ marked: 1 }));
+    const { card, hass } = await mount(NEWS, "thu-1000", {
+      commands: { "aula_connect/posts": posts, "aula_connect/post/seen": seen },
+    });
+    await tap(card, '[data-detail="post|9001"]');
+    expect(windowText(card)).toContain("Aula får besked om, at du har set opslaget");
+    expect(seen).not.toHaveBeenCalled();
+    await tap(card, "dialog .window-actions .filled-button");
+    await settled(card);
+    expect(seen).toHaveBeenCalledTimes(1);
+    expect(
+      hass.callWS.mock.calls.filter(([message]) => message.type === "aula_connect/post/seen"),
+    ).toEqual([[{ type: "aula_connect/post/seen", entry_id: IDA.entry_id, post_id: 9001 }]]);
+    expect(windowText(card)).toContain("Markeret som læst i Aula");
+    expect(all(card, "dialog .window-actions .filled-button")).toEqual([]);
+    expect(posts.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it("offers nothing for a post that is not new, and says where the options turn it off", async () => {
+    const { card } = await mount(NEWS, "thu-1000", {
+      commands: { "aula_connect/posts": () => POSTS },
+    });
+    await tap(card, '[data-detail="post|9003"]');
+    expect(windowText(card)).not.toContain("Markér som læst");
+    expect(all(card, "dialog .window-note")).toEqual([]);
+    unmountAll();
+    const { card: off } = await mount(NEWS, "thu-1000", {
+      children: [
+        { ...IDA, allowed: [] },
+        { ...OSKAR, allowed: [] },
+      ],
+      commands: { "aula_connect/posts": () => POSTS },
+    });
+    await tap(off, '[data-detail="post|9001"]');
+    expect(windowText(off)).toContain("Markering af nyheder som set er slået fra");
+    expect(all(off, "dialog .filled-button")).toEqual([]);
+  });
+
+  it("says Aula may or may not have it where marking failed, and lets it be tried again", async () => {
+    const seen = vi.fn(() => {
+      throw wsError("home_assistant_error", "Aula could not be reached");
+    });
+    const { card } = await mount(NEWS, "thu-1000", {
+      commands: { "aula_connect/posts": () => POSTS, "aula_connect/post/seen": seen },
+    });
+    await tap(card, '[data-detail="post|9001"]');
+    await tap(card, "dialog .window-actions .filled-button");
+    await settled(card);
+    expect(all(card, "dialog .alert")).toHaveLength(1);
+    expect(all(card, "dialog .window-actions .filled-button")).toHaveLength(1);
+    expect(seen).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads how many were marked as a count", async () => {
+    await expect(markPostSeen(() => Promise.resolve({ marked: 2 }), "entry-a", 1)).resolves.toBe(2);
+    await expect(markPostSeen(() => Promise.resolve(null), "entry-a", 1)).resolves.toBe(0);
+  });
+});
+
 describe("reading the posts", () => {
   it("takes a post only with an id and a time, and its fields only with their types", async () => {
     const posts = await fetchPosts(
@@ -232,15 +294,18 @@ describe("reading the posts", () => {
   it("leaves out a post whose time is no time", () => {
     const post = { ...POSTS.posts[0], time: "soon" } as Post;
     expect(
-      newsView([{ data: [post], error: undefined, loading: false }], "Europe/Copenhagen", [IDA])
-        .items,
+      newsView(
+        [{ entry: IDA, data: [post], error: undefined, loading: false }],
+        "Europe/Copenhagen",
+        [IDA],
+      ).items,
     ).toEqual([]);
   });
 
   it("takes a post that names no child as for every child", () => {
     const post: Post = { ...present(POSTS.posts[2]), children: [] };
     const [item] = newsView(
-      [{ data: [post], error: undefined, loading: false }],
+      [{ entry: IDA, data: [post], error: undefined, loading: false }],
       "Europe/Copenhagen",
       [IDA, OSKAR],
     ).items;

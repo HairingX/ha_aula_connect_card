@@ -396,6 +396,23 @@ export async function addVacation(
  *
  * @throws The websocket error.
  */
+/**
+ * Tells Aula a post of an entry's news feed has been seen, so that it is new no more; answers how
+ * many of Aula's notifications of it were marked.
+ *
+ * @throws The websocket error.
+ */
+export async function markPostSeen(
+  callWS: CallWS,
+  entryId: string,
+  postId: number,
+): Promise<number> {
+  return count(
+    fields(await callWS({ type: "aula_connect/post/seen", entry_id: entryId, post_id: postId }))
+      ?.marked,
+  );
+}
+
 export async function deleteVacation(
   callWS: CallWS,
   entryId: string,

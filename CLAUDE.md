@@ -10,10 +10,11 @@ how it is set up: the README.
 
 ## These cards
 
-- The school day, week plan, week, overview, important, news and opening hours cards only show.
-  The sick and Ferie/fri cards, and the overview's presence and request windows, act in Aula only on a tap,
-  each step its own tap, showing what is sent and to whom, with nothing sent unseen; nothing is
-  ever marked read. What is opened closes again by itself.
+- The school day, week plan, week, overview, important and opening hours cards only show. The
+  sick and Ferie/fri cards, the overview's presence and request windows, and a new post's window
+  act in Aula only on a tap, each step its own tap, showing what is sent and to whom, with nothing
+  sent unseen; a post is marked read only by its own button, never by being shown. What is opened
+  closes again by itself.
 - The dashboard's first page shows only what matters now; what needs the family comes to the
   overview and goes once it is done. Sickness, vacations and vacation requests are Fravær, a
   page of their own, as Aula's Komme/gå has them.
@@ -58,12 +59,14 @@ how it is set up: the README.
     `same_institution`, `sick_today` and `would_send`, with the same errors; the report waits for
     it. `aula_connect/children` also gives each child's `picture_entity` and its entry's
     `guardian`.
-  - `aula_connect/posts` with `entry_id` answers with the login's newest posts: `last_seen` and
-    `posts`, each with `id`, `title`, `html`, `time`, `new` (written after the guardian last saw
-    the posts in Aula), `important` with `important_from` and `important_to`, `author`,
+  - `aula_connect/posts` with `entry_id` answers with the login's newest posts, `posts`, each with
+    `id`, `title`, `html`, `time`, `new` (while Aula has a notification of it, as Aula counts it
+    unread), `important` with `important_from` and `important_to`, `author`,
     `institution`, `groups`, `comments`, `attachments` (`name`, `url`, `thumbnail`, `media`) and
     `children`, the ids of the children Aula relates it to; a post that names none is for every
-    child. It only reads: a post is never marked seen.
+    child. It only reads. `aula_connect/post/seen` with `entry_id` and `post_id` tells Aula the
+    post was seen, where the entry allows `mark_seen`, on a tap, and answers `marked`, how many
+    of Aula's notifications of it went; its errors are those of the other changes.
   - `aula_connect/opening_hours` with `entry_id`, `child_id`, `start` and `end` (both included, at
     most 62 days apart) answers with the child's institution's `closed_days` (`name`, `start`,
     `end`, both included) and its `days` from `start` to `end` (`date`, `closed`, and `open` and

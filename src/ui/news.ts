@@ -7,6 +7,7 @@
 
 import { html, nothing, type TemplateResult } from "lit/html.js";
 
+import { actionErrorText, markPostSeen } from "../core/api.ts";
 import type { ViewContext } from "../core/context.ts";
 import {
   capitalize,
@@ -17,7 +18,19 @@ import {
 } from "../core/dates.ts";
 import type { NewsItem, NewsView } from "../model/news.ts";
 import type { CardState } from "./card.ts";
-import { apiError, aula, icon, label, loading, minis, names, weekBreak } from "./primitives.ts";
+import {
+  alert,
+  apiError,
+  aula,
+  icon,
+  label,
+  loading,
+  minis,
+  names,
+  turnedOff,
+  weekBreak,
+} from "./primitives.ts";
+import { run, type Step } from "./vacation.ts";
 import { head, modal, section } from "./window.ts";
 
 function when(item: NewsItem, ctx: ViewContext): string {
@@ -62,7 +75,56 @@ function byLine(
   >`;
 }
 
-function openPost(item: NewsItem, view: NewsView, state: CardState, key: string): void {
+function seenPart(
+  item: NewsItem,
+  step: Step,
+  state: CardState,
+  ctx: ViewContext,
+  changed: () => void,
+): unknown {
+  if (!item.fresh && !step.done) return nothing;
+  const { t } = ctx;
+  if (step.done) {
+    return html`<p class="done-line">
+      ${icon("mdi:check-circle-outline")}<span>${t("markedSeen")}</span>
+    </p>`;
+  }
+  const logins = item.from.filter((entry) => entry.allowed.includes("mark_seen"));
+  if (logins.length === 0) return turnedOff("mark_seen", t);
+  return html`<p class="window-note">
+      ${icon("mdi:information-outline")}<span>${t("markSeenNote")}</span>
+    </p>
+    ${step.error === undefined ? nothing : alert("error", actionErrorText(step.error, t))}
+    <div class="window-actions">
+      <button
+        class="filled-button"
+        type="button"
+        ?disabled=${step.busy}
+        @click=${() => {
+          run(
+            state,
+            step,
+            async () => {
+              for (const entry of logins)
+                await markPostSeen(state.callWS, entry.entry_id, item.post.id);
+            },
+            changed,
+          );
+        }}
+      >
+        ${icon("mdi:check")}<span>${step.busy ? t("sending") : t("markSeen")}</span>
+      </button>
+    </div>`;
+}
+
+function openPost(
+  item: NewsItem,
+  view: NewsView,
+  state: CardState,
+  key: string,
+  changed: () => void,
+): void {
+  const step: Step = { busy: false, error: undefined, done: false };
   state.openModal(key, (ctx, close) => {
     const { post } = item;
     const at = formatTime(item.at, ctx.language, ctx.zone, ctx.amPm);
@@ -101,18 +163,23 @@ function openPost(item: NewsItem, view: NewsView, state: CardState, key: string)
                 )}
               </ul>`,
         )}
-        ${post.groups.length > 0 ? section(ctx.t("newsGroups"), [], html`<p>${post.groups.join(", ")}</p>`) : nothing}`,
+        ${post.groups.length > 0 ? section(ctx.t("newsGroups"), [], html`<p>${post.groups.join(", ")}</p>`) : nothing}
+        ${seenPart(item, step, state, ctx, changed)}`,
       close,
     );
   });
 }
 
-/** Renders the news feed: at most `max` posts, the newest first. */
+/**
+ * Renders the news feed: at most `max` posts, the newest first; `changed` is called once a post is
+ * marked read.
+ */
 export function renderNews(
   view: NewsView,
   ctx: ViewContext,
   state: CardState,
   max: number,
+  changed: () => void,
 ): TemplateResult {
   const shown = view.items.slice(0, max);
   return html`<section class="news" aria-label=${ctx.t("navNews")}>
@@ -134,7 +201,7 @@ export function renderNews(
               aria-haspopup="dialog"
               data-detail=${key}
               @click=${() => {
-                openPost(item, view, state, key);
+                openPost(item, view, state, key, changed);
               }}
             >
               <span class="news-when">${when(item, ctx)}</span>

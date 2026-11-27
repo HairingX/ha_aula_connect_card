@@ -83,3 +83,12 @@ export function senderOf(
     child
   );
 }
+
+/** Returns the logins the children are read through, each once, as the first of its children. */
+export function loginsOf(children: readonly Pick<FamilyChild, "entries">[]): Child[] {
+  const found = new Map<string, Child>();
+  for (const entry of children.flatMap((item) => item.entries)) {
+    if (!found.has(entry.entry_id)) found.set(entry.entry_id, entry);
+  }
+  return [...found.values()];
+}

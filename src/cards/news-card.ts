@@ -15,7 +15,7 @@ import type { HomeAssistant, Post } from "../core/types.ts";
 import type { CommonConfig } from "../config/common.ts";
 import { familyForm, NEWS_CARD, resolveImportantConfig } from "../config/family.ts";
 import type { ConfigForm } from "../config/form.ts";
-import { familyView, type FamilyView } from "../model/family.ts";
+import { familyView, loginsOf, type FamilyView } from "../model/family.ts";
 import { newsView } from "../model/news.ts";
 import { AulaCard, stub } from "../ui/card.ts";
 import { Loads } from "../ui/loads.ts";
@@ -62,13 +62,11 @@ export class AulaConnectNewsCard extends AulaCard<CommonConfig, FamilyView> {
     _config: CommonConfig,
     ctx: ViewContext,
   ): TemplateResult {
-    const entries = [
-      ...new Set(view.children.flatMap((item) => item.entries.map((entry) => entry.entry_id))),
-    ];
     const quarter = `${ctx.today}|${String(Math.floor(ctx.minute / 15))}`;
-    const loads = entries.map((entry) =>
-      this.#posts.get(entry, quarter, () => fetchPosts(this.callWS, entry)),
-    );
+    const loads = loginsOf(view.children).map((entry) => ({
+      entry,
+      ...this.#posts.get(entry.entry_id, quarter, () => fetchPosts(this.callWS, entry.entry_id)),
+    }));
     return renderNews(
       newsView(
         loads,
@@ -78,6 +76,9 @@ export class AulaConnectNewsCard extends AulaCard<CommonConfig, FamilyView> {
       ctx,
       this,
       MAX_POSTS,
+      () => {
+        this.#posts.refresh();
+      },
     );
   }
 

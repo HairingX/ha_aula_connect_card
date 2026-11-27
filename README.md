@@ -371,8 +371,10 @@ marked important. Where the card shows more than one child, each post shows the 
 of the children Aula relates it to; a child hidden in the
 children's bar hides the posts for it alone. A post two guardians both get is shown once. A tap opens the post whole: its
 text, when it is important until, its files, which open in Aula's own storage, and the groups it
-is shared with. The posts are read when the card is shown, and each quarter of an hour; nothing is
-marked seen. A post's text is shown as plain text, never as markup.
+is shared with. The posts are read when the card is shown, and each quarter of an hour. A post is
+new while Aula counts it unread; its window then has **Markér som læst**, which tells Aula you have
+seen it, as opening it in Aula does, where Aula Connect's options allow marking news seen - else
+the window says it is turned off. Nothing is marked read by being shown. A post's text is shown as plain text, never as markup.
 
 ## Opening hours card
 
@@ -676,7 +678,7 @@ holds the day, each child's hours and what each child is to bring.
   `aula_connect/vacation/add` with an `entry_id`, `child_ids`, `start`, `end` and a `comment`, and
   `aula_connect/vacation/delete` with an `entry_id` and a `vacation_id`, on a tap.
 - `aula_connect/posts` with an `entry_id`, by the news card and the overview, when shown and each
-  quarter of an hour.
+  quarter of an hour; `aula_connect/post/seen` with an `entry_id` and a `post_id`, on a tap.
 - `aula_connect/opening_hours` with a child's `entry_id`, `child_id`, and the `start` and `end` of
   the days asked, both included, by the opening hours card once a day.
 - `aula_connect/vacation_requests` with a child's `entry_id` and `child_id` - by the overview only
@@ -685,8 +687,9 @@ holds the day, each child's hours and what each child is to bring.
 
 ## Privacy
 
-The school day, week plan, week, overview, important, news and opening hours cards only show: they
-change nothing in Aula and mark nothing as read. The sick and Ferie/fri cards, and the overview's presence and
+The school day, week plan, week, overview, important and opening hours cards only show: they
+change nothing in Aula and mark nothing as read. The news card marks a post read only on a tap of
+its button. The sick and Ferie/fri cards, and the overview's presence and
 request windows, act in Aula only on a tap of their buttons, each step its own tap, saying first
 what is sent for whom: a report, a message, an answer, a vacation or its deletion. Everything goes through Home Assistant's own
 connection to Aula Connect, and nothing anywhere else. The children's bar keeps the children it
