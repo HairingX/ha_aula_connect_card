@@ -10,6 +10,7 @@ const BLOCKS = "p, div, li, tr, h1, h2, h3, h4, h5, h6, blockquote, pre, ul, ol,
 export const TEXT_CACHE_SIZE = 500;
 
 const converted = new Map<string, string>();
+const paragraphed = new Map<string, string>();
 
 /**
  * Returns the text of an HTML fragment, with a line break where its blocks and `<br>`s were and
@@ -26,16 +27,43 @@ export function htmlToText(html: string): string {
   return text;
 }
 
-function convert(html: string): string {
-  if (!/[<&]/.test(html)) return tidy(html);
+/**
+ * Returns the text of an HTML fragment as `htmlToText` does, but with an empty line between its
+ * outermost blocks, as Aula shows the paragraphs of a post.
+ */
+export function htmlToParagraphs(html: string): string {
+  let text = paragraphed.get(html);
+  if (text === undefined) {
+    if (paragraphed.size >= TEXT_CACHE_SIZE) paragraphed.clear();
+    text = convert(html, true);
+    paragraphed.set(html, text);
+  }
+  return text;
+}
+
+// Marks where a paragraph ends, apart from a line break inside one.
+const PARAGRAPH = "\u2029";
+
+function convert(html: string, paragraphs = false): string {
+  if (!/[<&]/.test(html)) {
+    return paragraphs ? joined(html.split(/\n[ \t]*\n/)) : tidy(html);
+  }
   const body = new DOMParser().parseFromString(html, "text/html").body;
   for (const br of body.querySelectorAll("br")) br.replaceWith("\n");
   for (const li of body.querySelectorAll("li")) li.prepend("• ");
   for (const block of body.querySelectorAll(BLOCKS)) {
-    block.before("\n");
-    block.after("\n");
+    const gap = paragraphs && block.parentElement === body ? PARAGRAPH : "\n";
+    block.before(gap);
+    block.after(gap);
   }
-  return tidy(body.textContent);
+  return paragraphs ? joined(body.textContent.split(PARAGRAPH)) : tidy(body.textContent);
+}
+
+function joined(paragraphs: readonly string[]): string {
+  return paragraphs
+    .map(tidy)
+    .filter((text) => text !== "")
+    .join("\n\n");
 }
 
 function tidy(text: string): string {

@@ -6,7 +6,7 @@
  */
 
 import { dayOf, instant } from "../core/dates.ts";
-import { htmlToText } from "../core/text.ts";
+import { htmlToParagraphs } from "../core/text.ts";
 import type { Child, Day, Post } from "../core/types.ts";
 
 /** A post as the news feed shows it. */
@@ -77,7 +77,7 @@ export function newsView(
       );
       byId.set(post.id, {
         post,
-        text: htmlToText(post.html),
+        text: htmlToParagraphs(post.html),
         day: dayOf(at, zone),
         at,
         fresh: post.new || (known?.fresh ?? false),

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { glue, htmlToText, initials, TEXT_CACHE_SIZE } from "../../src/core/text.ts";
+import {
+  glue,
+  htmlToParagraphs,
+  htmlToText,
+  initials,
+  TEXT_CACHE_SIZE,
+} from "../../src/core/text.ts";
 
 describe("htmlToText", () => {
   it("keeps plain text as it is, trimmed", () => {
@@ -37,6 +43,24 @@ describe("htmlToText", () => {
 
   it("gives nothing for empty HTML", () => {
     expect(htmlToText("<p></p>")).toBe("");
+  });
+});
+
+describe("htmlToParagraphs", () => {
+  it("keeps an empty line between a post's paragraphs, as Aula shows them, but not inside one", () => {
+    const html =
+      "<div>Kære børn.&nbsp;</div>\n<div>Vi tændte juletræet.</div>\n<p><strong>&nbsp;</strong></p>" +
+      "<ul><li>Sang</li><li>Kakao</li></ul><p>Mvh.<br>Line</p>";
+    expect(htmlToParagraphs(html)).toBe(
+      "Kære børn.\n\nVi tændte juletræet.\n\n• Sang\n• Kakao\n\nMvh.\nLine",
+    );
+    expect(htmlToText(html)).toBe("Kære børn.\nVi tændte juletræet.\n• Sang\n• Kakao\nMvh.\nLine");
+  });
+
+  it("keeps a plain text's paragraphs, one empty line at most, and converts each text once", () => {
+    expect(htmlToParagraphs("En\n\n\n\nTo")).toBe("En\n\nTo");
+    for (let n = 0; n <= TEXT_CACHE_SIZE; n += 1) htmlToParagraphs(`<p>${String(n)}</p>`);
+    expect(htmlToParagraphs("<p>0</p>")).toBe("0");
   });
 });
 
