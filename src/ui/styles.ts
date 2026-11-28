@@ -2958,15 +2958,63 @@ export const family = css`
   .ov-important-lines {
     display: flex;
     flex-direction: column;
+    gap: var(--aula-space-2);
+  }
+  /* A line runs down from the flag through the first day's notes; a later day has a dot on a
+     quiet line. The line sits under the flag's middle. */
+  .ov-due-day,
+  .due-day {
+    position: relative;
+    display: flex;
+    flex-direction: column;
     gap: var(--aula-space-1);
+    padding-inline-start: calc(44px * var(--aula-scale));
+  }
+  .ov-due-day::before,
+  .due-day::before {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: calc(14px * var(--aula-scale));
+    width: calc(4px * var(--aula-scale));
+    border-radius: 999px;
+    background: var(--aula-line);
+    content: "";
+  }
+  .ov-due-day.is-first::before,
+  .due-day.is-first::before {
+    background: var(--aula-warning);
+  }
+  .ov-important-lines > .ov-due-day.is-first::before {
+    top: calc(-1 * var(--aula-space-2));
+  }
+  .ov-due-day:not(.is-first)::after,
+  .due-dot {
+    position: absolute;
+    top: calc(4px * var(--aula-scale));
+    inset-inline-start: calc(9px * var(--aula-scale));
+    width: calc(14px * var(--aula-scale));
+    height: calc(14px * var(--aula-scale));
+    border-radius: 50%;
+    background: var(--aula-text-2);
+    box-shadow: 0 0 0 calc(3px * var(--aula-scale)) var(--aula-surface);
+    content: "";
+  }
+  .ov-due-head,
+  .due-head {
+    margin: 0;
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+    font-weight: var(--aula-bold);
+  }
+  .is-first > :is(.ov-due-head, .due-head) {
+    color: var(--aula-text);
   }
   .ov-important-line {
     display: flex;
     align-items: center;
     gap: var(--aula-space-2);
     min-height: calc(32px * var(--aula-scale));
-    padding: 0 var(--aula-space-2) 0 var(--aula-space-3);
-    border-inline-start: calc(4px * var(--aula-scale)) solid var(--subject, var(--aula-line));
+    padding: 0 var(--aula-space-2);
     border-radius: var(--aula-radius);
     background: color-mix(in srgb, var(--subject, var(--aula-text-2)) 14%, var(--aula-surface));
   }
@@ -2988,25 +3036,32 @@ export const family = css`
   .ov-panel .ov-important-text {
     white-space: normal;
   }
-  /* In the window of all that is important, the days the overview summed up stand out. */
-  .important-marked {
-    padding-inline-start: var(--aula-space-3);
-    border-inline-start: calc(4px * var(--aula-scale)) solid var(--aula-warning);
+  /* In the window, the flag starts the first day's line, and the heading stands beside it. */
+  .due-day {
+    gap: var(--aula-space-2);
+    padding-block-end: var(--aula-space-3);
   }
-  .important-marked > .detail-heading {
+  .due-day.is-first::before {
+    top: calc(16px * var(--aula-scale));
+  }
+  .due-node {
+    position: absolute;
+    top: 0;
+    inset-inline-start: 0;
+    z-index: 1;
+  }
+  .due-day .due-dot {
+    top: calc(9px * var(--aula-scale));
+    z-index: 1;
+  }
+  .due-head {
     display: flex;
     align-items: center;
-    gap: var(--aula-space-2);
-    color: var(--aula-text);
-  }
-  .important-marked .ov-important-mark {
-    width: calc(24px * var(--aula-scale));
-    height: calc(24px * var(--aula-scale));
-    --mdc-icon-size: calc(14px * var(--aula-scale));
+    min-height: calc(32px * var(--aula-scale));
+    font-size: var(--aula-font-m);
   }
   .note-due > li.due {
-    padding: var(--aula-space-3) var(--aula-space-3) var(--aula-space-3) var(--aula-space-4);
-    border-inline-start: calc(5px * var(--aula-scale)) solid var(--subject, var(--aula-line));
+    padding: var(--aula-space-3);
     border-radius: var(--aula-radius);
     background: color-mix(in srgb, var(--subject, var(--aula-text-2)) 14%, var(--aula-surface));
   }

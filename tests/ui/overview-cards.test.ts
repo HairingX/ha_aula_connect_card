@@ -235,7 +235,7 @@ describe("the overview", () => {
     expect(texts(card, ".ov-name")).toEqual(["Ida", "Oskar"]);
     expect(texts(card, ".presence")).toEqual(["I skole", "Kommer 07.45"]);
     expect(texts(card, ".ov-important-sum")).toEqual([
-      "1 vigtig ting til i dag · 2 til i morgen",
+      "1 vigtig ting til i dag",
       "1 vigtig ting til mandag",
     ]);
     expect(texts(card, ".ov-tile")).toEqual(["8 Vigtigt", "Ugeplan", "Uge", "Fravær", "Nyheder"]);
@@ -274,18 +274,18 @@ describe("the overview", () => {
     expect(windowText(card)).toBe("");
   });
 
-  it("marks in the window the days the overview sums up, among all from today on", async () => {
+  it("starts the flag's line in the window at the first day the overview counts, among all from today on", async () => {
     const { card } = await mount(OVERVIEW, "thu-1530", { today: todayOf });
     expect(texts(card, ".ov-important-sum")[0]).toBe("2 vigtige ting til i morgen");
     await tap(card, ".ov-important");
     expect(windowText(card)).toContain("Fra i dag og frem");
-    expect(texts(card, "dialog .detail-heading").slice(0, 2)).toEqual([
+    expect(texts(card, "dialog .due-head").slice(0, 2)).toEqual([
       "I dag · 29. okt.",
       "I morgen · 30. okt.",
     ]);
-    expect(texts(card, "dialog .important-marked .detail-heading")).toEqual([
-      "I morgen · 30. okt.",
-    ]);
+    expect(texts(card, "dialog .due-day.is-first .due-head")).toEqual(["I morgen · 30. okt."]);
+    expect(all(card, "dialog .due-node")).toHaveLength(1);
+    expect(all(card, "dialog .due-dot").length).toBeGreaterThan(1);
     expect(all(card, "dialog [data-opens-at]")).toHaveLength(1);
     expect(texts(card, "dialog .week-break")).toEqual(["Uge 45"]);
     expect(
@@ -481,7 +481,12 @@ describe("the overview", () => {
   it("lists the next important notes, each with its subject and day, and opens them all", async () => {
     const { card } = await mount(OVERVIEW, "thu-1000", { today: todayOf });
     expect(all(card, ".ov-row:nth-child(1) .ov-important-line")).toHaveLength(3);
-    expect(texts(card, ".ov-row:nth-child(1) .ov-when")).toEqual(["i dag", "i morgen", "i morgen"]);
+    expect(texts(card, ".ov-row:nth-child(1) .ov-due-head")).toEqual([
+      "I dag · 29. okt.",
+      "I morgen · 30. okt.",
+    ]);
+    expect(all(card, ".ov-row:nth-child(1) .ov-due-day.is-first")).toHaveLength(1);
+    expect(all(card, ".ov-row:nth-child(1) .ov-when")).toEqual([]);
     expect(texts(card, ".ov-row:nth-child(1) .ov-important-text")[0]).toBe(
       "Lektie til i dag: Læsebogen s. 38+39",
     );
@@ -630,7 +635,10 @@ describe("the overview's other days", () => {
         (line) => !line.querySelector(".label.subject"),
       ),
     ).not.toEqual([]);
-    expect(texts(card, ".ov-col:nth-child(2) .ov-when")).toEqual(["3. nov.", "4. nov."]);
+    expect(texts(card, ".ov-col:nth-child(2) .ov-due-head")).toEqual([
+      "Tirsdag · 3. nov.",
+      "Onsdag · 4. nov.",
+    ]);
   });
 
   it("names an unknown subject's tile by a book", () => {

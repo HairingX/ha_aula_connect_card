@@ -228,7 +228,6 @@ const TEXTS = {
     { one: "{n} important thing for {when}", other: "{n} important things for {when}" },
     { one: "{n} vigtig ting til {when}", other: "{n} vigtige ting til {when}" },
   ],
-  importantThen: ["{n} for {when}", "{n} til {when}"],
   whenToday: ["today", "i dag"],
   whenTomorrow: ["tomorrow", "i morgen"],
   inDays: [

@@ -318,14 +318,15 @@ Three looks, chosen in the children's bar or kept with `look`:
   hours, and shows the time now; a tap shows it large, and any tap closes it. A child away or
   sick has its presence there instead.
 
-What is important is headed by an orange flag and how much is due when - **4 vigtige ting til i
-dag · 2 til i morgen**, the later day only where it fits - and left out where nothing is. Each
-look is set apart, under `rows`, `columns` and `board`: `important` is `list`, the default, the
-next `important_max` notes (3 unless set, up to 99) a line each with its subject in its colour
-and its day, and **+ 2 mere** for the rest; or `button`, the heading alone. On the board a note's
-line is whole; elsewhere it ends in "…" where it does not fit. A tap opens all from today on, day
-by day, the days the heading names marked with the flag's colour, and the window opens at the
-first of them; its head, whose they are, stays in sight as it scrolls.
+What is important is headed by an orange flag and how much is due on its first day - **4 vigtige
+ting til i dag** - and left out where nothing is. Each look is set apart, under `rows`, `columns`
+and `board`: `important` is `list`, the default, the next `important_max` notes (3 unless set, up
+to 99) under their day, **Mandag · 2. nov.**, a line each with its subject in its colour, and
+**+ 2 mere** for the rest; or `button`, the heading alone. An orange line runs down from the flag
+through the first day's notes; a later day has a grey dot on a grey line, so that the days stand
+apart. On the board a note's line is whole; elsewhere it ends in "…" where it does not fit. A tap
+opens all from today on, day by day on the same line, the flag starting it at the first day the
+heading counts, where the window opens; its head, whose they are, stays in sight as it scrolls.
 
 ```yaml
 type: custom:aula-connect-overview-card

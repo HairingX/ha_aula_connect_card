@@ -290,10 +290,12 @@ describe("a window", () => {
     expect(declared(details, ".detail-head").join(";")).toContain("--ha-dialog-surface-background");
   });
 
-  it("marks the days of what is important the overview summed up by the colour of its flag", () => {
-    expect(declared(family, ".important-marked")).toContain(
-      "border-inline-start: calc(4px * var(--aula-scale)) solid var(--aula-warning)",
+  it("runs the flag's colour down the first day of what is important, a note marked by its subject alone", () => {
+    expect(declared(family, ".ov-due-day.is-first::before")).toContain(
+      "background: var(--aula-warning)",
     );
+    expect(declared(family, ".ov-important-line").join(";")).not.toContain("border-inline-start");
+    expect(declared(family, ".note-due > li.due").join(";")).not.toContain("border-inline-start");
   });
 });
 

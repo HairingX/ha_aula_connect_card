@@ -183,19 +183,22 @@ export function whenText(day: Day, ctx: ViewContext): string {
   return ahead < 7 ? formatWeekday(day, ctx.language) : formatShortDate(day, ctx.language);
 }
 
-/** Returns the days a summary names: the first with something important, and the next if soon. */
-function summaryDays(important: readonly ImportantDue[], ctx: ViewContext): Day[] {
-  return [...new Set(important.map((item) => item.day))].filter(
-    (day, index) => index === 0 || (index === 1 && daysBetween(ctx.today, day) <= 3),
-  );
+/** Returns a day's heading among the important: "I morgen · 30. okt.", or its weekday. */
+function dueDay(day: Day, ctx: ViewContext): string {
+  const word =
+    daysBetween(ctx.today, day) < 7 ? whenText(day, ctx) : formatWeekday(day, ctx.language);
+  return `${capitalize(word, ctx.language)} · ${formatShortDate(day, ctx.language)}`;
 }
 
-/** Returns how much is important for the days a summary names. */
-function importantParts(important: readonly ImportantDue[], ctx: ViewContext): string[] {
-  const on = (day: Day): number => important.filter((item) => item.day === day).length;
-  return summaryDays(important, ctx).map((day, index) =>
-    ctx.t(index === 0 ? "importantFor" : "importantThen", { n: on(day), when: whenText(day, ctx) }),
-  );
+/** Returns the notes grouped by their day, in order. */
+function byDay(important: readonly ImportantDue[]): { day: Day; notes: ImportantDue[] }[] {
+  const days: { day: Day; notes: ImportantDue[] }[] = [];
+  for (const due of important) {
+    const last = days.at(-1);
+    if (last?.day === due.day) last.notes.push(due);
+    else days.push({ day: due.day, notes: [due] });
+  }
+  return days;
 }
 
 /** Returns the axis every child's bar shares: from the earliest start to the latest end. */
@@ -311,8 +314,9 @@ function dueItem(due: ImportantDue, ctx: ViewContext): TemplateResult {
 }
 
 /**
- * Shows what is important coming up: how much for when, and as a list, the next `look.max` notes,
- * a line each with its subject and day; the whole opens all of them. Nothing where nothing is.
+ * Shows what is important coming up: how much for the first day, and as a list, the next
+ * `look.max` notes by their day, the first day on the flag's line; the whole opens all of them.
+ * Nothing where nothing is.
  */
 function importantBlock(
   item: OverviewChild,
@@ -326,7 +330,7 @@ function importantBlock(
   const key = `important|${String(item.child.child_id)}`;
   const list = look.important === "list";
   const hidden = item.important.length - look.max;
-  // The summary's later day wraps onto a line that is cut off, so that it shows only with room.
+  const count = item.important.filter((due) => due.day === first.day).length;
   return html`<button
     class="ov-important ${list ? "is-list" : "is-button"}"
     type="button"
@@ -339,27 +343,28 @@ function importantBlock(
     <span class="ov-important-head">
       <span class="ov-important-mark">${icon("mdi:flag")}</span
       ><span class="ov-important-sum"
-        >${importantParts(item.important, ctx).map(
-          (part, index) => html`<span>${index > 0 ? ` · ${part}` : part}</span>`,
-        )}</span
+        >${ctx.t("importantFor", { n: count, when: whenText(first.day, ctx) })}</span
       >${icon("mdi:chevron-right", "ov-important-go")}
     </span>
     ${
       list
         ? html`<span class="ov-important-lines">
-              ${item.important
-                .slice(0, look.max)
-                .map(
-                  (due) =>
-                    html`<span
-                      class="ov-important-line"
-                      style=${due.note.subject ? subjectColor(due.note.subject) : ""}
-                      >${due.note.subject ? subjectLabel(due.note.subject, ctx) : nothing}<span
-                        class="ov-important-text"
-                        >${aula(due.note.title ?? due.note.text.replace(/\n[\s\S]*$/, ""), ctx)}</span
-                      ><span class="ov-when">${whenText(due.day, ctx)}</span></span
-                    >`,
-                )}
+              ${byDay(item.important.slice(0, look.max)).map(
+                (group, index) =>
+                  html`<span class="ov-due-day ${index === 0 ? "is-first" : ""}"
+                    ><span class="ov-due-head">${dueDay(group.day, ctx)}</span>${group.notes.map(
+                      (due) =>
+                        html`<span
+                          class="ov-important-line"
+                          style=${due.note.subject ? subjectColor(due.note.subject) : ""}
+                          >${due.note.subject ? subjectLabel(due.note.subject, ctx) : nothing}<span
+                            class="ov-important-text"
+                            >${aula(due.note.title ?? due.note.text.replace(/\n[\s\S]*$/, ""), ctx)}</span
+                          ></span
+                        >`,
+                    )}</span
+                  >`,
+              )}
             </span>
             ${hidden > 0 ? html`<span class="ov-more">${ctx.t("moreCount", { n: hidden })}</span>` : nothing}`
         : nothing
@@ -827,30 +832,29 @@ export function openImportant(
   const important = options.paths.important;
   state.openModal(key, (ctx, close) => {
     const face = state.face(item.child);
-    const days = [...new Set(item.upcoming.map((due) => due.day))];
-    // The days the overview summed up are marked, and the window opens at the first of them.
-    const marked = summaryDays(item.important, ctx);
+    const days = byDay(item.upcoming);
+    // The first day the overview counts is the flag's, and the window opens at it.
+    const flagged = item.important[0]?.day;
     return modal(
       html`${head(ctx.t("importantTitle", { name: face.name }), [ctx.t("importantFrom", { day: whenText(ctx.today, ctx) })], [], ctx, close, faceImage(face, "window-face"))}
-      ${days.map((day, index) => {
-        const title = `${capitalize(daysBetween(ctx.today, day) < 7 ? whenText(day, ctx) : formatWeekday(day, ctx.language), ctx.language)} · ${formatShortDate(day, ctx.language)}`;
-        const notes = html`<ul class="note-due">
-          ${item.upcoming.filter((due) => due.day === day).map((due) => dueItem(due, ctx))}
-        </ul>`;
-        return html`${weekBreak(day, days[index - 1], ctx)}${
-          marked.includes(day)
-            ? html`<section
-                class="detail-section important-marked"
-                ?data-opens-at=${day === marked[0]}
-              >
-                <h3 class="detail-heading">
-                  <span class="ov-important-mark">${icon("mdi:flag")}</span>${title}
-                </h3>
-                ${notes}
-              </section>`
-            : section(title, [], notes)
-        }`;
-      })}
+      ${days.map(
+        (group, index) =>
+          html`${weekBreak(group.day, days[index - 1]?.day, ctx)}
+            <section
+              class="due-day ${group.day === flagged ? "is-first" : ""}"
+              ?data-opens-at=${group.day === flagged}
+            >
+              ${
+                group.day === flagged
+                  ? html`<span class="ov-important-mark due-node">${icon("mdi:flag")}</span>`
+                  : html`<span class="due-dot"></span>`
+              }
+              <h3 class="due-head">${dueDay(group.day, ctx)}</h3>
+              <ul class="note-due">
+                ${group.notes.map((due) => dueItem(due, ctx))}
+              </ul>
+            </section>`,
+      )}
       ${
         important === null
           ? nothing
