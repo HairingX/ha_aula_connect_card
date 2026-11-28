@@ -12,9 +12,11 @@ how it is set up: the README.
 
 - The school day, week plan, week, overview, important and opening hours cards only show. The
   sick and Ferie/fri cards, the overview's presence and request windows, and a new post's window
-  act in Aula only on a tap, each step its own tap, showing what is sent and to whom, with nothing
-  sent unseen; a post is marked read only by its own button, never by being shown. What is opened
-  closes again by itself.
+  act in Aula only on a tap: one window for what is done, saying what it does and for whom, its
+  one button naming it ("Meld Ida syg og send besked"), with no dialog to confirm it again and no
+  note that Aula is told. Where part of it fails, the window says what was done and offers the
+  rest again. A post is marked read only by its own button, never by being shown. What is
+  opened closes again by itself.
 - The dashboard's first page shows only what matters now; what needs the family comes to the
   overview and goes once it is done. Sickness, vacations and vacation requests are Fravær, a
   page of their own, as Aula's Komme/gå has them.

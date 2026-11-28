@@ -391,24 +391,27 @@ day, for Monday this week to Sunday next week.
 
 ## Sick card
 
-![Writing a message](docs/sick-thu-1000-380-light-blue-da-2child-step-2.png)
+![Reporting sick, with a message](docs/sick-thu-1000-380-light-blue-da-2child-form.png)
 
-`custom:aula-connect-sick-card` has a row for each child. Reporting a child sick is two steps,
-each its own tap:
+`custom:aula-connect-sick-card` has a row for each child. Reporting a child sick is one window
+and one tap: it says what is done - "Ida meldes syg i dag", the day, and whether it can be taken
+back - and holds the message about it, so that the button, **Meld Ida syg og send besked**, sends
+both. The window names the institution only where the card shows children at more than one.
 
-1. **Meld syg** reports the child sick at its institution; the window names the institution only
-   where the card shows children at more than one. Before you can tap
-   **Meld syg**, the card checks that the child can be reported sick from here; it sends nothing
-   doing so. Where the child can't be, the window says so and to report sick in Aula, and offers
-   no button; where the child is reported sick today already, it says that instead. Where a
-   report can be taken back, **Fortryd** takes it back the same day; where it can't, the window
-   says so before you tap.
-2. **Skriv en besked?** writes a message about it: made from `sick_message`, as a reply to all in
-   a thread you choose - the one `sick_threads` sets for the child, else the one written in last,
-   chosen for you. The editor offers each child's threads by their subject and staff.
-   **Spring over** writes nothing; it comes first where the child has been ill since before
-   today, or you wrote from here the weekday before. With `sick_write: false` the window ends at
-   the report, and **Skriv en besked** is a tap away.
+- Before the button can be tapped, the card checks that the child can be reported sick from here;
+  it sends nothing doing so. Where the child can't be, the window says so and to report sick in
+  Aula, and offers no button; where the child is reported sick today already, it says that
+  instead.
+- **Send også en besked** writes the message with the report: made from `sick_message`, as a
+  reply to all in a thread - the one `sick_threads` sets for the child, else the one written in
+  last, shown alone with **Skift** to choose another. The editor offers each child's threads by
+  their subject and staff. The message is left out at first where the child has been ill since
+  before today, or you wrote from here the weekday before, and with `sick_write: false`; the
+  button is then **Meld Ida syg**.
+- The report is sent first, then the message. Where the message fails, the window says the child
+  is reported sick and the message not sent, with **Send igen**. Where a report can be taken back,
+  **Fortryd sygemeldingen** takes it back the same day; where it can't, the window says so before
+  you tap. A child reported sick already is written about with **Skriv en besked**.
 
 **Meld flere syge** reports the children chosen sick at once - all that can be, at first - each
 checked first and each reported once; then each can be written about on its own.
@@ -416,7 +419,7 @@ checked first and each reported once; then each can be written about on its own.
 A child two guardians each have in Aula Connect is reported as the guardian in `sender`, else as
 the one used last for the child, else the first; the window lets you choose.
 
-Each step shows only where Aula Connect's options allow it: reporting sick, and writing in a
+The report and the message show only where Aula Connect's options allow them: reporting sick, and writing in a
 thread, are each turned on in an entry's options, and where no entry of the child allows one the
 window says it is turned off instead. A guardian is offered for a step only where their entry
 allows it.
@@ -690,8 +693,8 @@ holds the day, each child's hours and what each child is to bring.
 The school day, week plan, week, overview, important and opening hours cards only show: they
 change nothing in Aula and mark nothing as read. The news card marks a post read only on a tap of
 its button. The sick and Ferie/fri cards, and the overview's presence and
-request windows, act in Aula only on a tap of their buttons, each step its own tap, saying first
-what is sent for whom: a report, a message, an answer, a vacation or its deletion. Everything goes through Home Assistant's own
+request windows, act in Aula only on a tap of a button that names what it does, in a window that
+says first what is sent for whom: a report and its message, an answer, a vacation or its deletion. Everything goes through Home Assistant's own
 connection to Aula Connect, and nothing anywhere else. The children's bar keeps the children it
 hides, the look and the guardian last acted as in the browser's storage on that device: ids and
 words, never a child's data.

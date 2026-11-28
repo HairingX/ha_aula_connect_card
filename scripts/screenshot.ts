@@ -187,12 +187,12 @@ function family(width: number, large = false): Shot[] {
       tag: "post-read",
     }),
     shot("sick", "thu-1000", width, look),
-    shot("sick", "thu-1000", width, { ...look, dialog: SICK_ROW, tag: "step-1" }),
+    shot("sick", "thu-1000", width, { ...look, dialog: SICK_ROW, tag: "form" }),
     shot("sick", "thu-1000", width, {
       ...look,
       dialog: SICK_ROW,
       then: ["dialog .window-actions .filled-button"],
-      tag: "step-2",
+      tag: "sent",
     }),
     shot("sick", "thu-1000", width, {
       ...look,
@@ -202,12 +202,6 @@ function family(width: number, large = false): Shot[] {
       }),
       dialog: SICK_ROW,
       tag: "since-yesterday",
-    }),
-    shot("sick", "thu-1000", width, {
-      ...look,
-      dialog: SICK_ROW,
-      then: ["dialog .window-actions .filled-button", "dialog .window-actions .filled-button"],
-      tag: "sent",
     }),
     shot("sick", "thu-1000", width, { ...look, dialog: SICK_SEVERAL, tag: "several" }),
     shot("overview", "thu-1000", width, {
@@ -275,12 +269,7 @@ const SETS: Record<string, () => Shot[]> = {
     shot("important", "thu-1000", 380, { children: 2 }),
     shot("news", "thu-1000", 380, { children: 2 }),
     shot("hours", "thu-1000", 380, { children: 2 }),
-    shot("sick", "thu-1000", 380, {
-      children: 2,
-      dialog: SICK_ROW,
-      then: ["dialog .window-actions .filled-button"],
-      tag: "step-2",
-    }),
+    shot("sick", "thu-1000", 380, { children: 2, dialog: SICK_ROW, tag: "form" }),
     shot("vacation", "thu-1000", 380, { children: 2, dialog: REQUEST_ROW, tag: "answer" }),
     shot("vacation", "thu-1000", 380, { children: 2 }),
   ],

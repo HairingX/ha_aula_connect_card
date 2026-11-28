@@ -2189,6 +2189,80 @@ export const family = css`
     flex-direction: column;
     gap: var(--aula-space-2);
   }
+  /* The sick window: what the report does, said once above the message. */
+  .sick-summary {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--aula-space-3);
+    padding: var(--aula-space-3) var(--aula-space-4);
+    border-radius: var(--aula-radius);
+    background: var(--aula-warning-fill);
+    --mdc-icon-size: calc(22px * var(--aula-scale));
+  }
+  .sick-summary-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sick-summary-text strong {
+    font-size: var(--aula-font-l);
+    font-weight: var(--aula-medium);
+  }
+  .sick-summary-text > span {
+    color: var(--aula-text-2);
+    font-size: var(--aula-font-s);
+  }
+  .switch-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--aula-space-3);
+    width: 100%;
+    min-height: var(--aula-target);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+  }
+  .switch {
+    position: relative;
+    flex: none;
+    width: calc(44px * var(--aula-scale));
+    height: calc(24px * var(--aula-scale));
+    border-radius: 999px;
+    background: var(--aula-fill-strong);
+  }
+  .switch::after {
+    position: absolute;
+    top: calc(3px * var(--aula-scale));
+    left: calc(3px * var(--aula-scale));
+    width: calc(18px * var(--aula-scale));
+    height: calc(18px * var(--aula-scale));
+    border-radius: 50%;
+    background: var(--aula-surface);
+    content: "";
+  }
+  .switch-row[aria-checked="true"] .switch {
+    background: var(--aula-text);
+  }
+  .switch-row[aria-checked="true"] .switch::after {
+    left: auto;
+    right: calc(3px * var(--aula-scale));
+  }
+  .thread-chosen {
+    display: flex;
+    align-items: center;
+    gap: var(--aula-space-3);
+    padding: var(--aula-space-2) var(--aula-space-3);
+    border: 1px solid var(--aula-line);
+    border-radius: var(--aula-radius);
+  }
+  .thread-chosen .text-button {
+    margin-inline-start: auto;
+  }
   .threads {
     display: flex;
     flex-direction: column;

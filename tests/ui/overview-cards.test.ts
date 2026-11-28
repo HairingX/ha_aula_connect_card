@@ -337,8 +337,8 @@ describe("the overview", () => {
     expect(windowText(card)).toContain("Hentes af Mor");
     expect(windowText(card)).toContain("Skema 08.00–12.55");
     await tap(card, "dialog .filled-button");
-    expect(windowText(card)).toContain("Meld Ida syg");
-    await tap(card, "dialog .filled-button", "Meld syg");
+    expect(windowText(card)).toContain("Ida meldes syg i dag");
+    await tap(card, "dialog .window-actions .filled-button", "Meld Ida syg");
     expect(hass.callWS).toHaveBeenCalledWith({
       type: "aula_connect/sick/report",
       entry_id: "entry-a",
@@ -354,7 +354,7 @@ describe("the overview", () => {
     await tap(card, ".presence", "Syg");
     expect(windowText(card)).toContain("Nu Syg");
     await tap(card, "dialog .filled-button");
-    expect(windowText(card)).toContain("Skriv en besked?");
+    expect(windowText(card)).toContain("Skriv om Ida");
   });
 
   it("opens an event coming, and goes to the pages", async () => {

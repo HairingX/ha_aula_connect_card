@@ -1,8 +1,8 @@
 /**
- * Reporting a child sick, and writing a message about it: two steps, each its own tap. The first
- * reports the child sick along the route Aula Connect finds, once it has checked that the child
- * can be; the second, which the family may skip, writes a message in a thread the family chooses.
- * Nothing is sent without a tap.
+ * Reporting a child sick, and writing a message about it, in one window and with one tap: the
+ * report goes along the route Aula Connect finds, once it has checked that the child can be, and
+ * the message, where the family writes one, in the thread it chooses. Nothing is sent without a
+ * tap; a message that fails after the report can be sent again.
  *
  * @packageDocumentation
  */
@@ -56,12 +56,18 @@ export interface SickTarget extends SickOptions {
   readonly family: FamilyChild;
 }
 
-/** How far the two steps have come. */
+/** How far the window has come: filled in, or sent. */
 interface Flow {
-  step: "report" | "write" | "done";
+  step: "form" | "done";
+  /** Whether the window reports the child sick, or only writes about it. */
+  mode: "report" | "write";
   entry: Child;
   busy: boolean;
   error: unknown;
+  /** Whether a message is sent with the report. */
+  withMessage: boolean;
+  /** Whether the threads are listed to choose another. */
+  picking: boolean;
   /** Whether the child was reported sick in this window. */
   reported: boolean;
   /** Whether a report was taken back in this window. */
@@ -71,12 +77,17 @@ interface Flow {
   /** What that check answered, or its error; undefined while it runs. */
   check: SickCheck | { readonly error: unknown } | undefined;
   threads: ThreadList | undefined;
+  /** The entry the threads were last asked of. */
+  threadsOf: Child | undefined;
   threadsError: unknown;
   thread: string | number | undefined;
   /** Why the thread is to be chosen again: the one set is closed, or the one last used old. */
   threadNote: "gone" | "stale" | undefined;
   text: string;
-  sent: boolean;
+  /** The thread the message was sent in; undefined until it is. */
+  sentIn: Thread | undefined;
+  /** The thread a message failed to go in after the report, and why; undefined where none did. */
+  failed: { readonly thread: Thread; readonly error: unknown } | undefined;
 }
 
 /** Fills a message's template in: `{name}` is the child's first name. */
@@ -94,28 +105,37 @@ function since(today: TodayData | undefined, ctx: ViewContext): string | undefin
 }
 
 /**
- * Opens the window that reports a child sick, at the first step; with `write` at the second, or
- * at the end where writing is turned off. `key` is the opening button's `data-detail`.
+ * Opens the window that reports a child sick and writes about it with one tap; with `write`, or
+ * where reporting is turned off, it only writes. `key` is the opening button's `data-detail`.
  */
 export function openSick(state: CardState, target: SickTarget, key: string, write = false): void {
   const { family } = target;
   const writes = may(family, "messages");
-  const step = write ? (writes ? "write" : "done") : "report";
+  const mode = write || !may(family, "sick_reports") ? "write" : "report";
+  // A family that wrote the day before, or whose child was ill before today, has written
+  // already: the message is left out until asked for.
+  const wroteAlready =
+    family.today?.sick.wrote_yesterday === true || (family.today?.sick.since ?? null) !== null;
   const flow: Flow = {
-    step,
-    entry: senderOf(family, target.sender, step === "write" ? "messages" : "sick_reports"),
+    step: "form",
+    mode,
+    entry: senderOf(family, target.sender, mode === "write" ? "messages" : "sick_reports"),
     busy: false,
     error: undefined,
+    withMessage: writes && (mode === "write" || (target.write && !wroteAlready)),
+    picking: false,
     reported: false,
     undone: false,
     checked: undefined,
     check: undefined,
     threads: undefined,
+    threadsOf: undefined,
     threadsError: undefined,
     thread: undefined,
     threadNote: undefined,
     text: "",
-    sent: false,
+    sentIn: undefined,
+    failed: undefined,
   };
   const entryFor = (change: Change): Child =>
     flow.entry.allowed.includes(change) ? flow.entry : senderOf(family, target.sender, change);
@@ -137,11 +157,14 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
     );
   };
   const loadThreads = (): void => {
-    const entry = flow.entry;
+    const entry = entryFor("messages");
+    if (flow.threadsOf === entry) return;
+    flow.threadsOf = entry;
     flow.threads = undefined;
     flow.threadsError = undefined;
     fetchThreads(state.callWS, entry).then(
       (threads) => {
+        if (flow.threadsOf !== entry) return;
         flow.threads = threads;
         rememberThreads(family.child.child_id, threads.threads);
         const set = target.threads.find((item) => item.child === family.child.child_id);
@@ -158,6 +181,7 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
         state.requestUpdate();
       },
       (error: unknown) => {
+        if (flow.threadsOf !== entry) return;
         flow.threadsError = error;
         state.requestUpdate();
       },
@@ -178,25 +202,39 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
     });
   };
   const checks = may(family, "sick_reports") && (family.today?.sick.route ?? "none") !== "none";
-  const toWrite = (ctx: ViewContext): void => {
-    flow.step = "write";
-    flow.entry = entryFor("messages");
-    flow.text = fillMessage(target.message ?? ctx.t("sickMessageDefault"), family.child);
-    flow.error = undefined;
-    loadThreads();
+  const send = async (thread: Thread): Promise<void> => {
+    const entry = entryFor("messages");
+    try {
+      await replyMessage(state.callWS, entry, thread.thread_id, flow.text.trim());
+      rememberSender(family.child.child_id, entry.entry_id);
+      flow.sentIn = thread;
+      flow.failed = undefined;
+    } catch (error: unknown) {
+      flow.failed = { thread, error };
+    }
   };
-  const actions = {
-    report: (ctx: ViewContext): void => {
+  const actions: Actions = {
+    submit: (report: boolean, thread: Thread | undefined): void => {
       const entry = flow.entry;
       run(
-        () => reportSick(state.callWS, entry),
-        () => {
-          rememberSender(family.child.child_id, entry.entry_id);
-          flow.reported = true;
-          flow.undone = false;
-          if (writes && target.write) toWrite(ctx);
-          else flow.step = "done";
+        async () => {
+          if (report) {
+            await reportSick(state.callWS, entry);
+            rememberSender(family.child.child_id, entry.entry_id);
+            flow.reported = true;
+            flow.undone = false;
+          }
+          if (thread) await send(thread);
         },
+        () => {
+          flow.step = "done";
+        },
+      );
+    },
+    resend: (thread: Thread): void => {
+      run(
+        () => send(thread),
+        () => undefined,
       );
     },
     undo: (): void => {
@@ -207,45 +245,64 @@ export function openSick(state: CardState, target: SickTarget, key: string, writ
           flow.entry = entry;
           flow.reported = false;
           flow.undone = true;
-          flow.step = "report";
-        },
-      );
-    },
-    send: (thread: string | number): void => {
-      const entry = flow.entry;
-      run(
-        () => replyMessage(state.callWS, entry, thread, flow.text.trim()),
-        () => {
-          rememberSender(family.child.child_id, entry.entry_id);
-          flow.sent = true;
-          flow.step = "done";
+          flow.sentIn = undefined;
+          flow.failed = undefined;
+          flow.mode = "report";
+          flow.step = "form";
         },
       );
     },
     choose: (entry: Child): void => {
       flow.entry = entry;
-      if (flow.step === "write") loadThreads();
+      if (flow.withMessage) loadThreads();
       state.requestUpdate();
     },
-    write: toWrite,
+    toggle: (): void => {
+      flow.withMessage = !flow.withMessage;
+      if (flow.withMessage) loadThreads();
+      state.requestUpdate();
+    },
+    pick: (): void => {
+      flow.picking = true;
+      state.requestUpdate();
+    },
+    need: (): void => {
+      if (flow.withMessage) return;
+      flow.withMessage = true;
+      loadThreads();
+    },
+    write: (): void => {
+      flow.mode = "write";
+      flow.step = "form";
+      flow.withMessage = true;
+      loadThreads();
+      state.requestUpdate();
+    },
   };
-  let started = flow.step !== "write";
+  let started = false;
   state.openModal(key, (ctx, close) => {
     if (!started) {
       started = true;
-      toWrite(ctx);
+      flow.text = fillMessage(target.message ?? ctx.t("sickMessageDefault"), family.child);
+      if (flow.withMessage) loadThreads();
     }
-    if (checks && flow.step === "report" && flow.checked !== flow.entry) check();
+    if (checks && flow.mode === "report" && flow.step === "form" && flow.checked !== flow.entry)
+      check();
     return modal(sickWindow(flow, target, ctx, close, state, actions), close);
   });
 }
 
 interface Actions {
-  readonly report: (ctx: ViewContext) => void;
+  /** Sends what the window holds: the report where `report`, and the message where a thread is given. */
+  readonly submit: (report: boolean, thread: Thread | undefined) => void;
+  readonly resend: (thread: Thread) => void;
   readonly undo: () => void;
-  readonly send: (thread: string | number) => void;
   readonly choose: (entry: Child) => void;
-  readonly write: (ctx: ViewContext) => void;
+  readonly toggle: () => void;
+  readonly pick: () => void;
+  /** Takes the message in where nothing is reported, without asking to render again. */
+  readonly need: () => void;
+  readonly write: () => void;
 }
 
 function senders(
@@ -276,6 +333,182 @@ function senders(
   </div>`;
 }
 
+function threadMeta(item: Thread, ctx: ViewContext): string {
+  const at = instant(item.last_activity);
+  return [
+    ...item.employees,
+    ...(at ? [formatShortDate(dayOf(at, ctx.zone), ctx.language)] : []),
+  ].join(" · ");
+}
+
+function threadPicker(
+  flow: Flow,
+  name: string,
+  ctx: ViewContext,
+  state: CardState,
+  actions: Actions,
+): unknown {
+  const { t } = ctx;
+  const threads = flow.threads;
+  if (flow.threadsError !== undefined) return alert("error", actionErrorText(flow.threadsError, t));
+  if (!threads) return loading(t);
+  if (threads.threads.length === 0) return alert("info", t("noThreads", { name }));
+  const chosen = threads.threads.find((item) => item.thread_id === flow.thread);
+  // The thread set or last used is shown alone, the others a tap away.
+  if (chosen && !flow.picking)
+    return html`<div class="thread-chosen">
+      <span class="thread-text"
+        ><span class="thread-subject">${chosen.subject}</span
+        ><span class="thread-meta">${threadMeta(chosen, ctx)}</span></span
+      >
+      <button class="text-button" type="button" ?disabled=${flow.busy} @click=${actions.pick}>
+        ${t("changeThread")}
+      </button>
+    </div>`;
+  return html`${
+      flow.threadNote === undefined
+        ? nothing
+        : alert("warning", t(flow.threadNote === "gone" ? "threadConfiguredGone" : "threadStale"))
+    }
+    <div class="threads" role="radiogroup" aria-label=${t("threadLabel")}>
+      ${threads.threads.map(
+        (item) =>
+          html`<label class="thread ${item.can_reply ? "" : "closed"}">
+            <input
+              type="radio"
+              name="thread"
+              .checked=${item.thread_id === flow.thread}
+              ?disabled=${!item.can_reply || flow.busy}
+              @change=${() => {
+                flow.thread = item.thread_id;
+                flow.threadNote = undefined;
+                state.requestUpdate();
+              }}
+            />
+            <span class="thread-text"
+              ><span class="thread-subject">${item.subject}</span
+              ><span class="thread-meta">${threadMeta(item, ctx)}</span></span
+            >
+          </label>`,
+      )}
+    </div>`;
+}
+
+function messagePart(
+  flow: Flow,
+  name: string,
+  ctx: ViewContext,
+  state: CardState,
+  actions: Actions,
+  withReport: boolean,
+): unknown {
+  const { t } = ctx;
+  const toggle = withReport
+    ? html`<button
+        class="switch-row"
+        type="button"
+        role="switch"
+        aria-checked=${flow.withMessage ? "true" : "false"}
+        ?disabled=${flow.busy}
+        @click=${actions.toggle}
+      >
+        <span>${t("sendAlso")}</span><span class="switch" aria-hidden="true"></span>
+      </button>`
+    : nothing;
+  if (withReport && !flow.withMessage) return toggle;
+  return html`${toggle}
+    <div class="field">
+      <span class="field-label">${t("threadLabel")}</span>
+      ${threadPicker(flow, name, ctx, state, actions)}
+    </div>
+    <div class="field">
+      <label class="field-label" for="sick-message">${t("messageLabel")}</label>
+      <textarea
+        id="sick-message"
+        class="text-input"
+        rows="3"
+        .value=${flow.text}
+        ?disabled=${flow.busy}
+        @input=${(event: Event) => {
+          flow.text = (event.target as HTMLTextAreaElement).value;
+          state.requestUpdate();
+        }}
+      ></textarea>
+    </div>`;
+}
+
+function doneWindow(
+  flow: Flow,
+  target: SickTarget,
+  ctx: ViewContext,
+  close: () => void,
+  state: CardState,
+  actions: Actions,
+  sickToday: boolean,
+): TemplateResult {
+  const { t } = ctx;
+  const { family } = target;
+  const name = state.face(family.child).name;
+  const day = capitalize(formatDay(ctx.today, ctx.language), ctx.language);
+  const undoable = flow.reported && family.today?.sick.route === "aula";
+  const writes = may(family, "messages");
+  const { sentIn, failed } = flow;
+  return html`${head(sickToday ? t("sickDoneTitle", { name }) : t("writeTitle", { name }), [day], [], ctx, close, faceImage(state.face(family.child), "window-face"))}
+    ${
+      sickToday
+        ? html`<p class="done-line">
+            ${icon("mdi:check-circle-outline")}<span>${t("sickDone", { name })}</span>
+          </p>`
+        : nothing
+    }
+    ${
+      sentIn
+        ? html`<p class="done-line">
+            ${icon("mdi:send-check-outline")}<span>${t("sentIn", { thread: sentIn.subject })}</span>
+          </p>`
+        : nothing
+    }
+    ${failed ? alert("error", `${t("messageFailed")} ${actionErrorText(failed.error, t)}`) : nothing}
+    ${writes ? nothing : turnedOff("messages", t)}
+    <div class="window-actions">
+      ${
+        undoable
+          ? html`<button
+              class="text-button"
+              type="button"
+              ?disabled=${flow.busy}
+              @click=${actions.undo}
+            >
+              ${t("undoReport")}
+            </button>`
+          : nothing
+      }
+      ${
+        writes && !sentIn && !failed
+          ? html`<button class="text-button" type="button" @click=${actions.write}>
+              ${t("writeMessage")}
+            </button>`
+          : nothing
+      }
+      ${
+        failed
+          ? html`<button
+              class="filled-button"
+              type="button"
+              ?disabled=${flow.busy}
+              @click=${() => {
+                actions.resend(failed.thread);
+              }}
+            >
+              ${flow.busy ? t("sending") : t("sendAgain")}
+            </button>`
+          : html`<button class="filled-button" type="button" @click=${close}>
+              ${t("close2")}
+            </button>`
+      }
+    </div>`;
+}
+
 function sickWindow(
   flow: Flow,
   target: SickTarget,
@@ -294,213 +527,126 @@ function sickWindow(
   const found = check !== undefined && !("error" in check) ? check : undefined;
   const sickToday =
     flow.reported || ((today?.sick.today === true || found?.sick_today === true) && !flow.undone);
+  if (flow.step === "done") return doneWindow(flow, target, ctx, close, state, actions, sickToday);
   const day = capitalize(formatDay(ctx.today, ctx.language), ctx.language);
-  const error = flow.error === undefined ? nothing : alert("error", actionErrorText(flow.error, t));
-  const done = html`<p class="done-line">
-    ${icon("mdi:check-circle-outline")}<span>${t("sickDone", { name })}</span>
-    ${
-      route === "aula" && may(family, "sick_reports")
-        ? html`<button
-            class="text-button"
-            type="button"
-            ?disabled=${flow.busy}
-            @click=${actions.undo}
-          >
-            ${t("undo")}
-          </button>`
-        : nothing
-    }
-  </p>`;
-  const faceMark = faceImage(face, "window-face");
+  const reports = may(family, "sick_reports");
   const writes = may(family, "messages");
-  const write = writes
-    ? html`<button
-        class="text-button"
-        type="button"
-        @click=${() => {
-          actions.write(ctx);
-          state.requestUpdate();
-        }}
-      >
-        ${t("writeMessage")}
-      </button>`
-    : nothing;
-  if (flow.step === "done") {
-    const title = flow.sent ? t("writeTitle", { name }) : t("reportSick", { name });
-    return html`${head(title, [day], [], ctx, close, faceMark)} ${sickToday ? done : nothing}
-      ${
-        flow.sent
-          ? html`<p class="done-line">
-              ${icon("mdi:send-check-outline")}<span>${t("sent")}</span>
-            </p>`
-          : writes
-            ? nothing
-            : turnedOff("messages", t)
-      }
-      <div class="window-actions">
-        ${flow.sent ? nothing : write}
-        <button class="filled-button" type="button" @click=${close}>${t("close2")}</button>
-      </div>`;
-  }
-  if (flow.step === "write")
-    return writeStep(flow, target, ctx, close, state, actions, faceMark, done, error, sickToday);
-  // At the first step the child is not reported sick: a child reported sick opens at the second.
-  const top = head(t("reportSick", { name }), [day], [], ctx, close, faceMark);
-  const writeOff = writes ? nothing : turnedOff("messages", t);
-  if (!may(family, "sick_reports"))
-    return html`${top}${turnedOff("sick_reports", t)}${writeOff}
-      <div class="window-actions">${write}</div>`;
+  const faceMark = faceImage(face, "window-face");
+  if (!reports && !writes)
+    return html`${head(t("reportSick", { name }), [day], [], ctx, close, faceMark)}
+    ${sickToday ? html`<p class="done-line">${icon("mdi:check-circle-outline")}<span>${t("sickDone", { name })}</span></p>` : nothing}
+    ${turnedOff("sick_reports", t)}${turnedOff("messages", t)}`;
+  const reporting = flow.mode === "report" && reports;
   // The check speaks for this moment: a route it finds none on, or a child it cannot find, is no report.
   const cannot =
     route === "none" || (found !== undefined && (found.route === "none" || !found.child_found));
-  const button = (enabled: boolean): TemplateResult =>
-    html`<button
-      class="filled-button"
-      type="button"
-      ?disabled=${!enabled || flow.busy}
-      @click=${() => {
-        actions.report(ctx);
-      }}
-    >
-      ${flow.busy ? t("sending") : t("sickConfirm")}
-    </button>`;
+  const report = reporting && !sickToday && !cannot;
   // Until the check answers, and where it fails, the report waits: it may not reach the child.
-  let line: unknown = nothing;
-  let report: unknown = nothing;
-  if (!cannot) {
-    if (check === undefined) [line, report] = [loading(t), button(false)];
-    else if ("error" in check)
-      [line, report] = [alert("error", actionErrorText(check.error, t)), button(false)];
-    else if (sickToday) line = done;
+  let summary: unknown = nothing;
+  let ready = !report;
+  if (sickToday)
+    summary = html`<p class="done-line">
+      ${icon("mdi:check-circle-outline")}<span>${t("sickDone", { name })}</span>
+      ${
+        route === "aula" && reports
+          ? html`<button
+              class="text-button"
+              type="button"
+              ?disabled=${flow.busy}
+              @click=${actions.undo}
+            >
+              ${t("undoReport")}
+            </button>`
+          : nothing
+      }
+    </p>`;
+  else if (reporting && !cannot) {
+    if (check === undefined) summary = loading(t);
+    else if ("error" in check) summary = alert("error", actionErrorText(check.error, t));
     else {
-      if (route === "tabulex")
-        line = html`<p class="window-note">
-          ${icon("mdi:alert-outline")}<span>${t("sickFinal")}</span>
-        </p>`;
-      report = button(true);
+      ready = true;
+      summary = html`<div class="sick-summary">
+        ${icon("mdi:thermometer")}
+        <span class="sick-summary-text"
+          ><strong>${t("sickSummary", { name })}</strong
+          ><span
+            >${[day, t(route === "tabulex" ? "sickFinal" : "sickUndoable")].join(" · ")}</span
+          ></span
+        >
+      </div>`;
     }
   }
   // The institution is said only where it tells the children shown apart.
   let routeLine: unknown = nothing;
-  if (cannot)
+  if (reporting && !sickToday && cannot)
     routeLine = html`<p class="route none">
       ${icon("mdi:information-outline")}<span>${t("sickRouteNone", { name })}</span>
     </p>`;
-  else if (family.showsInstitution)
+  else if (report && family.showsInstitution)
     routeLine = html`<p class="route ${route}">
       ${icon("mdi:check-circle-outline")}<span
         >${t("sickRoute", { institution: child.institution_name })}</span
       >
     </p>`;
-  return html`${top} ${flow.undone ? alert("info", t("undone")) : nothing} ${routeLine}
-    ${senders(flow, allowing(family, "sick_reports"), ctx, actions)} ${line} ${writeOff} ${error}
-    <div class="window-actions">${write} ${report}</div>`;
-}
-
-function writeStep(
-  flow: Flow,
-  target: SickTarget,
-  ctx: ViewContext,
-  close: () => void,
-  state: CardState,
-  actions: Actions,
-  faceMark: TemplateResult,
-  done: TemplateResult,
-  error: unknown,
-  sickToday: boolean,
-): TemplateResult {
-  const { t } = ctx;
-  const { family } = target;
-  const name = state.face(family.child).name;
-  const earlier = since(family.today, ctx);
-  // A family that wrote the day before, or whose child was ill before today, has written
-  // already: skipping is what they most likely want.
-  const skipFirst = family.today?.sick.wrote_yesterday === true || earlier !== undefined;
-  const threads = flow.threads;
-  const chosen = threads?.threads.find((item) => item.thread_id === flow.thread);
-  const canSend = chosen !== undefined && flow.text.trim() !== "" && !flow.busy;
-  const send = html`<button
-    class=${skipFirst ? "text-button" : "filled-button"}
-    type="button"
-    ?disabled=${!canSend}
-    @click=${
-      chosen
-        ? () => {
-            actions.send(chosen.thread_id);
-          }
-        : nothing
-    }
-  >
-    ${flow.busy ? t("sending") : t("send")}
-  </button>`;
-  const skip = html`<button
-    class=${skipFirst ? "filled-button" : "text-button"}
-    type="button"
-    @click=${close}
-  >
-    ${t("skip")}
-  </button>`;
-  let picker: unknown;
-  if (flow.threadsError !== undefined)
-    picker = alert("error", actionErrorText(flow.threadsError, t));
-  else if (!threads) picker = loading(t);
-  else if (threads.threads.length === 0) picker = alert("info", t("noThreads", { name }));
-  else
-    picker = html`${
-        flow.threadNote === undefined
-          ? nothing
-          : alert("warning", t(flow.threadNote === "gone" ? "threadConfiguredGone" : "threadStale"))
-      }
-      <div class="threads" role="radiogroup" aria-label=${t("threadLabel")}>
-        ${threads.threads.map((item) => {
-          const at = instant(item.last_activity);
-          const meta = [
-            ...item.employees,
-            ...(at ? [formatShortDate(dayOf(at, ctx.zone), ctx.language)] : []),
-          ].join(" · ");
-          return html`<label class="thread ${item.can_reply ? "" : "closed"}">
-            <input
-              type="radio"
-              name="thread"
-              .checked=${item.thread_id === flow.thread}
-              ?disabled=${!item.can_reply || flow.busy}
-              @change=${() => {
-                flow.thread = item.thread_id;
-                state.requestUpdate();
+  const earlier = since(today, ctx);
+  const notes = html`${
+    !report && earlier
+      ? html`<p class="info-line">
+          ${icon("mdi:thermometer")}<span
+            >${t("sickSinceDay", { name, day: formatDay(earlier, ctx.language) })}</span
+          >
+        </p>`
+      : nothing
+  }${
+    !report && today?.sick.wrote_yesterday
+      ? html`<p class="info-line">
+          ${icon("mdi:message-check-outline")}<span>${t("wroteYesterday")}</span>
+        </p>`
+      : nothing
+  }`;
+  // Where nothing is to be reported, the window is for the message alone.
+  if (!report && writes) actions.need();
+  const chosen = flow.threads?.threads.find((item) => item.thread_id === flow.thread);
+  // A message with no thread to go in is no message: the report goes alone.
+  const message =
+    flow.withMessage &&
+    writes &&
+    flow.threadsError === undefined &&
+    (flow.threads === undefined || flow.threads.threads.length > 0);
+  const canWrite = chosen !== undefined && flow.text.trim() !== "";
+  const enabled = !flow.busy && (report ? ready : true) && (message ? canWrite : report);
+  const label = report
+    ? message
+      ? t("reportAndSend", { name })
+      : t("reportSick", { name })
+    : t("sendMessage");
+  const title =
+    report || (reporting && !sickToday) ? t("reportSick", { name }) : t("writeTitle", { name });
+  const showButton = report || writes;
+  return html`${head(title, [day], [], ctx, close, faceMark)}
+    ${flow.undone ? alert("info", t("undone")) : nothing}
+    ${reports ? nothing : turnedOff("sick_reports", t)} ${routeLine}
+    ${senders(flow, allowing(family, reporting ? "sick_reports" : "messages"), ctx, actions)}
+    ${summary} ${notes}
+    ${writes ? messagePart(flow, name, ctx, state, actions, report) : turnedOff("messages", t)}
+    ${flow.error === undefined ? nothing : alert("error", actionErrorText(flow.error, t))}
+    <div class="window-actions">
+      <button class="text-button" type="button" @click=${close}>${t("cancel")}</button>
+      ${
+        showButton
+          ? html`<button
+              class="filled-button"
+              type="button"
+              ?disabled=${!enabled}
+              @click=${() => {
+                actions.submit(report, message ? chosen : undefined);
               }}
-            />
-            <span class="thread-text"
-              ><span class="thread-subject">${item.subject}</span
-              ><span class="thread-meta">${meta}</span></span
             >
-          </label>`;
-        })}
-      </div>`;
-  return html`${head(t("writeQuestion"), [name], [], ctx, close, faceMark)}
-    ${sickToday ? done : nothing}
-    ${earlier ? html`<p class="info-line">${icon("mdi:thermometer")}<span>${t("sickSinceDay", { name, day: formatDay(earlier, ctx.language) })}</span></p>` : nothing}
-    ${family.today?.sick.wrote_yesterday ? html`<p class="info-line">${icon("mdi:message-check-outline")}<span>${t("wroteYesterday")}</span></p>` : nothing}
-    ${senders(flow, allowing(family, "messages"), ctx, actions)}
-    <div class="field">
-      <span class="field-label">${t("threadLabel")}</span>
-      ${picker}
-    </div>
-    <div class="field">
-      <label class="field-label" for="sick-message">${t("messageLabel")}</label>
-      <textarea
-        id="sick-message"
-        class="text-input"
-        rows="3"
-        .value=${flow.text}
-        ?disabled=${flow.busy}
-        @input=${(event: Event) => {
-          flow.text = (event.target as HTMLTextAreaElement).value;
-          state.requestUpdate();
-        }}
-      ></textarea>
-    </div>
-    ${error}
-    <div class="window-actions">${skipFirst ? html`${send}${skip}` : html`${skip}${send}`}</div>`;
+              ${flow.busy ? t("sending") : label}
+            </button>`
+          : nothing
+      }
+    </div>`;
 }
 
 /** Shows a child's state as the sick card's row and the presence window say it. */
