@@ -200,6 +200,8 @@ describe("marking a post read", () => {
       hass.callWS.mock.calls.filter(([message]) => message.type === "aula_connect/post/seen"),
     ).toEqual([[{ type: "aula_connect/post/seen", entry_id: IDA.entry_id, post_id: 9001 }]]);
     expect(windowText(card)).toContain("Markeret som læst");
+    expect(all(card, "dialog .window-actions .done-action")).toHaveLength(1);
+    expect(texts(card, "dialog .label")).toEqual(["Vigtigt til 30. okt."]);
     expect(all(card, "dialog .window-actions .filled-button")).toEqual([]);
     expect(posts.mock.calls.length).toBeGreaterThan(1);
   });

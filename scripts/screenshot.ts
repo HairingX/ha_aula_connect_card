@@ -180,6 +180,12 @@ function family(width: number, large = false): Shot[] {
     shot("important", "thu-1000", width, look),
     shot("news", "thu-1000", width, look),
     shot("news", "thu-1000", width, { ...look, dialog: '[data-detail="post|9001"]', tag: "post" }),
+    shot("news", "thu-1000", width, {
+      ...look,
+      dialog: '[data-detail="post|9001"]',
+      then: ["dialog .window-actions .filled-button"],
+      tag: "post-read",
+    }),
     shot("sick", "thu-1000", width, look),
     shot("sick", "thu-1000", width, { ...look, dialog: SICK_ROW, tag: "step-1" }),
     shot("sick", "thu-1000", width, {
@@ -854,6 +860,7 @@ for (const item of shots) {
       "aula_connect/vacation_requests": REQUESTS,
       "aula_connect/posts": POSTS,
       "aula_connect/opening_hours": OPENING_HOURS,
+      "aula_connect/post/seen": { marked: 1 },
       "aula_connect/vacation_request/answer": null,
     },
     today: Object.fromEntries(

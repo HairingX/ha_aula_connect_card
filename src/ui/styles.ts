@@ -2020,6 +2020,12 @@ export const family = css`
   .text-button {
     padding: 0 var(--aula-space-4);
   }
+  .done-action {
+    align-items: center;
+    min-height: var(--aula-target);
+    margin: 0;
+    padding: 0 var(--aula-space-6);
+  }
   .choice {
     min-height: calc(40px * var(--aula-scale));
     padding: 0 var(--aula-space-4);

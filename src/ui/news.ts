@@ -42,13 +42,13 @@ function when(item: NewsItem, ctx: ViewContext): string {
     : formatShortDate(item.day, ctx.language);
 }
 
-function marks(item: NewsItem, ctx: ViewContext, until = false): TemplateResult[] {
+function marks(item: NewsItem, ctx: ViewContext, until = false, seen = false): TemplateResult[] {
   const last = until ? item.post.important_to : null;
   const important = last
     ? ctx.t("newsImportantUntil", { day: formatShortDate(last, ctx.language) })
     : ctx.t("newsImportant");
   return [
-    ...(item.fresh ? [label(ctx.t("newsNew"), "news-new")] : []),
+    ...(item.fresh && !seen ? [label(ctx.t("newsNew"), "news-new")] : []),
     ...(item.important ? [label(html`${icon("mdi:flag")}${important}`, "warning")] : []),
   ];
 }
@@ -86,10 +86,13 @@ function seenPart(
 ): unknown {
   if (!item.fresh && !step.done) return nothing;
   const { t } = ctx;
+  // The answer takes the button's place, so that nothing below it moves.
   if (step.done) {
-    return html`<p class="done-line">
-      ${icon("mdi:check-circle-outline")}<span>${t("markedSeen")}</span>
-    </p>`;
+    return html`<div class="window-actions">
+      <p class="done-line done-action">
+        ${icon("mdi:check-circle-outline")}<span>${t("markedSeen")}</span>
+      </p>
+    </div>`;
   }
   const logins = item.from.filter((entry) => entry.allowed.includes("mark_seen"));
   if (logins.length === 0) return turnedOff("mark_seen", t);
@@ -134,7 +137,7 @@ function openPost(
       ...(post.institution ? [aula(post.institution, ctx)] : []),
     ];
     return modal(
-      html`${head(aula(post.title, ctx), meta, marks(item, ctx, true), ctx, close)}
+      html`${head(aula(post.title, ctx), meta, marks(item, ctx, true, step.done), ctx, close)}
         <p class="news-text">${aula(item.text, ctx)}</p>
         ${section(
           ctx.t("newsAttachments"),
