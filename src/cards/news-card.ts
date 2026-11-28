@@ -72,6 +72,7 @@ export class AulaConnectNewsCard extends AulaCard<CommonConfig, FamilyView> {
         loads,
         ctx.zone,
         view.children.map((item) => item.child),
+        ctx.today,
       ),
       ctx,
       this,

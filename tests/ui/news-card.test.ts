@@ -78,7 +78,7 @@ describe("the news feed", () => {
     expect(windowText(card)).toContain("Juleklip for hele skolen fredag");
     expect(windowText(card)).toContain("I går 09.15");
     expect(windowText(card)).toContain("Bakkedal Skole");
-    expect(windowText(card)).toContain("Vigtigt til og med 30. okt.");
+    expect(texts(card, "dialog .label")).toEqual(["Ny", "Vigtigt til 30. okt."]);
     expect(windowText(card)).toContain("Husk en saks");
     expect(windowText(card)).toContain("Hele skolen");
     expect(windowText(card)).not.toContain("Vedhæftet");
@@ -88,7 +88,7 @@ describe("the news feed", () => {
     expect(find(card, "dialog .news-files a", undefined, HTMLAnchorElement).href).toBe(
       "https://files.example.org/tilmelding.pdf",
     );
-    expect(windowText(card)).not.toContain("Vigtigt til og med");
+    expect(windowText(card)).not.toContain("Vigtigt");
   });
 
   it("shows a file without a link, and a post without an author or groups", async () => {
@@ -111,7 +111,7 @@ describe("the news feed", () => {
     expect(windowText(card)).toContain("Vedhæftet billede.jpg");
     expect(all(card, "dialog .news-files a")).toEqual([]);
     expect(windowText(card)).not.toContain("Delt med");
-    expect(all(card, "dialog .news-period")).toEqual([]);
+    expect(texts(card, "dialog .label")).toEqual(["Ny", "Vigtigt"]);
   });
 
   it("shows a post two logins share once, new where either guardian has not seen it", async () => {
@@ -298,6 +298,7 @@ describe("reading the posts", () => {
         [{ entry: IDA, data: [post], error: undefined, loading: false }],
         "Europe/Copenhagen",
         [IDA],
+        "2026-10-29",
       ).items,
     ).toEqual([]);
   });
@@ -308,7 +309,42 @@ describe("reading the posts", () => {
       [{ entry: IDA, data: [post], error: undefined, loading: false }],
       "Europe/Copenhagen",
       [IDA, OSKAR],
+      "2026-10-29",
     ).items;
     expect(item?.children).toEqual([IDA, OSKAR]);
+  });
+
+  it("marks a post important only from its first day important to its last, as Aula does", () => {
+    const post = present(POSTS.posts[0]);
+    const important = (
+      today: string,
+      from: string | null,
+      to: string | null,
+    ): boolean | undefined =>
+      newsView(
+        [
+          {
+            entry: IDA,
+            data: [{ ...post, important_from: from, important_to: to }],
+            error: undefined,
+            loading: false,
+          },
+        ],
+        "Europe/Copenhagen",
+        [IDA],
+        today,
+      ).items[0]?.important;
+    expect(important("2026-10-29", "2026-10-28", "2026-10-30")).toBe(true);
+    expect(important("2026-10-31", "2026-10-28", "2026-10-30")).toBe(false);
+    expect(important("2026-10-27", "2026-10-28", "2026-10-30")).toBe(false);
+    expect(important("2026-10-29", null, null)).toBe(true);
+    expect(
+      newsView(
+        [{ entry: IDA, data: [{ ...post, important: false }], error: undefined, loading: false }],
+        "Europe/Copenhagen",
+        [IDA],
+        "2026-10-29",
+      ).items[0]?.important,
+    ).toBe(false);
   });
 });

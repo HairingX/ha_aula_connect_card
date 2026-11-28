@@ -107,6 +107,7 @@ export class AulaConnectOverviewCard extends AulaCard<OverviewConfig, OverviewVi
       })),
       ctx.zone,
       view.children.map((item) => item.child),
+      ctx.today,
     );
   }
 

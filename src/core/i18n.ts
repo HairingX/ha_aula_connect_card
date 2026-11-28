@@ -254,7 +254,7 @@ const TEXTS = {
   yesterday: ["Yesterday", "I går"],
   newsNew: ["New", "Ny"],
   newsImportant: ["Important", "Vigtigt"],
-  newsImportantUntil: ["Important until {day}", "Vigtigt til og med {day}"],
+  newsImportantUntil: ["Important until {day}", "Vigtigt til {day}"],
   newsAttachments: ["Attached", "Vedhæftet"],
   newsGroups: ["Shared with", "Delt med"],
   newsNone: ["No posts", "Ingen opslag"],

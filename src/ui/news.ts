@@ -42,12 +42,14 @@ function when(item: NewsItem, ctx: ViewContext): string {
     : formatShortDate(item.day, ctx.language);
 }
 
-function marks(item: NewsItem, ctx: ViewContext): TemplateResult[] {
+function marks(item: NewsItem, ctx: ViewContext, until = false): TemplateResult[] {
+  const last = until ? item.post.important_to : null;
+  const important = last
+    ? ctx.t("newsImportantUntil", { day: formatShortDate(last, ctx.language) })
+    : ctx.t("newsImportant");
   return [
     ...(item.fresh ? [label(ctx.t("newsNew"), "news-new")] : []),
-    ...(item.post.important
-      ? [label(html`${icon("mdi:flag")}${ctx.t("newsImportant")}`, "warning")]
-      : []),
+    ...(item.important ? [label(html`${icon("mdi:flag")}${important}`, "warning")] : []),
   ];
 }
 
@@ -131,13 +133,8 @@ function openPost(
       ...(post.author ? [aula(post.author, ctx)] : []),
       ...(post.institution ? [aula(post.institution, ctx)] : []),
     ];
-    const period =
-      post.important && post.important_to
-        ? ctx.t("newsImportantUntil", { day: formatShortDate(post.important_to, ctx.language) })
-        : "";
     return modal(
-      html`${head(aula(post.title, ctx), meta, marks(item, ctx), ctx, close)}
-        ${period ? html`<p class="news-period">${period}</p>` : nothing}
+      html`${head(aula(post.title, ctx), meta, marks(item, ctx, true), ctx, close)}
         <p class="news-text">${aula(item.text, ctx)}</p>
         ${section(
           ctx.t("newsAttachments"),

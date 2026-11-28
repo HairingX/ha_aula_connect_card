@@ -3122,11 +3122,6 @@ export const family = css`
     margin: 0;
     white-space: pre-line;
   }
-  .news-period {
-    margin: 0;
-    color: var(--aula-warning);
-    font-weight: var(--aula-medium);
-  }
   .news-files {
     display: flex;
     flex-direction: column;

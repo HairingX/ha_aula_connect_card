@@ -21,6 +21,8 @@ export interface NewsItem {
   readonly at: Date;
   /** Whether a guardian has not seen it in Aula yet. */
   readonly fresh: boolean;
+  /** Whether it is marked important today: from its first day important to its last, as Aula shows it. */
+  readonly important: boolean;
   /** The logins it is new to, each as one of its children. */
   readonly from: readonly Child[];
   /** The children shown it is for. */
@@ -62,6 +64,7 @@ export function newsView(
   loads: readonly PostsLoad[],
   zone: string,
   shown: readonly Child[],
+  today: Day,
 ): NewsView {
   const byId = new Map<number, NewsItem>();
   for (const load of loads) {
@@ -81,6 +84,10 @@ export function newsView(
         day: dayOf(at, zone),
         at,
         fresh: post.new || (known?.fresh ?? false),
+        important:
+          post.important &&
+          (post.important_from === null || post.important_from <= today) &&
+          (post.important_to === null || today <= post.important_to),
         from: [...(known?.from ?? []), ...(post.new ? [load.entry] : [])],
         children,
       });
