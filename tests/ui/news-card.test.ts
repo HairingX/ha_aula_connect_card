@@ -191,7 +191,7 @@ describe("marking a post read", () => {
       commands: { "aula_connect/posts": posts, "aula_connect/post/seen": seen },
     });
     await tap(card, '[data-detail="post|9001"]');
-    expect(windowText(card)).toContain("Aula får besked om, at du har set opslaget");
+    expect(windowText(card)).not.toContain("Aula får besked");
     expect(seen).not.toHaveBeenCalled();
     await tap(card, "dialog .window-actions .filled-button");
     await settled(card);
@@ -199,7 +199,7 @@ describe("marking a post read", () => {
     expect(
       hass.callWS.mock.calls.filter(([message]) => message.type === "aula_connect/post/seen"),
     ).toEqual([[{ type: "aula_connect/post/seen", entry_id: IDA.entry_id, post_id: 9001 }]]);
-    expect(windowText(card)).toContain("Markeret som læst i Aula");
+    expect(windowText(card)).toContain("Markeret som læst");
     expect(all(card, "dialog .window-actions .filled-button")).toEqual([]);
     expect(posts.mock.calls.length).toBeGreaterThan(1);
   });

@@ -91,10 +91,7 @@ function seenPart(
   }
   const logins = item.from.filter((entry) => entry.allowed.includes("mark_seen"));
   if (logins.length === 0) return turnedOff("mark_seen", t);
-  return html`<p class="window-note">
-      ${icon("mdi:information-outline")}<span>${t("markSeenNote")}</span>
-    </p>
-    ${step.error === undefined ? nothing : alert("error", actionErrorText(step.error, t))}
+  return html`${step.error === undefined ? nothing : alert("error", actionErrorText(step.error, t))}
     <div class="window-actions">
       <button
         class="filled-button"

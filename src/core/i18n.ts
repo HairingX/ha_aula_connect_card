@@ -341,11 +341,7 @@ const TEXTS = {
     "Markering af nyheder som set er slået fra i Aula Connects indstillinger.",
   ],
   markSeen: ["Mark as read", "Markér som læst"],
-  markSeenNote: [
-    "Aula is told you have seen the post, as when you open it in Aula.",
-    "Aula får besked om, at du har set opslaget, som når du åbner det i Aula.",
-  ],
-  markedSeen: ["Marked as read in Aula", "Markeret som læst i Aula"],
+  markedSeen: ["Marked as read", "Markeret som læst"],
   cancel: ["Cancel", "Annullér"],
   close2: ["Done", "Færdig"],
   sending: ["Sending to Aula…", "Sender til Aula…"],
